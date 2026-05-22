@@ -1,0 +1,394 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  Bike,
+  ChevronDown,
+  ChevronLeft,
+  ClipboardList,
+  Coffee,
+  FileText,
+  Gift,
+  Image,
+  LayoutDashboard,
+  LogOut,
+  Package,
+  Palette,
+  Settings,
+  Shield,
+  ShoppingCart,
+  Star,
+  Tags,
+  Ticket,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { usePendingActions } from "@/hooks/useDashboard"
+import { cn } from "@/lib/utils"
+import { useAuthStore } from "@/store/auth.store"
+import { useSidebarStore } from "@/store/sidebar.store"
+
+type NavChild = {
+  label: string
+  href: string
+  icon: string
+}
+
+type NavItem = {
+  label: string
+  href: string
+  icon: string
+  badgeKey?: "pendingOrders" | "lowStockProducts" | "pendingRiderApprovals"
+  children?: NavChild[]
+}
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Activity,
+  BarChart3,
+  Bell,
+  Bike,
+  ClipboardList,
+  Coffee,
+  FileText,
+  Gift,
+  Image,
+  LayoutDashboard,
+  Package,
+  Palette,
+  Settings,
+  Shield,
+  Star,
+  Tags,
+  Ticket,
+  Users,
+  Wallet,
+}
+
+const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
+  {
+    section: "MAIN",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+      {
+        label: "Orders",
+        href: "/orders",
+        icon: "ClipboardList",
+        badgeKey: "pendingOrders",
+      },
+      {
+        label: "Settings",
+        href: "/settings/fees",
+        icon: "Settings",
+        children: [
+          { label: "Fees", href: "/settings/fees", icon: "FileText" },
+          { label: "Tip Presets", href: "/settings/tip-presets", icon: "Coffee" },
+          {
+            label: "Payment Offers",
+            href: "/settings/payment-offers",
+            icon: "Gift",
+          },
+        ],
+      },
+      {
+        label: "Products",
+        href: "/products",
+        icon: "Package",
+        badgeKey: "lowStockProducts",
+      },
+      { label: "Categories", href: "/categories", icon: "Tags" },
+      { label: "Customers", href: "/customers", icon: "Users" },
+      {
+        label: "Riders",
+        href: "/riders",
+        icon: "Bike",
+        badgeKey: "pendingRiderApprovals",
+      },
+    ],
+  },
+  {
+    section: "COMMERCE",
+    items: [
+      { label: "Coupons", href: "/coupons", icon: "Ticket" },
+      { label: "Wallet & Refunds", href: "/wallet", icon: "Wallet" },
+      { label: "Notifications", href: "/notifications", icon: "Bell" },
+      { label: "Reviews", href: "/reviews", icon: "Star" },
+    ],
+  },
+  {
+    section: "ANALYTICS",
+    items: [{ label: "Analytics", href: "/analytics", icon: "BarChart3" }],
+  },
+  {
+    section: "SYSTEM",
+    items: [
+      { label: "Banners", href: "/banners", icon: "Image" },
+      { label: "Activity Log", href: "/activity-log", icon: "Activity" },
+      { label: "Team & Roles", href: "/team", icon: "Shield" },
+      { label: "Themes", href: "/themes", icon: "Palette" },
+      { label: "Theme Tabs", href: "/theme-tabs", icon: "Tags" },
+      { label: "General Settings", href: "/settings", icon: "Settings" },
+    ],
+  },
+]
+
+function isPathActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
+  const { isCollapsed, setCollapsed } = useSidebarStore()
+  const { data: pendingActions } = usePendingActions()
+  const [settingsOpen, setSettingsOpen] = useState(
+    pathname.startsWith("/settings")
+  )
+
+  useEffect(() => {
+    if (pathname.startsWith("/settings")) {
+      setSettingsOpen(true)
+    }
+  }, [pathname])
+
+  const badgeCounts: Record<string, number> = {
+    pendingOrders: pendingActions?.pendingOrders ?? 0,
+    lowStockProducts: pendingActions?.lowStockProducts ?? 0,
+    pendingRiderApprovals: pendingActions?.pendingRiderApprovals ?? 0,
+  }
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <aside
+        aria-label="Main navigation"
+        className={cn(
+          "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-background transition-all duration-200",
+          isCollapsed ? "w-[72px]" : "w-[260px]"
+        )}
+      >
+        <div className="flex h-16 items-center gap-3 px-4 shrink-0">
+          <div className="stat-card-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <ShoppingCart className="h-5 w-5 text-white" />
+          </div>
+          {!isCollapsed && (
+            <span className="truncate text-base font-semibold text-foreground">
+              Bakaloo Admin
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "ml-auto h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground",
+              isCollapsed && "ml-0"
+            )}
+            onClick={() => setCollapsed(!isCollapsed)}
+          >
+            <ChevronLeft
+              className={cn(
+                "h-4 w-4 transition-transform",
+                isCollapsed && "rotate-180"
+              )}
+            />
+          </Button>
+        </div>
+
+        <Separator />
+
+        <ScrollArea className="flex-1 py-3">
+          <nav aria-label="Main menu" className="space-y-5 px-3">
+            {NAV_SECTIONS.map((section) => (
+              <div key={section.section}>
+                {!isCollapsed && (
+                  <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {section.section}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const Icon = ICON_MAP[item.icon]
+                    const badgeCount = item.badgeKey
+                      ? badgeCounts[item.badgeKey] ?? 0
+                      : 0
+
+                    if (item.children && !isCollapsed) {
+                      const isGroupActive = item.children.some((child) =>
+                        isPathActive(pathname, child.href)
+                      )
+
+                      return (
+                        <div key={item.label} className="space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => setSettingsOpen((prev) => !prev)}
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
+                              isGroupActive
+                                ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
+                                : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <Icon
+                              className={cn(
+                                "h-5 w-5 shrink-0",
+                                isGroupActive
+                                  ? "text-brand-500"
+                                  : "text-muted-foreground"
+                              )}
+                            />
+                            <span className="flex-1 truncate text-left">
+                              {item.label}
+                            </span>
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform",
+                                settingsOpen && "rotate-180"
+                              )}
+                            />
+                          </button>
+
+                          {settingsOpen && (
+                            <div className="ml-6 space-y-1 border-l border-border/80 pl-3">
+                              {item.children.map((child) => {
+                                const ChildIcon = ICON_MAP[child.icon]
+                                const childActive = isPathActive(
+                                  pathname,
+                                  child.href
+                                )
+
+                                return (
+                                  <Link
+                                    key={child.href}
+                                    href={child.href}
+                                    className={cn(
+                                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                      childActive
+                                        ? "bg-brand-50 font-medium text-brand-500"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    )}
+                                  >
+                                    <ChildIcon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">
+                                      {child.label}
+                                    </span>
+                                  </Link>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    const isActive = isPathActive(pathname, item.href)
+                    const link = (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
+                          isActive
+                            ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
+                            : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                          isCollapsed && "justify-center px-0"
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            "h-5 w-5 shrink-0",
+                            isActive ? "text-brand-500" : "text-muted-foreground"
+                          )}
+                        />
+                        {!isCollapsed && (
+                          <span className="flex-1 truncate">{item.label}</span>
+                        )}
+                        {!isCollapsed && badgeCount > 0 && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                            {badgeCount > 99 ? "99+" : badgeCount}
+                          </span>
+                        )}
+                      </Link>
+                    )
+
+                    if (isCollapsed) {
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger asChild>{link}</TooltipTrigger>
+                          <TooltipContent side="right" sideOffset={8}>
+                            {item.label}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    }
+
+                    return link
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </ScrollArea>
+
+        <Separator />
+
+        <div className="shrink-0 p-3">
+          <div
+            className={cn(
+              "flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-muted",
+              isCollapsed && "justify-center"
+            )}
+          >
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarFallback className="bg-brand-50 text-xs font-semibold text-brand-500">
+                {user?.name?.charAt(0)?.toUpperCase() || "A"}
+              </AvatarFallback>
+            </Avatar>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {user?.name || "Admin"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {user?.role_name || user?.email}
+                </p>
+              </div>
+            )}
+            {!isCollapsed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Logout"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-danger"
+                    onClick={logout}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Logout</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+      </aside>
+    </TooltipProvider>
+  )
+}

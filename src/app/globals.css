@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* ── Shadcn base variables (green theme) ── */
+    --background: 210 20% 98%;
+    --foreground: 220 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 10%;
+    --primary: 148 66% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 16% 96%;
+    --secondary-foreground: 220 14% 10%;
+    --muted: 210 16% 96%;
+    --muted-foreground: 215 14% 45%;
+    --accent: 145 60% 93%;
+    --accent-foreground: 148 66% 25%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 218 13% 90%;
+    --input: 218 13% 90%;
+    --ring: 148 66% 29%;
+    --chart-1: 148 66% 29%;
+    --chart-2: 43 96% 56%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 263 70% 58%;
+    --chart-5: 160 84% 39%;
+    --radius: 0.5rem;
+
+    /* ── Brand Colors (direct hex for custom components) ── */
+    --brand-50: #E8F5E9;
+    --brand-100: #C8E6C9;
+    --brand-200: #A5D6A7;
+    --brand-300: #81C784;
+    --brand-400: #66BB6A;
+    --brand-500: #1A7A3C;
+    --brand-600: #158034;
+    --brand-700: #10602A;
+    --brand-800: #0B4020;
+    --brand-900: #062010;
+
+    /* ── Semantic ── */
+    --success: #10B981;
+    --success-bg: #ECFDF5;
+    --warning: #F59E0B;
+    --warning-bg: #FFFBEB;
+    --danger: #EF4444;
+    --danger-bg: #FEF2F2;
+    --info: #3B82F6;
+    --info-bg: #EFF6FF;
+    --purple: #8B5CF6;
+    --purple-bg: #F5F3FF;
+
+    /* ── Surface ── */
+    --surface-bg: #F0F4F8;
+    --surface-card: #FFFFFF;
+    --surface-sidebar: #FFFFFF;
+
+    /* ── Shadows ── */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.07), 0 4px 6px rgba(0,0,0,0.04);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.08), 0 10px 10px rgba(0,0,0,0.03);
+
+    /* ── Layout ── */
+    --sidebar-width: 260px;
+    --sidebar-collapsed: 72px;
+    --header-height: 64px;
+  }
+
+  .dark {
+    /* ── Shadcn base variables (dark green theme) ── */
+    --background: 224 14% 10%;
+    --foreground: 210 20% 95%;
+    --card: 224 14% 13%;
+    --card-foreground: 210 20% 95%;
+    --popover: 224 14% 13%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 148 66% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 14% 17%;
+    --secondary-foreground: 210 20% 95%;
+    --muted: 224 14% 17%;
+    --muted-foreground: 215 14% 55%;
+    --accent: 148 40% 18%;
+    --accent-foreground: 148 66% 70%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 224 14% 20%;
+    --input: 224 14% 20%;
+    --ring: 148 66% 40%;
+    --chart-1: 148 66% 40%;
+    --chart-2: 43 96% 56%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 263 70% 58%;
+    --chart-5: 160 84% 39%;
+
+    /* ── Brand Colors (dark mode) ── */
+    --brand-50: rgba(26, 122, 60, 0.15);
+    --brand-100: rgba(26, 122, 60, 0.25);
+    --brand-500: #2E9E54;
+
+    /* ── Semantic (dark mode) ── */
+    --success: #34D399;
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning: #FBBF24;
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger: #F87171;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info: #60A5FA;
+    --info-bg: rgba(59, 130, 246, 0.15);
+    --purple: #A78BFA;
+    --purple-bg: rgba(139, 92, 246, 0.15);
+
+    /* ── Surface (dark mode) ── */
+    --surface-bg: #0f1117;
+    --surface-card: hsl(224 14% 13%);
+    --surface-sidebar: hsl(224 14% 11%);
+
+    /* ── Shadows (dark mode) ── */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.3);
+  }
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* ── Shimmer skeleton animation ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Stat card green gradient ── */
+.stat-card-primary {
+  background: linear-gradient(135deg, #1A7A3C 0%, #2E9E54 100%);
+  box-shadow: 0 8px 24px rgba(26,122,60,0.25);
+}
+
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}

@@ -1,0 +1,57 @@
+import api from "@/lib/api"
+import type {
+  ApiResponse,
+  PaginatedResponse,
+} from "@/types"
+import type {
+  Coupon,
+  CouponFilters,
+  CreateCouponPayload,
+  UpdateCouponPayload,
+  CouponAnalytics,
+} from "@/types/coupon.types"
+
+export async function getCoupons(
+  filters: CouponFilters = {}
+): Promise<{ data: Coupon[]; pagination: PaginatedResponse<Coupon>["pagination"] }> {
+  const params: Record<string, unknown> = {}
+  if (filters.page) params.page = filters.page
+  if (filters.limit) params.limit = filters.limit
+
+  const { data } = await api.get<
+    ApiResponse<Coupon[]> & { pagination?: { page: number; limit: number; total: number; totalPages: number } }
+  >("/coupons", { params })
+
+  // Backend returns { success, data: [...], pagination: {...} }
+  return {
+    data: Array.isArray(data.data) ? data.data : [],
+    pagination: (data as unknown as { pagination: PaginatedResponse<Coupon>["pagination"] }).pagination ?? {
+      page: filters.page ?? 1,
+      limit: filters.limit ?? 20,
+      total: 0,
+      totalPages: 0,
+    },
+  }
+}
+
+export async function createCoupon(payload: CreateCouponPayload): Promise<Coupon> {
+  const { data } = await api.post<ApiResponse<Coupon>>("/coupons", payload)
+  return data.data
+}
+
+export async function updateCoupon(
+  id: string,
+  payload: UpdateCouponPayload
+): Promise<Coupon> {
+  const { data } = await api.put<ApiResponse<Coupon>>(`/coupons/${id}`, payload)
+  return data.data
+}
+
+export async function deleteCoupon(id: string): Promise<void> {
+  await api.delete(`/coupons/${id}`)
+}
+
+export async function getCouponAnalytics(couponId: string): Promise<CouponAnalytics> {
+  const { data } = await api.get<ApiResponse<CouponAnalytics>>(`/admin/coupons/${couponId}/analytics`)
+  return data.data
+}
