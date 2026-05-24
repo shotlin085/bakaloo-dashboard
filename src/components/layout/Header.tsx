@@ -9,6 +9,8 @@ import { useNotificationStore } from "@/store/notifications.store"
 import { useConnectionStatus } from "@/hooks/useSocket"
 import { NotificationPanel } from "./NotificationPanel"
 import { GlobalSearch } from "./GlobalSearch"
+import { ShopSwitcher } from "./shop-switcher"
+import { ReconnectingIndicator } from "./reconnecting-indicator"
 import { ThemeToggle } from "./ThemeToggle"
 
 const STATUS_CONFIG = {
@@ -56,6 +58,21 @@ export function Header() {
       <GlobalSearch />
 
       <div className="flex items-center gap-2 ml-auto">
+        {/* Super_Admin Shop_Switcher — self-gates on `useIsSuperAdmin()` and
+            on `assignedShopIds.length > 0`, so it renders nothing for vendor
+            users and unauthenticated states. Mounted inside the right-side
+            cluster so it never displaces the left-aligned GlobalSearch
+            (Req 3.1, 3.2, 3.3). */}
+        <ShopSwitcher />
+
+        {/* Non-blocking "Reconnecting…" pill — surfaces socket drops to all
+            users (vendor + super admin) without interrupting workflow. Sits
+            next to the Shop_Switcher per task 13.3 so the live-update health
+            of the dashboard is visible right where the shop scope is chosen
+            (Req 11.6, 15.6). The component renders nothing while connected
+            so it doesn't add visual noise during the common case. */}
+        <ReconnectingIndicator />
+
         {/* Connection status */}
         <TooltipProvider delayDuration={0}>
           <Tooltip>

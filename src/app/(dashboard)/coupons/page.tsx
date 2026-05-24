@@ -41,6 +41,8 @@ import { useDebounce } from "@/hooks/useDebounce"
 import { formatINR } from "@/lib/utils"
 import type { Coupon } from "@/types/coupon.types"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useShopContext, useIsSuperAdmin } from "@/hooks/useShopContext"
+import { EmptyShopState } from "@/components/shared/empty-shop-state"
 
 type StatusTab = "all" | "active" | "expired" | "upcoming"
 
@@ -66,6 +68,13 @@ function CouponsContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [analyticsCoupon, setAnalyticsCoupon] = useState<Coupon | null>(null)
+
+  // ─── Shop context gating (Req 10.5) ──────────────────────────────────────
+  // Coupons are a per-shop surface. Outside SINGLE_SHOP mode the page
+  // renders `<EmptyShopState />` and the underlying list query is gated
+  // off via `useCoupons()`'s `enabled` flag, so no request is fired.
+  const { mode } = useShopContext()
+  const isSuperAdmin = useIsSuperAdmin()
 
   const debouncedSearch = useDebounce(search, 400)
   const { data, isLoading } = useCoupons({ page, limit: 20 })
@@ -106,6 +115,18 @@ function CouponsContent() {
 
   const handleDelete = (id: string) => {
     if (confirm("Delete this coupon?")) deleteMutation.mutate(id)
+  }
+
+  // Req 10.5: outside SINGLE_SHOP mode the coupons surface short-circuits
+  // with `<EmptyShopState />`. The list query is also gated off in this
+  // branch (see `useCoupons()`), so no request is fired.
+  if (mode !== "SINGLE_SHOP") {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Coupons" subtitle="Create and manage discount coupons" />
+        <EmptyShopState isSuperAdmin={isSuperAdmin} />
+      </div>
+    )
   }
 
   return (

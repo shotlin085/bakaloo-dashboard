@@ -42,6 +42,7 @@ import {
   useCreditWallet,
   useNotifyCustomer,
 } from "@/hooks/useCustomers"
+import { useShopContextStore } from "@/store/shop-context.store"
 import { formatINR, formatDate, formatRelativeTime } from "@/lib/utils"
 import { STATUS_CONFIG, type OrderStatus } from "@/lib/constants"
 
@@ -57,6 +58,26 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
   const toggleBlock = useToggleBlockCustomer()
   const creditWallet = useCreditWallet()
   const notifyCustomer = useNotifyCustomer()
+
+  // Vendor scope enforcement (Req 10.10): a vendor (`assignedShopIds.length > 0`)
+  // who opens a customer with no overlap between the customer's
+  // `shop_allocations` and the vendor's locked shop list must see the 404
+  // empty state rather than the underlying record. Super-admins
+  // (`assignedShopIds = []`) bypass the check entirely. The check is
+  // intentionally skipped while the detail is still loading so the loading
+  // skeleton renders normally; once the response arrives, an empty
+  // `shop_allocations` array (authoritative negative signal from the
+  // backend) triggers the 404 path. A missing/`undefined` array is treated
+  // as "not enforced" so the legacy unscoped /admin/customers response
+  // does not regress before the backend ships the new field.
+  const assignedShopIds = useShopContextStore((s) => s.assignedShopIds)
+  const isVendor = assignedShopIds.length > 0
+  const customerShopAllocations = customer?.shop_allocations
+  const vendorHasAccess =
+    !isVendor ||
+    customerShopAllocations === undefined ||
+    customerShopAllocations.some((id) => assignedShopIds.includes(id))
+  const showNotFound = !isLoading && !!customer && !vendorHasAccess
 
   const [walletDialog, setWalletDialog] = useState(false)
   const [walletAmount, setWalletAmount] = useState("")
@@ -108,6 +129,8 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
             <div className="px-6 pb-6 space-y-5">
               {isLoading ? (
                 <ProfileSkeleton />
+              ) : showNotFound ? (
+                <CustomerNotFound />
               ) : !customer ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">
                   Customer not found
@@ -433,6 +456,28 @@ function StatBox({ icon, label, value }: { icon: React.ReactNode; label: string;
       <div className="flex justify-center text-muted-foreground mb-1">{icon}</div>
       <p className="text-sm font-bold">{value}</p>
       <p className="text-[10px] text-muted-foreground">{label}</p>
+    </div>
+  )
+}
+
+/**
+ * 404 state shown when a vendor user opens a customer that does not have an
+ * allocation overlap with their `assignedShopIds` (Req 10.10). The textual
+ * wording mirrors a generic "not found" so vendors cannot infer the
+ * existence of customers outside their shop scope from the UX alone — the
+ * drawer reads as a plain 404 rather than a "blocked" state.
+ */
+function CustomerNotFound() {
+  return (
+    <div className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+        <User className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="text-base font-semibold">404 — Customer not found</h3>
+      <p className="text-xs text-muted-foreground mt-2 max-w-xs">
+        This customer is not part of your shop. Switch to a shop where the
+        customer has an order to view their profile.
+      </p>
     </div>
   )
 }

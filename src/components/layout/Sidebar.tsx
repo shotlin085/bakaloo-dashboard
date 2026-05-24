@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ClipboardList,
   Coffee,
+  CreditCard,
   FileText,
   Gift,
   Image,
@@ -19,10 +20,12 @@ import {
   LogOut,
   Package,
   Palette,
+  Receipt,
   Settings,
   Shield,
   ShoppingCart,
   Star,
+  Store,
   Tags,
   Ticket,
   Users,
@@ -40,17 +43,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { usePendingActions } from "@/hooks/useDashboard"
+import { useMenuVisibility } from "@/hooks/useRBAC"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/auth.store"
 import { useSidebarStore } from "@/store/sidebar.store"
 
 type NavChild = {
+  /** Stable id used for permission gating (looked up in `MENU_PERMISSIONS`). */
+  id?: string
   label: string
   href: string
   icon: string
 }
 
 type NavItem = {
+  /** Stable id used for permission gating (looked up in `MENU_PERMISSIONS`). */
+  id?: string
   label: string
   href: string
   icon: string
@@ -65,15 +73,18 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Bike,
   ClipboardList,
   Coffee,
+  CreditCard,
   FileText,
   Gift,
   Image,
   LayoutDashboard,
   Package,
   Palette,
+  Receipt,
   Settings,
   Shield,
   Star,
+  Store,
   Tags,
   Ticket,
   Users,
@@ -122,6 +133,33 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     ],
   },
   {
+    section: "SHOPS",
+    items: [
+      // Ids match `MENU_PERMISSIONS` keys — `useMenuRBAC` consults that map
+      // to hide super-admin-only or `requiresActiveShop` items as the user's
+      // role and Shop_Switcher selection change (Req 4.2, 4.5, 4.6, 4.7).
+      { id: "shops", label: "Shops", href: "/shops", icon: "Store" },
+      {
+        id: "shopProducts",
+        label: "Shop Products",
+        href: "/shop-products",
+        icon: "Package",
+      },
+      {
+        id: "shopFinancials",
+        label: "Shop Financials",
+        href: "/shop-financials",
+        icon: "CreditCard",
+      },
+      {
+        id: "shopTransactions",
+        label: "Shop Transactions",
+        href: "/shop-transactions",
+        icon: "Receipt",
+      },
+    ],
+  },
+  {
     section: "COMMERCE",
     items: [
       { label: "Coupons", href: "/coupons", icon: "Ticket" },
@@ -149,6 +187,204 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
 
 function isPathActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+interface NavItemProps {
+  item: NavItem
+  pathname: string
+  isCollapsed: boolean
+  badgeCount: number
+  settingsOpen: boolean
+  onToggleSettings: () => void
+}
+
+/**
+ * Renders a single nav item (leaf or grouped). Visibility is decided by the
+ * parent section via `useMenuVisibility` so hook-call order stays stable
+ * regardless of the gated state. Items without an `id` are legacy and
+ * unconditionally rendered (the parent passes `true` for them).
+ */
+function NavSectionItem({
+  item,
+  pathname,
+  isCollapsed,
+  badgeCount,
+  settingsOpen,
+  onToggleSettings,
+}: NavItemProps) {
+  const Icon = ICON_MAP[item.icon]
+
+  if (item.children && !isCollapsed) {
+    const isGroupActive = item.children.some((child) =>
+      isPathActive(pathname, child.href),
+    )
+
+    return (
+      <div className="space-y-1">
+        <button
+          type="button"
+          role="menuitem"
+          aria-haspopup="menu"
+          aria-expanded={settingsOpen}
+          onClick={onToggleSettings}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            isGroupActive
+              ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
+              : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <Icon
+            className={cn(
+              "h-5 w-5 shrink-0",
+              isGroupActive ? "text-brand-500" : "text-muted-foreground",
+            )}
+          />
+          <span className="flex-1 truncate text-left">{item.label}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              settingsOpen && "rotate-180",
+            )}
+          />
+        </button>
+
+        {settingsOpen && (
+          <div className="ml-6 space-y-1 border-l border-border/80 pl-3" role="menu">
+            {item.children.map((child) => {
+              const ChildIcon = ICON_MAP[child.icon]
+              const childActive = isPathActive(pathname, child.href)
+
+              return (
+                <Link
+                  key={child.href}
+                  href={child.href}
+                  role="menuitem"
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    childActive
+                      ? "bg-brand-50 font-medium text-brand-500"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <ChildIcon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{child.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const isActive = isPathActive(pathname, item.href)
+  const link = (
+    <Link
+      href={item.href}
+      role="menuitem"
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        isActive
+          ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
+          : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+        isCollapsed && "justify-center px-0",
+      )}
+    >
+      <Icon
+        className={cn(
+          "h-5 w-5 shrink-0",
+          isActive ? "text-brand-500" : "text-muted-foreground",
+        )}
+      />
+      {!isCollapsed && <span className="flex-1 truncate">{item.label}</span>}
+      {!isCollapsed && badgeCount > 0 && (
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+          {badgeCount > 99 ? "99+" : badgeCount}
+        </span>
+      )}
+    </Link>
+  )
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return link
+}
+
+interface SidebarSectionProps {
+  section: string
+  items: NavItem[]
+  pathname: string
+  isCollapsed: boolean
+  badgeCounts: Record<string, number>
+  settingsOpen: boolean
+  onToggleSettings: () => void
+}
+
+/**
+ * Renders a labelled group of nav items. Item visibility is computed in a
+ * single hook call (`useMenuVisibility`) so hook-call order is stable across
+ * renders. The section heading is hidden when none of its items are visible
+ * to avoid leaving an empty label in the sidebar (Req 4.2). Re-evaluation on
+ * Shop_Switcher changes happens automatically via the underlying selectors
+ * (Req 4.6).
+ */
+function SidebarSection({
+  section,
+  items,
+  pathname,
+  isCollapsed,
+  badgeCounts,
+  settingsOpen,
+  onToggleSettings,
+}: SidebarSectionProps) {
+  // Stable id list: items without an id get the empty string, which
+  // `isMenuItemAllowed` resolves to "always allowed" (legacy item).
+  const ids = items.map((item) => item.id ?? "")
+  const visibility = useMenuVisibility(ids)
+  const visibleItems = items.filter((item) => visibility[item.id ?? ""])
+  if (visibleItems.length === 0) return null
+
+  return (
+    <div>
+      {!isCollapsed && (
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          {section}
+        </p>
+      )}
+      <div className="space-y-0.5">
+        {visibleItems.map((item) => {
+          const badgeCount = item.badgeKey
+            ? badgeCounts[item.badgeKey] ?? 0
+            : 0
+          return (
+            <NavSectionItem
+              key={item.id ?? item.href}
+              item={item}
+              pathname={pathname}
+              isCollapsed={isCollapsed}
+              badgeCount={badgeCount}
+              settingsOpen={settingsOpen}
+              onToggleSettings={onToggleSettings}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function Sidebar() {
@@ -213,135 +449,18 @@ export function Sidebar() {
         <Separator />
 
         <ScrollArea className="flex-1 py-3">
-          <nav aria-label="Main menu" className="space-y-5 px-3">
+          <nav aria-label="Main menu" role="menubar" className="space-y-5 px-3">
             {NAV_SECTIONS.map((section) => (
-              <div key={section.section}>
-                {!isCollapsed && (
-                  <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {section.section}
-                  </p>
-                )}
-                <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const Icon = ICON_MAP[item.icon]
-                    const badgeCount = item.badgeKey
-                      ? badgeCounts[item.badgeKey] ?? 0
-                      : 0
-
-                    if (item.children && !isCollapsed) {
-                      const isGroupActive = item.children.some((child) =>
-                        isPathActive(pathname, child.href)
-                      )
-
-                      return (
-                        <div key={item.label} className="space-y-1">
-                          <button
-                            type="button"
-                            onClick={() => setSettingsOpen((prev) => !prev)}
-                            className={cn(
-                              "flex w-full items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
-                              isGroupActive
-                                ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
-                                : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                "h-5 w-5 shrink-0",
-                                isGroupActive
-                                  ? "text-brand-500"
-                                  : "text-muted-foreground"
-                              )}
-                            />
-                            <span className="flex-1 truncate text-left">
-                              {item.label}
-                            </span>
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 transition-transform",
-                                settingsOpen && "rotate-180"
-                              )}
-                            />
-                          </button>
-
-                          {settingsOpen && (
-                            <div className="ml-6 space-y-1 border-l border-border/80 pl-3">
-                              {item.children.map((child) => {
-                                const ChildIcon = ICON_MAP[child.icon]
-                                const childActive = isPathActive(
-                                  pathname,
-                                  child.href
-                                )
-
-                                return (
-                                  <Link
-                                    key={child.href}
-                                    href={child.href}
-                                    className={cn(
-                                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                                      childActive
-                                        ? "bg-brand-50 font-medium text-brand-500"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    )}
-                                  >
-                                    <ChildIcon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate">
-                                      {child.label}
-                                    </span>
-                                  </Link>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    }
-
-                    const isActive = isPathActive(pathname, item.href)
-                    const link = (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
-                          isActive
-                            ? "border-brand-500 bg-brand-50 font-semibold text-brand-500"
-                            : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
-                          isCollapsed && "justify-center px-0"
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "h-5 w-5 shrink-0",
-                            isActive ? "text-brand-500" : "text-muted-foreground"
-                          )}
-                        />
-                        {!isCollapsed && (
-                          <span className="flex-1 truncate">{item.label}</span>
-                        )}
-                        {!isCollapsed && badgeCount > 0 && (
-                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                            {badgeCount > 99 ? "99+" : badgeCount}
-                          </span>
-                        )}
-                      </Link>
-                    )
-
-                    if (isCollapsed) {
-                      return (
-                        <Tooltip key={item.href}>
-                          <TooltipTrigger asChild>{link}</TooltipTrigger>
-                          <TooltipContent side="right" sideOffset={8}>
-                            {item.label}
-                          </TooltipContent>
-                        </Tooltip>
-                      )
-                    }
-
-                    return link
-                  })}
-                </div>
-              </div>
+              <SidebarSection
+                key={section.section}
+                section={section.section}
+                items={section.items}
+                pathname={pathname}
+                isCollapsed={isCollapsed}
+                badgeCounts={badgeCounts}
+                settingsOpen={settingsOpen}
+                onToggleSettings={() => setSettingsOpen((prev) => !prev)}
+              />
             ))}
           </nav>
         </ScrollArea>

@@ -15,12 +15,53 @@ import {
 } from "@/services/orders.service"
 import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, BulkStatusPayload } from "@/types"
 import { toast } from "sonner"
+import { useShopContext } from "@/hooks/useShopContext"
+import { qk } from "@/lib/query-keys"
 
+/**
+ * Sentinel `shopKey` slot used while the Shop_Context_Store hydrates.
+ *
+ * `qk.orders(shopKey, filters)` requires a stable second segment for the
+ * cache key, but we don't actually want to fire a request before the shop
+ * context is ready (vendor) or the Super_Admin has chosen between
+ * SINGLE_SHOP and ALL_SHOPS. Combining `shopKey === "NONE"` with
+ * `enabled: shopKey !== "NONE"` gives us a stable key shape and a gated
+ * request — matching the convention established by `useShopProductsList`
+ * and `useShopFinancials`.
+ *
+ * Requirements: 10.1, 10.3, 10.4, 10.6.
+ */
+const NONE_SHOP_KEY = "NONE"
+
+/**
+ * Paginated orders list, keyed by the central query-key factory so the
+ * Shop_Switcher's predicate-based invalidation (Req 3.4, 10.3) reaches
+ * every orders cache entry in one pass.
+ *
+ * Scope semantics:
+ *   - `mode === "ALL_SHOPS"` (Super_Admin viewing every shop):
+ *     `shopKey = "ALL"`. The axios interceptor omits `X-Shop-Id`, the
+ *     backend returns aggregated orders, and the page appends a `Shop`
+ *     column (Req 10.6).
+ *   - `mode === "SINGLE_SHOP"`: `shopKey = activeShopId`. The interceptor
+ *     injects `X-Shop-Id`, the backend returns shop-scoped orders, and
+ *     the page hides the `Shop` column.
+ *   - Otherwise (`UNSELECTED` / hydrating): `shopKey = "NONE"` and the
+ *     query is gated off so no request is issued.
+ */
 export function useOrders(filters: OrderFilters) {
+  const { mode, activeShopId } = useShopContext()
+  const shopKey =
+    mode === "ALL_SHOPS"
+      ? "ALL"
+      : activeShopId ?? NONE_SHOP_KEY
+
   return useQuery({
-    queryKey: ["orders", filters],
+    queryKey: qk.orders(shopKey, filters),
     queryFn: () => getOrders(filters),
+    enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30 * 1000,
+    placeholderData: (prev) => prev,
   })
 }
 

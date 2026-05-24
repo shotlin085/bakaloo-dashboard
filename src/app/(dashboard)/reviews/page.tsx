@@ -14,6 +14,7 @@ import { ReviewCard } from "@/components/reviews/ReviewCard"
 import { useProductReviews, useReplyReview, useModerateReview, useDeleteReview } from "@/hooks/useReviews"
 import { useProducts } from "@/hooks/useProducts"
 import { useDebounce } from "@/hooks/useDebounce"
+import { useShopContextStore } from "@/store/shop-context.store"
 
 function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) {
   const cls = size === "lg" ? "h-5 w-5" : "h-3.5 w-3.5"
@@ -65,6 +66,33 @@ function ReviewsContent() {
   const avgRating = reviewsData?.averageRating ?? 0
   const pagination = reviewsData?.pagination
   const totalPages = pagination?.totalPages ?? 1
+
+  // Vendor scope enforcement (Req 10.9, 10.10): a vendor
+  // (`assignedShopIds.length > 0`) viewing reviews for a product whose
+  // backing shop is outside their locked shop list must see the 404
+  // empty state rather than the underlying record set. Super-admins
+  // (`assignedShopIds = []`) bypass the check entirely.
+  //
+  // Reviews for a single product all belong to the same shop, so we read
+  // `shop_id` from the first review that exposes it. A missing/`undefined`
+  // value on every loaded review is treated as "not enforced" so the
+  // legacy `/reviews/products/:id` response (which does not yet emit
+  // `shop_id`) does not regress to a 404 before the backend ships the new
+  // field. This mirrors the convention from `<CustomerProfileDrawer />`.
+  const assignedShopIds = useShopContextStore((s) => s.assignedShopIds)
+  const isVendor = assignedShopIds.length > 0
+  const reviewShopId = reviews.find(
+    (r) => r.shop_id !== undefined && r.shop_id !== null,
+  )?.shop_id
+  const vendorHasAccess =
+    !isVendor ||
+    reviewShopId == null ||
+    assignedShopIds.includes(reviewShopId)
+  const showNotFound =
+    !!selectedProductId &&
+    !reviewsLoading &&
+    reviews.length > 0 &&
+    !vendorHasAccess
 
   // Rating distribution for bar chart
   const ratingDistribution = useMemo(() => {
@@ -144,6 +172,9 @@ function ReviewsContent() {
 
       {/* Reviews section */}
       {selectedProductId ? (
+        showNotFound ? (
+          <ReviewNotFound />
+        ) : (
         <div className="space-y-4">
           {/* Average rating & filter */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -260,6 +291,7 @@ function ReviewsContent() {
             </div>
           )}
         </div>
+        )
       ) : (
         <EmptyState
           icon={<Star className="h-6 w-6 text-muted-foreground" />}
@@ -267,6 +299,29 @@ function ReviewsContent() {
           description="Choose a product above to view its customer reviews"
         />
       )}
+    </div>
+  )
+}
+
+/**
+ * 404 state shown when a vendor user opens reviews for a product whose
+ * backing shop is not in their `assignedShopIds` (Req 10.10). The textual
+ * wording mirrors a generic "not found" so vendors cannot infer the
+ * existence of products outside their shop scope from the UX alone — the
+ * page reads as a plain 404 rather than a "blocked" state. Mirrors the
+ * convention from `<CustomerProfileDrawer />` `<CustomerNotFound />`.
+ */
+function ReviewNotFound() {
+  return (
+    <div className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+        <MessageSquare className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="text-base font-semibold">404 — Reviews not found</h3>
+      <p className="text-xs text-muted-foreground mt-2 max-w-xs">
+        These reviews are not part of your shop. Switch to a shop that sells
+        this product to view its reviews.
+      </p>
     </div>
   )
 }

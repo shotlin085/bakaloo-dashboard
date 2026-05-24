@@ -54,6 +54,7 @@ import {
   useCancelOrder,
   useDownloadPackingSlip,
 } from "@/hooks/useOrders"
+import { useShopContextStore } from "@/store/shop-context.store"
 import {
   STATUS_CONFIG,
   STATUS_TRANSITIONS,
@@ -86,6 +87,24 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const refundOrder = useRefundOrder()
   const cancelOrder = useCancelOrder()
   const downloadPacking = useDownloadPackingSlip()
+
+  // Vendor scope enforcement (Req 10.10): a vendor (`assignedShopIds.length > 0`)
+  // who opens an order whose `shop_id` is not in their locked shop list must
+  // see the 404 empty state rather than the underlying record. Super-admins
+  // (`assignedShopIds = []`) bypass the check entirely. The check is skipped
+  // while the detail is still loading so the loading skeleton renders
+  // normally; once the response arrives, an unknown `shop_id` triggers the
+  // 404 path. A missing/`null`/`undefined` `shop_id` is treated as "not
+  // enforced" so legacy unscoped order responses (pre task 12.1) do not
+  // regress before the backend ships the new field on every endpoint.
+  const assignedShopIds = useShopContextStore((s) => s.assignedShopIds)
+  const isVendor = assignedShopIds.length > 0
+  const orderShopId = order?.shop_id
+  const vendorHasAccess =
+    !isVendor ||
+    orderShopId == null ||
+    assignedShopIds.includes(orderShopId)
+  const showNotFound = !isLoading && !!order && !vendorHasAccess
 
   const [refundOpen, setRefundOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
@@ -120,6 +139,8 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
             <span>
               {isLoading ? (
                 <Skeleton className="h-6 w-40" />
+              ) : showNotFound ? (
+                <>Order</>
               ) : (
                 <>Order #{order?.order_number}</>
               )}
@@ -131,6 +152,8 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
           <div className="px-6 pb-6 space-y-5">
             {isLoading ? (
               <OrderDrawerSkeleton />
+            ) : showNotFound ? (
+              <OrderNotFound />
             ) : !order ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
                 Order not found
@@ -647,6 +670,29 @@ function Row({
     <div className={cn("flex items-center justify-between", className)}>
       <span className="text-muted-foreground">{label}</span>
       <span>{value}</span>
+    </div>
+  )
+}
+
+/**
+ * 404 state shown when a vendor user opens an order whose `shop_id` is not
+ * in their `assignedShopIds` (Req 10.10). The textual wording mirrors a
+ * generic "not found" so vendors cannot infer the existence of orders
+ * outside their shop scope from the UX alone — the drawer reads as a plain
+ * 404 rather than a "blocked" state. Mirrors the convention from
+ * `<CustomerProfileDrawer />` `<CustomerNotFound />` and `<ReviewNotFound />`.
+ */
+function OrderNotFound() {
+  return (
+    <div className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+        <FileText className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <h3 className="text-base font-semibold">404 — Order not found</h3>
+      <p className="text-xs text-muted-foreground mt-2 max-w-xs">
+        This order is not part of your shop. Switch to a shop that placed
+        the order to view its details.
+      </p>
     </div>
   )
 }

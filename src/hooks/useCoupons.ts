@@ -1,5 +1,28 @@
+"use client"
+
+/**
+ * Coupons hooks — wraps the existing coupon endpoints so each cache entry
+ * is keyed by `qk.coupons(shopKey, params)` and therefore participates in
+ * the Shop_Switcher's predicate-based invalidation (Req 3.4, 10.3).
+ *
+ * Coupons are designed as a per-shop surface (Req 10.5 lists "shop-scoped
+ * coupons" among the SINGLE_SHOP-only sections); the page itself renders
+ * `<EmptyShopState />` outside `SINGLE_SHOP` mode, but the hook still
+ * keys its query by `shopKey` so the cache lines never bleed across shops.
+ *
+ * The list query is gated by `enabled: shopKey !== "NONE"` to mirror the
+ * convention from `useOrders` / `useShopProductsList`.
+ *
+ * The per-coupon analytics query is keyed on `id` only — it is not
+ * shop-scoped on the backend, and the coupon id itself uniquely identifies
+ * the analytics row.
+ *
+ * Requirements: 10.1, 10.3, 10.5
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+
 import {
   getCoupons,
   createCoupon,
@@ -7,13 +30,24 @@ import {
   deleteCoupon,
   getCouponAnalytics,
 } from "@/services/coupons.service"
+import { useShopContext } from "@/hooks/useShopContext"
+import { qk } from "@/lib/query-keys"
 import type { CouponFilters, CreateCouponPayload, UpdateCouponPayload } from "@/types/coupon.types"
 
+/** Sentinel used while the Shop_Context_Store is hydrating. */
+const NONE_SHOP_KEY = "NONE"
+
 export function useCoupons(filters: CouponFilters = {}) {
+  const { mode, activeShopId } = useShopContext()
+  const shopKey =
+    mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+
   return useQuery({
-    queryKey: ["coupons", filters],
+    queryKey: qk.coupons(shopKey, filters),
     queryFn: () => getCoupons(filters),
+    enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   })
 }
 
@@ -23,6 +57,10 @@ export function useCreateCoupon() {
     mutationFn: (payload: CreateCouponPayload) => createCoupon(payload),
     onSuccess: () => {
       toast.success("Coupon created successfully")
+      // Prefix-based invalidate drops every shop-keyed `coupons` entry in
+      // one pass — TanStack Query matches the first key segment so the new
+      // `qk.coupons(shopKey, …)` shape is covered without enumerating
+      // scopes.
       qc.invalidateQueries({ queryKey: ["coupons"] })
     },
     onError: (err: Error) => {

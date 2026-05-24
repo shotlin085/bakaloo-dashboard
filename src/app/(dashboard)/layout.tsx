@@ -5,9 +5,13 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Header } from "@/components/layout/Header"
+import { KeyboardShortcutsSheet } from "@/components/layout/KeyboardShortcutsSheet"
 import { MobileNav } from "@/components/layout/MobileNav"
+import { ShopContextHydrator } from "@/components/layout/shop-context-hydrator"
+import { ShopScopeBadge } from "@/components/layout/shop-scope-badge"
+import { SocketEventBridge } from "@/components/layout/socket-event-bridge"
 import { SocketProvider } from "@/components/providers/SocketProvider"
-import { ErrorBoundary } from "@/components/shared/ErrorBoundary"
+import { ErrorBoundary } from "@/components/shared/error-boundary"
 import { ViewerBanner } from "@/components/shared/PermissionGate"
 import { useAuthStore } from "@/store/auth.store"
 import { useSidebarStore } from "@/store/sidebar.store"
@@ -79,6 +83,24 @@ export default function DashboardLayout({
 
   return (
     <SocketProvider>
+      {/* Keep the Shop_Context_Store in sync with the auth lifecycle:
+          hydrate the persisted snapshot on mount + token swap, and mirror
+          the user's shop assignments into the vendor tamper-guard list
+          (Req 3.1, 3.2, 4.6, 1.6, 1.10). */}
+      <ShopContextHydrator />
+
+      {/* Subscribe once to shop-scoped Socket.IO events that need to
+          translate into TanStack Query cache invalidations across every
+          dashboard surface (currently `new-order` → orders + dashboard
+          home, Req 11.5). Mounted alongside the hydrator so the listener
+          spans the full authed session. */}
+      <SocketEventBridge />
+
+      {/* Global keyboard shortcuts cheatsheet — opens via the `?` key
+          anywhere in the dashboard (Req 13.7). Mounted once at the
+          authed layout so every authed surface inherits the shortcut. */}
+      <KeyboardShortcutsSheet />
+
       {/* Skip to main content link for keyboard users */}
       <a
         href="#main-content"
@@ -120,6 +142,12 @@ export default function DashboardLayout({
             >
               <ErrorBoundary>
                 <ViewerBanner />
+                {/* Non-removable scope confirmation chip — mounted once so
+                    every existing surface (orders, products, customers,
+                    reviews, etc.) inherits it without per-page wiring.
+                    Self-gates on `mode === "SINGLE_SHOP"` and renders
+                    nothing in `ALL_SHOPS` / `UNSELECTED` modes (Req 10.2). */}
+                <ShopScopeBadge className="mb-4" />
                 {children}
               </ErrorBoundary>
             </main>

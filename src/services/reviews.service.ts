@@ -12,6 +12,15 @@ export async function getProductReviews(
   const params: Record<string, unknown> = {}
   if (filters.page) params.page = filters.page
   if (filters.limit) params.limit = filters.limit
+  if (filters.rating != null) params.rating = filters.rating
+  if (filters.status) params.status = filters.status
+  // When the dashboard is in SINGLE_SHOP mode the hook forwards the active
+  // shop id here so the backend can restrict the result set to reviews on
+  // products belonging to that shop (Req 10.9). In ALL_SHOPS mode the hook
+  // omits the field so the unscoped super-admin list is returned. The
+  // backend may currently ignore this param — it is forward-compatible
+  // with the planned multi-vendor backend.
+  if (filters.shop_id) params.shop_id = filters.shop_id
 
   const { data } = await api.get<ApiResponse<ProductReviewsResponse>>(
     `/reviews/products/${productId}`,

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Toaster } from "sonner";
+import { AccessibleToaster } from "@/components/providers/AccessibleToaster";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
@@ -17,7 +17,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Bakaloo Admin Dashboard",
+  // Title template lets per-route layouts override only the page label
+  // (e.g. `<title>Inventory · Bakaloo Admin Dashboard</title>`) while
+  // keeping a consistent suffix across the app (Req 13.7, 16.5).
+  title: {
+    default: "Bakaloo Admin Dashboard",
+    template: "%s · Bakaloo Admin Dashboard",
+  },
   description: "Grocery store admin panel — manage orders, products, riders, analytics",
 };
 
@@ -39,7 +45,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             {children}
-            <Toaster
+            <AccessibleToaster
               position="top-right"
               richColors
               closeButton

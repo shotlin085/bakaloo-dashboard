@@ -45,6 +45,8 @@ import {
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings"
 import type { AppSettings, UpdateSettingsPayload } from "@/types/settings.types"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useShopContext, useIsSuperAdmin } from "@/hooks/useShopContext"
+import { EmptyShopState } from "@/components/shared/empty-shop-state"
 
 interface SettingKey {
   key: string
@@ -244,6 +246,15 @@ function SettingsContent() {
   const { can } = usePermissions()
   const canManage = can("settings.manage")
 
+  // ─── Shop context gating (Req 10.5) ──────────────────────────────────────
+  // Settings are a per-shop surface. Outside SINGLE_SHOP mode the page
+  // renders `<EmptyShopState />` and the underlying query is gated off via
+  // `useSettings()`'s `enabled` flag, so no request is fired against the
+  // backend. Mirrors the pattern used by `/shop-products`,
+  // `/shop-financials`, `/shop-transactions`.
+  const { mode } = useShopContext()
+  const isSuperAdmin = useIsSuperAdmin()
+
   // 2FA State
   const [twoFaEnabled, setTwoFaEnabled] = useState(false)
   const [twoFaSetupOpen, setTwoFaSetupOpen] = useState(false)
@@ -297,6 +308,21 @@ function SettingsContent() {
     updateMutation.mutate(payload, {
       onSuccess: () => setDirty(false),
     })
+  }
+
+  // Req 10.5: outside SINGLE_SHOP mode the settings surface short-circuits
+  // with `<EmptyShopState />`. The `useSettings()` query is gated off in
+  // this branch, so no request is fired against the backend. Checked before
+  // the loading gate so we never flash a skeleton while the Shop_Context_Store
+  // is still resolving — `isLoading` is `false` for a disabled query in
+  // TanStack Query v5, so this branch always wins when applicable.
+  if (mode !== "SINGLE_SHOP") {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Settings" subtitle="Configure store settings" />
+        <EmptyShopState isSuperAdmin={isSuperAdmin} />
+      </div>
+    )
   }
 
   if (isLoading) {

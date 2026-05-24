@@ -51,6 +51,8 @@ import {
 } from "@/hooks/useBanners"
 import type { Banner } from "@/types/banner.types"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useShopContext, useIsSuperAdmin } from "@/hooks/useShopContext"
+import { EmptyShopState } from "@/components/shared/empty-shop-state"
 
 type FilterTab = "all" | "active" | "inactive" | "scheduled"
 
@@ -223,6 +225,13 @@ function BannersContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
 
+  // ─── Shop context gating (Req 10.5) ──────────────────────────────────────
+  // Banners are a per-shop surface. Outside SINGLE_SHOP mode the page
+  // renders `<EmptyShopState />` and the underlying list query is gated
+  // off via `useBanners()`'s `enabled` flag, so no request is fired.
+  const { mode } = useShopContext()
+  const isSuperAdmin = useIsSuperAdmin()
+
   const { data: banners, isLoading } = useBanners()
   const deleteMutation = useDeleteBanner()
   const updateMutation = useUpdateBanner()
@@ -278,6 +287,20 @@ function BannersContent() {
     },
     [sorted, reorderMutation]
   )
+
+  // Req 10.5: outside SINGLE_SHOP mode the banners surface short-circuits
+  // with `<EmptyShopState />`. The list query is also gated off in this
+  // branch (see `useBanners()`), so no request is fired against the
+  // backend. Mirrors the pattern used by `/shop-products`, `/shop-financials`,
+  // and `/shop-transactions`.
+  if (mode !== "SINGLE_SHOP") {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Banners" subtitle="Manage promotional banners" />
+        <EmptyShopState isSuperAdmin={isSuperAdmin} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

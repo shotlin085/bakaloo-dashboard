@@ -10,6 +10,12 @@ export async function getCustomers(filters: CustomerFilters = {}) {
   if (filters.status) params.status = filters.status
   if (filters.sort) params.sortBy = filters.sort
   if (filters.order) params.sortOrder = filters.order === "asc" ? "ASC" : "DESC"
+  // When the dashboard is in SINGLE_SHOP mode, the hook layer forwards the
+  // active shop id here so the backend can restrict the result set to
+  // customers with at least one allocation to that shop (Req 10.8). In
+  // ALL_SHOPS mode the hook omits the field so this branch is skipped and
+  // the unscoped super-admin list is returned.
+  if (filters.shop_id) params.shop_id = filters.shop_id
 
   const { data } = await api.get<
     ApiResponse<{

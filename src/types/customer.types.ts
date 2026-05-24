@@ -12,6 +12,17 @@ export interface Customer {
   loyalty_points: number
   last_order_at: string | null
   created_at: string
+  /**
+   * Shop ids the customer has at least one allocation to (e.g. via past
+   * orders or pincode/radius eligibility). The backend includes this on
+   * shop-scoped responses so the dashboard can enforce vendor visibility
+   * rules client-side without a second round-trip (Req 10.8, 10.10).
+   *
+   * Optional because the legacy `/admin/customers` endpoint does not yet
+   * emit it for super-admin "ALL_SHOPS" responses; consumers must treat
+   * `undefined` as "not enforced" and a present array as authoritative.
+   */
+  shop_allocations?: string[]
 }
 
 /** Customer detail with expanded info */
@@ -61,4 +72,11 @@ export interface CustomerFilters {
   endDate?: string
   sort?: string
   order?: "asc" | "desc"
+  /**
+   * Restrict the result set to customers with at least one allocation to
+   * this shop. Forwarded as the `shop_id` query param. Set by the
+   * `useCustomers` hook in `SINGLE_SHOP` mode; omitted in `ALL_SHOPS` mode
+   * (Req 10.8).
+   */
+  shop_id?: string
 }

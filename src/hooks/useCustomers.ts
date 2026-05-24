@@ -1,4 +1,40 @@
+"use client"
+
+/**
+ * Customers hooks — shop-scoped list + per-customer detail / mutations.
+ *
+ * Wave 12 of the multi-vendor dashboard. The list query reads `Active_Shop_Id`
+ * via `useShopContext()` and keys its cache entry through the central
+ * `qk.customers(shopKey, filters)` builder so the Shop_Switcher's predicate-
+ * based invalidation drops it on every shop change (Req 3.4, 10.3).
+ *
+ * Filtering rules (Req 10.4, 10.8):
+ *   - `mode === "SINGLE_SHOP"`  → forward `shop_id = activeShopId` so the
+ *     backend returns only customers with at least one allocation to that
+ *     shop. The query is gated on `enabled: shopKey !== "NONE"` so it never
+ *     fires while the Shop_Context_Store is still hydrating.
+ *   - `mode === "ALL_SHOPS"`    → omit the `shop_id` filter; super-admins
+ *     see the unscoped cross-shop list (Req 10.4).
+ *   - `mode === "UNSELECTED"`   → `shopKey === "NONE"` and the query is
+ *     disabled outright (matches the existing-page convention used by
+ *     `useShopProductsList`).
+ *
+ * The detail hook is intentionally NOT shop-scoped in its key — a customer
+ * can be allocated to multiple shops, and its `id` is globally unique. The
+ * vendor-overlap 404 enforcement (Req 10.10) lives at the consumer (the
+ * `<CustomerProfileDrawer />`) which compares the loaded customer's
+ * `shop_allocations` to the user's `assignedShopIds`.
+ *
+ * Design references:
+ *   - design.md §5  "Central Query-Key Factory"
+ *   - design.md §11 "Existing-Page Shop Scoping"
+ *   - requirements.md 10.1, 10.3, 10.4, 10.8, 10.10
+ */
+
+import { useMemo } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+
 import {
   getCustomers,
   getCustomerDetail,
@@ -8,14 +44,55 @@ import {
   notifyCustomer,
   exportCustomersCsv,
 } from "@/services/customers.service"
+import { useShopContext } from "@/hooks/useShopContext"
+import { qk } from "@/lib/query-keys"
 import type { CustomerFilters } from "@/types"
-import { toast } from "sonner"
+
+/**
+ * Sentinel `shopId` slot used in the list query key when the
+ * Shop_Context_Store has not yet been hydrated. The query is gated by
+ * `enabled` (see below) so it never fires in this state, but TanStack Query
+ * still requires a stable key. Mirrors the convention from
+ * `useShopProductsList` so cache snapshots line up across surfaces.
+ */
+const NONE_SHOP_KEY = "NONE"
 
 export function useCustomers(filters: CustomerFilters) {
+  const { activeShopId, mode } = useShopContext()
+
+  // shopKey decides both the cache identity and the `shop_id` query param:
+  //   - ALL_SHOPS  → "ALL"; cache by ALL, no shop_id filter on the request.
+  //   - SINGLE_SHOP→ activeShopId; cache by id, forward shop_id=<id>.
+  //   - UNSELECTED → "NONE"; query disabled, key still stable.
+  const shopKey: string =
+    mode === "ALL_SHOPS"
+      ? "ALL"
+      : activeShopId ?? NONE_SHOP_KEY
+
+  // Build the merged filter set so the query key stays a structural function
+  // of all inputs. Spreading inside `useMemo` keeps reference stability when
+  // none of the inputs change, which TanStack Query's structural sharing
+  // depends on for its previous-page placeholder behavior.
+  const mergedFilters: CustomerFilters = useMemo(() => {
+    if (mode === "SINGLE_SHOP" && activeShopId) {
+      return { ...filters, shop_id: activeShopId }
+    }
+    // ALL_SHOPS or UNSELECTED: drop any caller-supplied shop_id so the
+    // cache identity matches the super-admin "all customers" view.
+    if (filters.shop_id !== undefined) {
+      const next: CustomerFilters = { ...filters }
+      delete next.shop_id
+      return next
+    }
+    return filters
+  }, [filters, mode, activeShopId])
+
   return useQuery({
-    queryKey: ["customers", filters],
-    queryFn: () => getCustomers(filters),
+    queryKey: qk.customers(shopKey, mergedFilters),
+    queryFn: () => getCustomers(mergedFilters),
+    enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30 * 1000,
+    placeholderData: (prev) => prev,
   })
 }
 
@@ -44,6 +121,9 @@ export function useToggleBlockCustomer() {
       toggleBlockCustomer(id, blocked),
     onSuccess: (_, { blocked }) => {
       toast.success(blocked ? "Customer blocked" : "Customer unblocked")
+      // Prefix-based invalidate so every shop-scoped customers cache entry
+      // (ALL, single-shop ids, "NONE") is dropped without us having to
+      // enumerate scopes. Matches the convention from `useOrders`.
       qc.invalidateQueries({ queryKey: ["customers"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to update customer"),

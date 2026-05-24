@@ -1,5 +1,11 @@
-import axios from "axios"
+import axios, { AxiosError, type AxiosResponseHeaders, type RawAxiosResponseHeaders } from "axios"
 import { toast } from "sonner"
+
+import { useAuthStore } from "@/store/auth.store"
+import { useShopContextStore } from "@/store/shop-context.store"
+import { getQueryClient } from "@/lib/queryClient"
+import { t } from "@/lib/i18n"
+import { triggerSubmitCooldown } from "@/lib/submit-cooldown"
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -7,7 +13,9 @@ const api = axios.create({
   timeout: 15000,
 })
 
-// Attach token to every request + RBAC mutation guard
+// ─────────────────────────────────────────────────────────────────────────────
+// Request interceptor — JWT injection, RBAC viewer guard, X-Shop-Id header
+// ─────────────────────────────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("accessToken")
@@ -53,44 +61,142 @@ api.interceptors.request.use((config) => {
         // If parsing fails, let the request through (safety)
       }
     }
+
+    // ── Multi-vendor: inject X-Shop-Id from Shop_Context_Store ──
+    // Read imperatively via getState() because axios runs outside React.
+    // When activeShopId is null (Super_Admin in ALL_SHOPS or unselected),
+    // omit the header entirely (Req 3.5, 3.6, 10.1).
+    const shopId = useShopContextStore.getState().activeShopId
+    if (shopId) {
+      config.headers["X-Shop-Id"] = shopId
+    }
   }
   return config
 })
 
-// On 401 → clear auth state and redirect to login
-// But DON'T redirect if we're already on /login or calling /me (avoid loops)
+// ─────────────────────────────────────────────────────────────────────────────
+// Response interceptor — 401 / 403 / 429 / 5xx handling
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Pull the `x-request-id` header out of an axios error in a header-shape-agnostic way. */
+function readRequestId(
+  headers: RawAxiosResponseHeaders | AxiosResponseHeaders | undefined,
+): string | undefined {
+  if (!headers) return undefined
+  // axios may hand us either a plain object or an AxiosHeaders instance —
+  // both expose lower-case keys.
+  const direct = (headers as Record<string, unknown>)["x-request-id"]
+  if (typeof direct === "string" && direct.length > 0) return direct
+  // AxiosHeaders.get() fallback
+  const maybeGet = (headers as { get?: (k: string) => unknown }).get
+  if (typeof maybeGet === "function") {
+    const v = maybeGet.call(headers, "x-request-id")
+    if (typeof v === "string" && v.length > 0) return v
+  }
+  return undefined
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError<{ code?: string; message?: string }>) => {
     // Don't show errors for cancelled requests (Viewer blocks)
     if (axios.isCancel(error)) {
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 401 && typeof window !== "undefined") {
-      const requestUrl = error.config?.url || ""
-      const isAuthCheck = requestUrl.includes("/admin/auth/me")
-      const isLoginPage = window.location.pathname === "/login"
+    const status = error.response?.status
+    const code = error.response?.data?.code
+    const url = error.config?.url || ""
 
-      // Don't redirect for /me validation calls or if already on login page
-      if (!isAuthCheck && !isLoginPage) {
-        localStorage.removeItem("accessToken")
-        localStorage.removeItem("admin-user")
-        document.cookie = "auth_session=; path=/; max-age=0"
-        document.cookie = "accessToken=; path=/; max-age=0"
-        window.location.href = "/login"
-      }
+    if (typeof window === "undefined") {
+      return Promise.reject(error)
     }
 
-    // Handle 403 PERMISSION_DENIED from backend
-    if (error.response?.status === 403 && error.response?.data?.code === "PERMISSION_DENIED") {
-      toast.error("Permission denied", {
-        description: error.response.data.message || "You don't have permission for this action.",
+    const onLoginPage = window.location.pathname === "/login"
+    const isAuthMe = url.includes("/auth/me")
+    const isAuthLogin = url.includes("/auth/login")
+
+    // ── 401 unauthorized ──────────────────────────────────────────────
+    // Clear auth + shop context + query cache and bounce to /login.
+    // Skip when:
+    //   - the request is the /auth/me probe or the /auth/login attempt
+    //     (those callers handle the failure inline), or
+    //   - we are already on /login (avoid redirect loops).
+    // Req 1.7
+    if (status === 401 && !isAuthMe && !isAuthLogin && !onLoginPage) {
+      useAuthStore.getState().clearAuth()
+      useShopContextStore.getState().clear()
+      // Clear residual cookies left by older sessions.
+      document.cookie = "auth_session=; path=/; max-age=0"
+      document.cookie = "accessToken=; path=/; max-age=0"
+      try {
+        getQueryClient().clear()
+      } catch {
+        // Defensive: clear() is safe on a fresh client too.
+      }
+      window.location.href = "/login"
+      return Promise.reject(error)
+    }
+
+    // ── 403 SHOP_SELECTION_REQUIRED ───────────────────────────────────
+    // Backend tells us this user has no Active_Shop_Id but the route needs
+    // one — bounce to the Shop_Selector. Req 1.8 / 3.6.
+    if (status === 403 && code === "SHOP_SELECTION_REQUIRED") {
+      if (window.location.pathname !== "/select-shop") {
+        window.location.href = "/select-shop"
+      }
+      return Promise.reject(error)
+    }
+
+    // ── 403 PERMISSION_DENIED ─────────────────────────────────────────
+    // Server-side RBAC rejection — surface a Sonner toast with the
+    // server-provided message. Req 15.3 / design §2.
+    if (status === 403 && code === "PERMISSION_DENIED") {
+      toast.error(t("errors.permissionDenied"), {
+        description: error.response?.data?.message,
       })
+      return Promise.reject(error)
+    }
+
+    // ── 429 rate limited ──────────────────────────────────────────────
+    // Show a single toast and arm the shared 5-second submit cooldown so
+    // pages that mount useSubmitCooldown() disable their submit buttons.
+    // Req 15.4
+    if (status === 429) {
+      toast.error(t("errors.tooManyRequests"))
+      triggerSubmitCooldown(5000)
+      return Promise.reject(error)
+    }
+
+    // ── 5xx server errors ─────────────────────────────────────────────
+    // Destructive toast with a "Copy error id" affordance using the
+    // x-request-id header so users can hand the id to support. Req 15.5
+    if (typeof status === "number" && status >= 500) {
+      const requestId = readRequestId(error.response?.headers)
+      toast.error(t("errors.genericError"), {
+        description: requestId ? `Error id: ${requestId}` : undefined,
+        action: requestId
+          ? {
+              label: t("errors.copyErrorId"),
+              onClick: () => {
+                // Best-effort: clipboard may be unavailable in insecure contexts.
+                navigator.clipboard
+                  ?.writeText(requestId)
+                  .then(() => {
+                    toast.success(t("errors.errorIdCopied"))
+                  })
+                  .catch(() => {
+                    /* no-op */
+                  })
+              },
+            }
+          : undefined,
+      })
+      return Promise.reject(error)
     }
 
     return Promise.reject(error)
-  }
+  },
 )
 
 export default api

@@ -40,6 +40,7 @@ import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { useOrders, useOrderStatusCounts, useExportOrders, useBulkUpdateStatus, useBulkAssignRiders } from "@/hooks/useOrders"
 import { useRiders } from "@/hooks/useRiders"
+import { useShopContext } from "@/hooks/useShopContext"
 import {
   Dialog,
   DialogContent,
@@ -122,6 +123,15 @@ function OrdersContent() {
   const connStatus = useConnectionStatus()
   const { can } = usePermissions()
   const canManage = can("orders.manage")
+  const { mode } = useShopContext()
+  /**
+   * In ALL_SHOPS mode (Super_Admin viewing every shop), the orders list
+   * surfaces a `Shop` column so each row's attribution is visible at a
+   * glance (Req 10.6). In SINGLE_SHOP mode the column is redundant — the
+   * `<ShopScopeBadge />` in the page header already pins the visible scope —
+   * so we hide it to keep the table dense on small viewports.
+   */
+  const showShopColumn = mode === "ALL_SHOPS"
 
   const orders = data?.orders ?? []
   const pagination = data?.pagination
@@ -451,6 +461,7 @@ function OrdersContent() {
               </TableHead>
               <TableHead className="w-[140px]">Order ID</TableHead>
               <TableHead>Customer</TableHead>
+              {showShopColumn && <TableHead>Shop</TableHead>}
               <TableHead className="text-right">Amount</TableHead>
               <TableHead>Payment</TableHead>
               <TableHead>Status</TableHead>
@@ -470,6 +481,9 @@ function OrdersContent() {
                       <Skeleton className="h-3 w-20" />
                     </div>
                   </TableCell>
+                  {showShopColumn && (
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  )}
                   <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
@@ -479,7 +493,7 @@ function OrdersContent() {
               ))
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-60">
+                <TableCell colSpan={showShopColumn ? 9 : 8} className="h-60">
                   <EmptyState
                     title="No orders found"
                     description={
@@ -525,6 +539,13 @@ function OrdersContent() {
                         </p>
                       </div>
                     </TableCell>
+                    {showShopColumn && (
+                      <TableCell>
+                        <span className="text-sm text-foreground truncate block max-w-[160px]">
+                          {order.shop_name ?? order.shop?.name ?? "—"}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right font-semibold text-sm">
                       {formatINR(order.total_amount)}
                     </TableCell>

@@ -45,6 +45,16 @@ export interface Order {
   customer_name?: string
   customer_phone?: string
   rider_name?: string | null
+  /**
+   * Shop attribution joined by the backend on cross-shop list responses
+   * (Super_Admin "All Shops" mode). All fields are optional so the type
+   * stays backwards-compatible with single-shop list responses that omit
+   * them. The dashboard prefers `shop_name`, falls back to `shop?.name`,
+   * and renders `"—"` when neither is present.
+   */
+  shop_id?: string | null
+  shop_name?: string | null
+  shop?: { id?: string; name?: string } | null
 }
 
 export interface OrderItem {

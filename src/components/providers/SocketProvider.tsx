@@ -12,6 +12,10 @@ import { toast } from "sonner"
 import { useAuthStore } from "@/store/auth.store"
 import { useNotificationStore } from "@/store/notifications.store"
 import { getQueryClient } from "@/lib/queryClient"
+import {
+  registerSocketDisconnect,
+  unregisterSocketDisconnect,
+} from "@/lib/socket-registry"
 
 const SocketContext = createContext<Socket | null>(null)
 
@@ -27,12 +31,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     if (!token) return
 
     const s = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
-      auth: { token },
+      // Re-evaluate the token on every (re)connect so a refreshed/rotated
+      // access token is picked up automatically (Req 11.1, 11.6). socket.io-client
+      // invokes the function form as `auth(cb)` on each reconnect attempt, so we
+      // must call `cb(...)` rather than returning the payload.
+      auth: (cb) => cb({ token: localStorage.getItem("accessToken") ?? "" }),
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      // Exponential backoff: starts at 500ms, capped at 30s (Req 11.6).
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 30_000,
+      randomizationFactor: 0.5,
       timeout: 20000,
     })
 
@@ -74,7 +84,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         created_at: order.created_at || new Date().toISOString(),
       })
       const qc = getQueryClient()
-      qc.invalidateQueries({ queryKey: ["dashboard"] })
+      // Use the central `dashboard-home` tag so the Shop_Switcher predicate
+      // invalidation and these socket-driven invalidations target the same
+      // cache entries (Req 11.5, 10.3).
+      qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       qc.invalidateQueries({ queryKey: ["orders"] })
       qc.invalidateQueries({ queryKey: ["order-status-counts"] })
     })
@@ -84,7 +97,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       const qc = getQueryClient()
       qc.invalidateQueries({ queryKey: ["orders"] })
       qc.invalidateQueries({ queryKey: ["order-status-counts"] })
-      qc.invalidateQueries({ queryKey: ["dashboard"] })
+      qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       if (data?.orderId) {
         qc.invalidateQueries({ queryKey: ["order", data.orderId] })
       }
@@ -108,7 +121,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
       })
       const qc = getQueryClient()
-      qc.invalidateQueries({ queryKey: ["dashboard"] })
+      qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       qc.invalidateQueries({ queryKey: ["products"] })
     })
 
@@ -117,7 +130,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         description: `${payment.method} — Order ${payment.orderId}`,
       })
       const qc = getQueryClient()
-      qc.invalidateQueries({ queryKey: ["dashboard"] })
+      qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       qc.invalidateQueries({ queryKey: ["orders"] })
       qc.invalidateQueries({ queryKey: ["wallet-transactions"] })
     })
@@ -138,7 +151,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     // Set immediately (even before connect) so consumers can attach listeners
     setSocket(s)
 
+    // Register a disconnect callback so non-React code (the auth store's
+    // `logout()` action and the 401 path in `lib/api.ts`) can issue a clean
+    // `socket.disconnect()` before the redirect. The provider's own cleanup
+    // below also disconnects when `accessToken` flips to `null`, but by then
+    // the close handshake has already been sent so the backend sees the
+    // disconnect promptly. Req 11.7.
+    const disconnectFn = () => s.disconnect()
+    registerSocketDisconnect(disconnectFn)
+
     return () => {
+      unregisterSocketDisconnect(disconnectFn)
       s.disconnect()
       setSocket(null)
     }

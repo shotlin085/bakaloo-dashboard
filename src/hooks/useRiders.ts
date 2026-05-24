@@ -1,5 +1,25 @@
+"use client"
+
+/**
+ * Riders hooks — wraps the existing rider endpoints so each cache entry is
+ * keyed by `qk.riders(shopKey, params)` and therefore participates in the
+ * Shop_Switcher's predicate-based invalidation (Req 3.4, 10.3).
+ *
+ * The list query is gated by `enabled: shopKey !== "NONE"` to mirror the
+ * convention from `useOrders` / `useShopProductsList`. The shop scope is
+ * forwarded to the backend via the `X-Shop-Id` header injected by the
+ * axios interceptor — services do not thread `shopId` into call sites.
+ *
+ * Per-rider detail / earnings / payouts / documents queries remain keyed
+ * on `id` only because the underlying entity is not shop-scoped on the
+ * backend. They are unaffected by the Shop_Switcher invalidation.
+ *
+ * Requirements: 10.1, 10.3
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+
 import {
   getRiders,
   getRiderDetail,
@@ -12,13 +32,24 @@ import {
   updateRiderCommission,
   verifyRiderDocument,
 } from "@/services/riders.service"
+import { useShopContext } from "@/hooks/useShopContext"
+import { qk } from "@/lib/query-keys"
 import type { RiderFilters, CreatePayoutPayload } from "@/types/rider.types"
 
+/** Sentinel used while the Shop_Context_Store is hydrating. */
+const NONE_SHOP_KEY = "NONE"
+
 export function useRiders(filters: RiderFilters = {}) {
+  const { mode, activeShopId } = useShopContext()
+  const shopKey =
+    mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+
   return useQuery({
-    queryKey: ["riders", filters],
+    queryKey: qk.riders(shopKey, filters),
     queryFn: () => getRiders(filters),
+    enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   })
 }
 
@@ -68,6 +99,9 @@ export function useCreatePayout() {
       createRiderPayout(riderId, payload),
     onSuccess: () => {
       toast.success("Payout created")
+      // Prefix-based invalidate covers the new shop-keyed list entries plus
+      // every legacy `["riders", …]` detail/earnings/payouts cache. Matches
+      // the convention from `useOrders` / `useCustomers`.
       qc.invalidateQueries({ queryKey: ["riders"] })
     },
     onError: (err: Error) => {
