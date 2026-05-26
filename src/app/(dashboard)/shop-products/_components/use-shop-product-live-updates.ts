@@ -16,7 +16,7 @@
  *     `shop:{Active_Shop_Id}:stock` (and `:orders`) the moment the active
  *     shop was set. This hook does not pivot rooms — that responsibility
  *     stays with the hydrator and the Shop_Switcher (Req 11.2, 11.7).
- *   - When `mode !== "SINGLE_SHOP"` the page short-circuits to the empty
+ *   - When `mode !== "STORE_MODE"` the page short-circuits to the empty
  *     state above this hook's call site, so this hook is only mounted when
  *     `activeShopId` is non-null.
  *
@@ -119,7 +119,7 @@ export function useShopProductLiveUpdates(): void {
     // to `<EmptyShopState />` outside `SINGLE_SHOP` mode (Req 7.11), but the
     // hook is mounted unconditionally above the early-return so React's
     // hook ordering stays stable across renders.
-    if (!socket || !activeShopId || mode !== "SINGLE_SHOP") return
+    if (!socket || !activeShopId || mode !== "STORE_MODE") return
 
     /**
      * Apply a row-level patch to every cached Shop_Products page rooted at

@@ -120,7 +120,7 @@ function CouponsContent() {
   // Req 10.5: outside SINGLE_SHOP mode the coupons surface short-circuits
   // with `<EmptyShopState />`. The list query is also gated off in this
   // branch (see `useCoupons()`), so no request is fired.
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         <PageHeader title="Coupons" subtitle="Create and manage discount coupons" />

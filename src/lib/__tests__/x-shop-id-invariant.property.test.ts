@@ -158,7 +158,7 @@ describe("Property 4: X-Shop-Id header invariant", () => {
         // seeds the store.
         useShopContextStore.setState({
           activeShopId,
-          mode: activeShopId ? "SINGLE_SHOP" : "UNSELECTED",
+          mode: activeShopId ? "STORE_MODE" : "UNSELECTED",
           shopRole: activeShopId ? "SHOP_ADMIN" : null,
           permissions: [],
           shopMeta: activeShopId

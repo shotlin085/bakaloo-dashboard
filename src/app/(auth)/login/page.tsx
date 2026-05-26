@@ -135,40 +135,24 @@ async function dispatchPostLogin(
   // ── n = 1: auto-select the only shop ──────────────────────────────────
   if (shops.length === 1) {
     const only = shops[0]
-    try {
-      const result = await selectShop(only.id, only)
-      // Replace the access token with the shop-scoped JWT. The auth store's
-      // `login(user, token)` is the canonical token-write path; we re-pass
-      // the user so every other auth field is preserved (Req 1.3).
-      authStore.login(data.user, result.token)
-      // Pivot the Shop_Context_Store. `result.shop` falls back to the
-      // assignment we passed in, so this is always present here (Req 1.3).
-      const meta = result.shop ?? only
-      shopStore.setActiveShop(
-        {
-          id: meta.id,
-          name: meta.name,
-          branchCode: meta.branchCode,
-          city: meta.city,
-          isActive: meta.isActive,
-        },
-        result.shopRole,
-        result.permissions,
-      )
-      toast.success(`Welcome back, ${data.user.name || "Admin"}!`)
-      router.push(redirect)
-      return
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || t("errors.shopSelectFailed")
-      toast.error(message)
-      // Failure: clear auth so the form is usable again. The user stays on
-      // /login (Req 2.5 mirrors the same posture for the Shop_Selector).
-      authStore.clearAuth()
-      shopStore.clear()
-      return
-    }
+    // The backend already issued a final shop-scoped JWT for single-shop
+    // users (R18.4), so we don't need to call selectShop(). Just set the
+    // shop context directly from the login response.
+    const meta = only
+    shopStore.setActiveShop(
+      {
+        id: meta.id,
+        name: meta.name,
+        branchCode: meta.branchCode,
+        city: meta.city,
+        isActive: meta.isActive,
+      },
+      meta.role,
+      data.user.permissions || [],
+    )
+    toast.success(`Welcome back, ${data.user.name || "Admin"}!`)
+    router.push(redirect)
+    return
   }
 
   // ── n ≥ 2: route to the Shop_Selector ─────────────────────────────────

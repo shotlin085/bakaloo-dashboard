@@ -168,11 +168,11 @@ interface Harness {
 
 function setup({
   rows,
-  mode = "SINGLE_SHOP",
+  mode = "STORE_MODE",
   activeShopId = ACTIVE_SHOP as string | null,
 }: {
   rows: ShopProduct[]
-  mode?: "SINGLE_SHOP" | "ALL_SHOPS" | "UNSELECTED"
+  mode?: "STORE_MODE" | "HQ_MODE" | "UNSELECTED"
   activeShopId?: string | null
 }): Harness {
   const queryClient = new QueryClient({
@@ -354,7 +354,7 @@ describe("useShopProductLiveUpdates — gating", () => {
     const rows = [makeProduct({ id: "sp-1" })]
     const { socket } = setup({
       rows,
-      mode: "ALL_SHOPS",
+      mode: "HQ_MODE",
       activeShopId: null,
     })
 

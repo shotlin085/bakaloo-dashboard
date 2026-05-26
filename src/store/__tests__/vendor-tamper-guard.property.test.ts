@@ -17,9 +17,9 @@
  * in-list and out-of-list shop ids), the following invariants must hold
  * after every step:
  *
- *   1. Whenever `mode === "SINGLE_SHOP"`, the resulting `activeShopId`
+ *   1. Whenever `mode === "STORE_MODE"`, the resulting `activeShopId`
  *      is in `assignedShopIds`.
- *   2. `mode` never becomes `"ALL_SHOPS"` — vendors cannot enter that
+ *   2. `mode` never becomes `"HQ_MODE"` — vendors cannot enter that
  *      mode no matter what they call.
  *   3. If at least one in-list `setActiveShop` call has landed, the
  *      resulting `activeShopId` is non-null. (Before any such call lands,
@@ -241,14 +241,14 @@ describe("Property 5: Vendor cannot mutate Active_Shop_Id", () => {
 
           // (1) Whenever the store is in SINGLE_SHOP mode, the active id
           // must belong to the vendor's locked list.
-          if (state.mode === "SINGLE_SHOP") {
+          if (state.mode === "STORE_MODE") {
             expect(state.activeShopId).not.toBeNull()
             expect(assigned).toContain(state.activeShopId)
           }
 
           // (2) Vendors must never enter ALL_SHOPS mode regardless of
           // what mutator was called.
-          expect(state.mode).not.toBe("ALL_SHOPS")
+          expect(state.mode).not.toBe("HQ_MODE")
 
           // (3) Once any in-list setActiveShop has landed, activeShopId
           // is non-null for the rest of the trace (subsequent ops can
@@ -257,7 +257,7 @@ describe("Property 5: Vendor cannot mutate Active_Shop_Id", () => {
           if (anyValidActivationLanded) {
             expect(state.activeShopId).not.toBeNull()
             expect(assigned).toContain(state.activeShopId)
-            expect(state.mode).toBe("SINGLE_SHOP")
+            expect(state.mode).toBe("STORE_MODE")
           }
         }
 

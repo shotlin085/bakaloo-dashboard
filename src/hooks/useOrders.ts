@@ -39,11 +39,11 @@ const NONE_SHOP_KEY = "NONE"
  * every orders cache entry in one pass.
  *
  * Scope semantics:
- *   - `mode === "ALL_SHOPS"` (Super_Admin viewing every shop):
+ *   - `mode === "HQ_MODE"` (Super_Admin viewing every shop):
  *     `shopKey = "ALL"`. The axios interceptor omits `X-Shop-Id`, the
  *     backend returns aggregated orders, and the page appends a `Shop`
  *     column (Req 10.6).
- *   - `mode === "SINGLE_SHOP"`: `shopKey = activeShopId`. The interceptor
+ *   - `mode === "STORE_MODE"`: `shopKey = activeShopId`. The interceptor
  *     injects `X-Shop-Id`, the backend returns shop-scoped orders, and
  *     the page hides the `Shop` column.
  *   - Otherwise (`UNSELECTED` / hydrating): `shopKey = "NONE"` and the
@@ -52,7 +52,7 @@ const NONE_SHOP_KEY = "NONE"
 export function useOrders(filters: OrderFilters) {
   const { mode, activeShopId } = useShopContext()
   const shopKey =
-    mode === "ALL_SHOPS"
+    mode === "HQ_MODE"
       ? "ALL"
       : activeShopId ?? NONE_SHOP_KEY
 

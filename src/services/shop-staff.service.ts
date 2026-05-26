@@ -174,15 +174,33 @@ export const shopStaffService = {
   /**
    * Update a staff record's role / permissions / is_active flag (Req 6.8).
    * The backend requires at least one of the three fields to be present.
+   *
+   * NOTE: Uses PATCH (not PUT) — the backend route is mounted as PATCH
+   * because the body is a partial update. The previous `api.put` call was
+   * a bug that caused 404s against the backend's PATCH-only handler.
    */
   async update(
     shopId: string,
     staffId: string,
     body: ShopStaffUpdateBody,
   ): Promise<ShopStaff> {
-    const { data } = await api.put<ApiResponse<ShopStaff>>(
+    const { data } = await api.patch<ApiResponse<ShopStaff>>(
       `/shops/${shopId}/staff/${staffId}`,
       body,
+    )
+    return data.data
+  },
+
+  /**
+   * Reset a staff member's password (generates a temporary password).
+   * Returns the temp password — must be shown once and never persisted.
+   */
+  async resetPassword(
+    shopId: string,
+    staffId: string,
+  ): Promise<{ temp_password: string }> {
+    const { data } = await api.post<ApiResponse<{ temp_password: string }>>(
+      `/shops/${shopId}/staff/${staffId}/reset-password`,
     )
     return data.data
   },

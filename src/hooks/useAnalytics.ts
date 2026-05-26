@@ -7,7 +7,7 @@
  * invalidation to reach them on every pivot (Req 3.4, 10.3).
  *
  * Analytics is one of the ALL_SHOPS-friendly surfaces (Req 10.4) — when
- * `mode === "ALL_SHOPS"` the axios interceptor omits the `X-Shop-Id`
+ * `mode === "HQ_MODE"` the axios interceptor omits the `X-Shop-Id`
  * header and the backend returns cross-shop aggregates. The hooks
  * therefore key by `"ALL"` in that mode and by `activeShopId` in
  * `SINGLE_SHOP` mode; while the Shop_Context_Store is hydrating
@@ -42,7 +42,7 @@ const NONE_SHOP_KEY = "NONE"
  */
 function useShopKey(): string {
   const { mode, activeShopId } = useShopContext()
-  return mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+  return mode === "HQ_MODE" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
 }
 
 export function useSalesAnalytics(

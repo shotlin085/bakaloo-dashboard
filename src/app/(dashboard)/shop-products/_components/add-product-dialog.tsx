@@ -304,7 +304,7 @@ export function AddProductDialog({
   onOpenChange,
 }: AddProductDialogProps) {
   // The dialog only opens from the shop-products page, which is gated on
-  // `mode === "SINGLE_SHOP"`, so `activeShopId` is always populated when
+  // `mode === "STORE_MODE"`, so `activeShopId` is always populated when
   // this component is mounted. We still defend the submit handler with a
   // guard so a misuse never POSTs an unscoped request.
   const { activeShopId } = useShopContext()

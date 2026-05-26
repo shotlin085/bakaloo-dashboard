@@ -2,7 +2,7 @@
  * Unit tests for the Shop_Financials page (task 9.3).
  *
  * Covers the page-level behaviors owned by this task:
- *   - Empty-shop short-circuit (Req 8.1) — when `mode !== "SINGLE_SHOP"`
+ *   - Empty-shop short-circuit (Req 8.1) — when `mode !== "STORE_MODE"`
  *     the page renders `<EmptyShopState />` and never reads list data.
  *   - KPI strip aggregation (Req 8.4) — the eight tiles sum the visible
  *     rows and `avg_order_value` is gross / total_orders.
@@ -81,7 +81,7 @@ function makePeriod(
 function primeSingleShopMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["shop-financials.read"],
     shopMeta: {
@@ -99,7 +99,7 @@ function primeSingleShopMode() {
 function primeAllShopsMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: null,
-    mode: "ALL_SHOPS",
+    mode: "HQ_MODE",
     shopRole: null,
     permissions: [],
     shopMeta: null,

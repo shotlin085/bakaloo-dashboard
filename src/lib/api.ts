@@ -64,10 +64,13 @@ api.interceptors.request.use((config) => {
 
     // ── Multi-vendor: inject X-Shop-Id from Shop_Context_Store ──
     // Read imperatively via getState() because axios runs outside React.
-    // When activeShopId is null (Super_Admin in ALL_SHOPS or unselected),
-    // omit the header entirely (Req 3.5, 3.6, 10.1).
-    const shopId = useShopContextStore.getState().activeShopId
-    if (shopId) {
+    // Inject X-Shop-Id when:
+    //   - mode=STORE_MODE (always has activeShopId), OR
+    //   - mode=HQ_MODE AND activeShopId is set (Super_Admin viewing specific shop)
+    // Omit when mode=HQ_MODE AND activeShopId=null (cross-shop aggregate view)
+    // or mode=UNSELECTED (Req 3.5, 3.6, 10.1, 16.1).
+    const { activeShopId: shopId, mode: shopMode } = useShopContextStore.getState()
+    if (shopId && (shopMode === "STORE_MODE" || shopMode === "HQ_MODE")) {
       config.headers["X-Shop-Id"] = shopId
     }
   }
@@ -150,11 +153,22 @@ api.interceptors.response.use(
 
     // ── 403 PERMISSION_DENIED ─────────────────────────────────────────
     // Server-side RBAC rejection — surface a Sonner toast with the
-    // server-provided message. Req 15.3 / design §2.
+    // server-provided message. Do NOT clear auth (Req 15.3 / design §2).
     if (status === 403 && code === "PERMISSION_DENIED") {
       toast.error(t("errors.permissionDenied"), {
         description: error.response?.data?.message,
       })
+      return Promise.reject(error)
+    }
+
+    // ── 403 PASSWORD_CHANGE_REQUIRED ──────────────────────────────────
+    // Backend signals the user must change their password before accessing
+    // any other resource. Navigate to /change-password and block all other
+    // routes. Do NOT clear auth — the session is valid but restricted.
+    if (status === 403 && code === "PASSWORD_CHANGE_REQUIRED") {
+      if (window.location.pathname !== "/change-password") {
+        window.location.href = "/change-password"
+      }
       return Promise.reject(error)
     }
 

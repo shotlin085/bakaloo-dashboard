@@ -316,7 +316,7 @@ function SettingsContent() {
   // the loading gate so we never flash a skeleton while the Shop_Context_Store
   // is still resolving — `isLoading` is `false` for a disabled query in
   // TanStack Query v5, so this branch always wins when applicable.
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         <PageHeader title="Settings" subtitle="Configure store settings" />

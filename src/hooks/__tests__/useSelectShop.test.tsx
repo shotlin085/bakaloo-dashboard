@@ -227,7 +227,7 @@ describe("useSelectShop — success path", () => {
     // projects to a strict 5-field `ShopMeta` shape, while still verifying
     // that every required `ShopMeta` field made it through.
     const shop = useShopContextStore.getState()
-    expect(shop.mode).toBe("SINGLE_SHOP")
+    expect(shop.mode).toBe("STORE_MODE")
     expect(shop.activeShopId).toBe(SHOP_BANDRA.id)
     expect(shop.shopMeta).toEqual(
       expect.objectContaining({

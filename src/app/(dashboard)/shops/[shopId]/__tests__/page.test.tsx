@@ -146,7 +146,7 @@ function primeAuthorized() {
   })
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: [],
     shopMeta: null,

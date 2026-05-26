@@ -56,7 +56,7 @@ const NONE_SHOP_KEY = "NONE"
  */
 function useShopKey(): string {
   const { mode, activeShopId } = useShopContext()
-  return mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+  return mode === "HQ_MODE" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
 }
 
 /* ── Templates ───────────────────────────────────── */

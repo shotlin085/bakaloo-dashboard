@@ -384,7 +384,7 @@ describe("<ShopSwitcher /> selection", () => {
     )
 
     const ctx = useShopContextStore.getState()
-    expect(ctx.mode).toBe("SINGLE_SHOP")
+    expect(ctx.mode).toBe("STORE_MODE")
     expect(ctx.activeShopId).toBe(SHOP_BANDRA.id)
     expect(ctx.shopRole).toBe("SHOP_ADMIN")
     expect(ctx.shopMeta).toEqual({
@@ -435,7 +435,7 @@ describe("<ShopSwitcher /> selection", () => {
     fireEvent.click(screen.getByTestId("shop-switcher-all-shops"))
 
     const ctx = useShopContextStore.getState()
-    expect(ctx.mode).toBe("ALL_SHOPS")
+    expect(ctx.mode).toBe("HQ_MODE")
     expect(ctx.activeShopId).toBeNull()
     expect(ctx.shopMeta).toBeNull()
     expect(ctx.shopRole).toBeNull()

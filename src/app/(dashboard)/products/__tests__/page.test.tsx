@@ -6,8 +6,8 @@
  *     user holds `shop-products.read`.
  *   - The "Shop Products" tab is hidden when the user lacks
  *     `shop-products.read`.
- *   - The "Shop Products" trigger is disabled when `mode !== "SINGLE_SHOP"`
- *     and enabled when `mode === "SINGLE_SHOP"`.
+ *   - The "Shop Products" trigger is disabled when `mode !== "STORE_MODE"`
+ *     and enabled when `mode === "STORE_MODE"`.
  *   - The Master Catalog tab is the default panel and renders the Master
  *     Catalog body (the trigger remains active even without an active shop).
  *
@@ -72,7 +72,7 @@ import ProductsPage from "@/app/(dashboard)/products/page"
 function primeSingleShopMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["shop-products.read"],
     shopMeta: {
@@ -89,7 +89,7 @@ function primeSingleShopMode() {
 function primeAllShopsMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: null,
-    mode: "ALL_SHOPS",
+    mode: "HQ_MODE",
     shopRole: null,
     permissions: [],
     shopMeta: null,

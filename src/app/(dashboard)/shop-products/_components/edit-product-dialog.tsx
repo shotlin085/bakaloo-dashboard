@@ -130,7 +130,7 @@ export function EditProductDialog({
   // Read the active shop so the mutation hook keys its optimistic
   // updates and invalidations against the right cache prefix. The shop
   // products page (which mounts this dialog) is gated on
-  // `mode === "SINGLE_SHOP"` so `activeShopId` is always populated;
+  // `mode === "STORE_MODE"` so `activeShopId` is always populated;
   // the submit handler still defends against the null case so no
   // misuse posts an unscoped PATCH.
   const { activeShopId } = useShopContext()

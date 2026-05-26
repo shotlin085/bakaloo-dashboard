@@ -89,7 +89,7 @@ function seedAuthStore(): void {
 function seedShopContextStore(): void {
   useShopContextStore.setState({
     activeShopId: "shop-1",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["orders.read", "shop-products.read"],
     shopMeta: {

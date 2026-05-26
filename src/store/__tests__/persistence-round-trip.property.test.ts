@@ -129,7 +129,7 @@ const singleShopSnapshotArb: fc.Arbitrary<ShopContextSnapshot> = fc
   .chain((activeShopId) =>
     fc.record({
       activeShopId: fc.constant(activeShopId),
-      mode: fc.constant<"SINGLE_SHOP">("SINGLE_SHOP"),
+      mode: fc.constant<"STORE_MODE">("STORE_MODE"),
       shopRole: fc.constantFrom(...SHOP_ROLES),
       permissions: fc.array(fc.constantFrom(...PERMISSION_TOKENS), {
         maxLength: 6,
@@ -149,7 +149,7 @@ const singleShopSnapshotArb: fc.Arbitrary<ShopContextSnapshot> = fc
 /** ALL_SHOPS branch — super admin only, all other fields empty. */
 const allShopsSnapshotArb: fc.Arbitrary<ShopContextSnapshot> = fc.constant({
   activeShopId: null,
-  mode: "ALL_SHOPS",
+  mode: "HQ_MODE",
   shopRole: null,
   permissions: [],
   shopMeta: null,
@@ -237,7 +237,7 @@ function resetShopContextStoreMemory(): void {
 function applyShopContextSnapshot(snap: ShopContextSnapshot): void {
   if (snap.mode === "UNSELECTED") return
 
-  if (snap.mode === "ALL_SHOPS") {
+  if (snap.mode === "HQ_MODE") {
     useShopContextStore.getState().setAllShopsMode()
     return
   }

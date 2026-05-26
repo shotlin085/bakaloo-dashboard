@@ -4,7 +4,7 @@
  * Shop_Financials_UI — read-only profit-and-loss page (task 9.3).
  *
  * Renders the period-list shell for a single shop:
- *   - Empty state via `<EmptyShopState />` when `mode !== "SINGLE_SHOP"`,
+ *   - Empty state via `<EmptyShopState />` when `mode !== "STORE_MODE"`,
  *     and the underlying query is `enabled: false` in that branch
  *     (Req 8.1, design §11).
  *   - Period toggle (Daily / Weekly / Monthly) defaulting to Daily
@@ -314,7 +314,7 @@ export default function ShopFinancialsPage() {
   // ─── Empty-shop short-circuit (Req 8.1) ─────────────────────────────────
   // Rendered before reading the data hooks (the query is still gated by
   // `enabled: !!shopId` inside `useShopFinancials`, so no request fires).
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         <PageHeader

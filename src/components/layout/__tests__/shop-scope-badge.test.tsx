@@ -54,7 +54,7 @@ describe("ShopScopeBadge", () => {
   it("renders the formatted chip in SINGLE_SHOP mode", () => {
     setShopContext({
       activeShopId: "shop-a",
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: "SHOP_ADMIN",
       permissions: ["orders.read"],
       shopMeta: {
@@ -78,7 +78,7 @@ describe("ShopScopeBadge", () => {
   it("renders nothing in ALL_SHOPS mode", () => {
     setShopContext({
       activeShopId: null,
-      mode: "ALL_SHOPS",
+      mode: "HQ_MODE",
       shopRole: null,
       permissions: [],
       shopMeta: null,
@@ -105,7 +105,7 @@ describe("ShopScopeBadge", () => {
     // state, but the component must still render nothing (Req 10.2).
     setShopContext({
       activeShopId: "shop-a",
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: "SHOP_ADMIN",
       permissions: [],
       shopMeta: null,
@@ -121,7 +121,7 @@ describe("ShopScopeBadge", () => {
   it("forwards the className prop onto the rendered chip", () => {
     setShopContext({
       activeShopId: "shop-a",
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: "SHOP_ADMIN",
       permissions: [],
       shopMeta: {

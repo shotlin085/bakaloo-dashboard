@@ -109,7 +109,7 @@ export function useShopProductsList(filters: ShopProductsListParams) {
   return useQuery({
     queryKey: qk.shopProducts(shopKey, filters),
     queryFn: () => shopProductsService.list(filters),
-    enabled: mode === "SINGLE_SHOP" && !!activeShopId,
+    enabled: mode === "STORE_MODE" && !!activeShopId,
     placeholderData: (prev) => prev,
     staleTime: SHOP_PRODUCTS_STALE_TIME_MS,
   })

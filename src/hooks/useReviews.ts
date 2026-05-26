@@ -10,12 +10,12 @@
  * change (Req 3.4, 10.3).
  *
  * Filtering rules (Req 10.9):
- *   - `mode === "SINGLE_SHOP"` → forward `shop_id = activeShopId` so the
+ *   - `mode === "STORE_MODE"` → forward `shop_id = activeShopId` so the
  *     backend returns only reviews on products belonging to that shop. The
  *     query is gated on `enabled: shopKey !== "NONE" && !!productId` so it
  *     never fires while the Shop_Context_Store is still hydrating or before
  *     the page has selected a product.
- *   - `mode === "ALL_SHOPS"` → omit the `shop_id` filter; super-admins
+ *   - `mode === "HQ_MODE"` → omit the `shop_id` filter; super-admins
  *     see the unscoped cross-shop list (Req 10.4).
  *   - `mode === "UNSELECTED"` → `shopKey === "NONE"` and the query is
  *     disabled outright. Mirrors the convention used by `useOrders`,
@@ -68,7 +68,7 @@ export function useProductReviews(
   //   - SINGLE_SHOP→ activeShopId; cache by id, forward shop_id=<id>.
   //   - UNSELECTED → "NONE"; query disabled, key still stable.
   const shopKey: string =
-    mode === "ALL_SHOPS"
+    mode === "HQ_MODE"
       ? "ALL"
       : activeShopId ?? NONE_SHOP_KEY
 
@@ -83,7 +83,7 @@ export function useProductReviews(
       ...filters,
       productId,
     }
-    if (mode === "SINGLE_SHOP" && activeShopId) {
+    if (mode === "STORE_MODE" && activeShopId) {
       return { ...base, shop_id: activeShopId }
     }
     // ALL_SHOPS or UNSELECTED: drop any caller-supplied shop_id so the

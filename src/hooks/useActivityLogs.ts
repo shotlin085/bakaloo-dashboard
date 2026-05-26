@@ -34,7 +34,7 @@ const NONE_SHOP_KEY = "NONE"
 export function useActivityLogs(filters: ActivityLogFilters) {
   const { mode, activeShopId } = useShopContext()
   const shopKey =
-    mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+    mode === "HQ_MODE" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
 
   return useQuery({
     queryKey: qk.activityLog(shopKey, filters),

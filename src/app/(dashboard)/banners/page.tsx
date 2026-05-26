@@ -293,7 +293,7 @@ function BannersContent() {
   // branch (see `useBanners()`), so no request is fired against the
   // backend. Mirrors the pattern used by `/shop-products`, `/shop-financials`,
   // and `/shop-transactions`.
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         <PageHeader title="Banners" subtitle="Manage promotional banners" />

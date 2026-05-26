@@ -26,7 +26,7 @@
  * Requirements:
  *   - 9.1  Shop_Transactions_UI requires Active_Shop_Id; the page renders
  *          an empty state otherwise. This hook ensures no request is
- *          issued by gating `enabled` on `mode === "SINGLE_SHOP"`.
+ *          issued by gating `enabled` on `mode === "STORE_MODE"`.
  *   - 9.2  Pagination 20/page, max 100 (cap enforced by the service).
  *   - 14.2 List hooks use TanStack `keepPreviousData` to avoid layout
  *          shift between pages.
@@ -61,7 +61,7 @@ const SHOP_TRANSACTIONS_STALE_TIME_MS = 30_000
  * ledger entry tied to the previously-active shop in one pass.
  *
  * Gating:
- *   - `enabled: mode === "SINGLE_SHOP" && !!activeShopId` keeps the query
+ *   - `enabled: mode === "STORE_MODE" && !!activeShopId` keeps the query
  *     from firing while the Shop_Context_Store is hydrating, while a
  *     Super_Admin is in `ALL_SHOPS` mode, or while no shop is selected
  *     (Req 9.1, Property 6).
@@ -79,7 +79,7 @@ export function useShopTransactions(filters: ShopTransactionsListParams = {}) {
   return useQuery({
     queryKey: qk.shopTransactions(activeShopId ?? "", filters),
     queryFn: () => shopTransactionsService.list(filters),
-    enabled: mode === "SINGLE_SHOP" && !!activeShopId,
+    enabled: mode === "STORE_MODE" && !!activeShopId,
     placeholderData: (prev) => prev,
     staleTime: SHOP_TRANSACTIONS_STALE_TIME_MS,
   })

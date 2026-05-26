@@ -89,7 +89,7 @@ export function useTeamMembers() {
   // of useRBAC's hooks remain pure of shop-context dependencies.
   const { mode, activeShopId } = useShopContext()
   const shopKey =
-    mode === "ALL_SHOPS" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
+    mode === "HQ_MODE" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
 
   return useQuery({
     // Keyed under the central `team` tag so the Shop_Switcher predicate
@@ -227,7 +227,7 @@ export interface RouteRBAC {
 export function useRouteRBAC(pattern: string | RouteGuard): RouteRBAC {
   const subject = useRBACSubject()
   const { mode } = useShopContext()
-  const hasActiveShop = mode === "SINGLE_SHOP"
+  const hasActiveShop = mode === "STORE_MODE"
 
   return useMemo<RouteRBAC>(() => {
     // Resolve the guard from the input.
@@ -291,7 +291,7 @@ export function useRouteRBAC(pattern: string | RouteGuard): RouteRBAC {
 export function useMenuRBAC(itemId: string): boolean {
   const subject = useRBACSubject()
   const { mode } = useShopContext()
-  const hasActiveShop = mode === "SINGLE_SHOP"
+  const hasActiveShop = mode === "STORE_MODE"
 
   return useMemo(
     () => isMenuItemAllowed(itemId, subject, { hasActiveShop }),
@@ -315,7 +315,7 @@ export function useMenuVisibility(
 ): Record<string, boolean> {
   const subject = useRBACSubject()
   const { mode } = useShopContext()
-  const hasActiveShop = mode === "SINGLE_SHOP"
+  const hasActiveShop = mode === "STORE_MODE"
 
   return useMemo(() => {
     const out: Record<string, boolean> = {}

@@ -27,12 +27,15 @@ interface RawLoginResponse {
 
 /** Backend snake_case shape for an embedded shop assignment. */
 interface RawShopAssignment {
-  id: string
-  name: string
+  id?: string
+  shop_id?: string
+  name?: string
+  shop_name?: string
   branch_code: string
-  city: string
-  role: ShopStaffRole
-  is_active: boolean
+  city?: string
+  role?: ShopStaffRole
+  shop_role?: ShopStaffRole
+  is_active?: boolean
 }
 
 /**
@@ -47,12 +50,12 @@ const SUPER_ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN"])
 /** Convert a backend `RawShopAssignment` into the camelCase domain type. */
 function normalizeShopAssignment(raw: RawShopAssignment): ShopAssignment {
   return {
-    id: raw.id,
-    name: raw.name,
-    branchCode: raw.branch_code,
-    city: raw.city,
-    role: raw.role,
-    isActive: raw.is_active,
+    id: raw.shop_id || raw.id || "",
+    name: raw.shop_name || raw.name || "",
+    branchCode: raw.branch_code || "",
+    city: raw.city || "",
+    role: raw.shop_role || raw.role || "SHOP_STAFF",
+    isActive: raw.is_active ?? true,
   }
 }
 
@@ -104,13 +107,67 @@ export async function loginAdmin(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Validate the current token against the backend and return the full admin
+ * profile including multi-vendor context.
+ *
+ * Wraps `GET /api/v1/admin/auth/me`. The response includes the user profile,
+ * super-admin flag, shop assignments, permissions, and active shop context.
+ */
+export interface MeResponse {
+  user: AdminUser
+  isSuperAdmin: boolean
+  shops: ShopAssignment[]
+  permissions: string[]
+  active_shop: { id: string; name: string; role: string } | null
+}
+
+/** Raw backend shape for the /me response (snake_case). */
+interface RawMeResponse {
+  user: AdminUser
+  is_super_admin?: boolean
+  isSuperAdmin?: boolean
+  shops?: RawShopAssignment[]
+  permissions?: string[]
+  active_shop?: { id: string; name: string; role: string } | null
+}
+
+export async function me(): Promise<MeResponse> {
+  const { data } = await api.get<ApiResponse<RawMeResponse>>("/admin/auth/me")
+  const raw = data.data
+
+  const isSuperAdmin =
+    typeof raw.isSuperAdmin === "boolean"
+      ? raw.isSuperAdmin
+      : typeof raw.is_super_admin === "boolean"
+        ? raw.is_super_admin
+        : SUPER_ADMIN_ROLES.has(raw.user.role)
+
+  const shops: ShopAssignment[] = Array.isArray(raw.shops)
+    ? raw.shops.map(normalizeShopAssignment)
+    : []
+
+  return {
+    user: raw.user,
+    isSuperAdmin,
+    shops,
+    permissions: raw.permissions ?? [],
+    active_shop: raw.active_shop ?? null,
+  }
+}
+
+/**
  * Validate the current token against the backend and return the admin profile
  * if it is still valid. On 401 the axios interceptor clears auth and
  * redirects to `/login` (see `lib/api.ts`).
  */
 export async function validateSession(): Promise<AdminUser> {
-  const { data } = await api.get<ApiResponse<AdminUser>>("/admin/auth/me")
-  return data.data
+  const { data } = await api.get<ApiResponse<{ user: AdminUser }>>(
+    "/admin/auth/me",
+  )
+  // The /me endpoint returns { user, isSuperAdmin, shops, ... }
+  // Extract just the user object for backward compatibility
+  const payload = data.data as { user: AdminUser } | AdminUser
+  return 'user' in payload && payload.user?.id ? payload.user : payload as AdminUser
 }
 
 export async function logoutAdmin(): Promise<void> {
@@ -125,7 +182,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  await api.put("/admin/auth/password", { currentPassword, newPassword })
+  await api.post("/admin/auth/change-password", { currentPassword, newPassword })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +204,7 @@ export async function changePassword(
  */
 export async function getMyShops(): Promise<ShopAssignment[]> {
   const { data } = await api.get<ApiResponse<{ shops: RawShopAssignment[] }>>(
-    "/auth/my-shops",
+    "/admin/auth/my-shops",
   )
   const payload = data.data as
     | { shops: RawShopAssignment[] }
@@ -191,7 +248,7 @@ export async function selectShop(
   shopAssignment?: ShopAssignment,
 ): Promise<SelectShopResult> {
   const { data } = await api.post<ApiResponse<RawSelectShopResponse>>(
-    "/auth/select-shop",
+    "/admin/auth/select-shop",
     { shop_id: shopId },
   )
   const raw = data.data

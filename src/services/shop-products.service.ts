@@ -97,7 +97,7 @@ export const shopProductsService = {
    * service therefore never sets the header explicitly. Callers that hit
    * this method while the store is in `ALL_SHOPS` mode would receive a
    * 400 from the backend, so the hook (`useShopProductsList`) gates the
-   * query with `enabled: mode === "SINGLE_SHOP"` — see design §8.
+   * query with `enabled: mode === "STORE_MODE"` — see design §8.
    *
    * The `limit` parameter is capped at 100 BEFORE the request is built so
    * any user-supplied value (or the default 20) is bounded — see

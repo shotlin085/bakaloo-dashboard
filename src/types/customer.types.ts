@@ -19,7 +19,7 @@ export interface Customer {
    * rules client-side without a second round-trip (Req 10.8, 10.10).
    *
    * Optional because the legacy `/admin/customers` endpoint does not yet
-   * emit it for super-admin "ALL_SHOPS" responses; consumers must treat
+   * emit it for super-admin "HQ_MODE" responses; consumers must treat
    * `undefined` as "not enforced" and a present array as authoritative.
    */
   shop_allocations?: string[]

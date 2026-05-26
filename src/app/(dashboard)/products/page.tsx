@@ -63,7 +63,7 @@ export default function ProductsPage() {
   //     waiting for the route guard to re-resolve.
   const { canRead: canReadShopProducts } = useRouteRBAC("/shop-products")
   const { mode } = useShopContext()
-  const hasActiveShop = mode === "SINGLE_SHOP"
+  const hasActiveShop = mode === "STORE_MODE"
 
   // The tab is rendered (not hidden) whenever the user holds
   // `shop-products.read` so super admins can discover the inventory
@@ -136,7 +136,7 @@ export default function ProductsPage() {
           <TabsContent value={TAB_SHOP} className="mt-4">
             {/* `embedded` suppresses the inner `<PageHeader />` and inline
                 title — the parent shell above already provides one.
-                When `mode !== "SINGLE_SHOP"` the embedded view falls back
+                When `mode !== "STORE_MODE"` the embedded view falls back
                 to its own `<EmptyShopState />`, though in practice the
                 user cannot reach this branch (the trigger is disabled). */}
             <ShopProductsView embedded />

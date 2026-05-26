@@ -17,8 +17,8 @@
  * The three hooks under test gate via two structurally different but
  * Shop_Context-consistent shapes:
  *
- *   - `useShopProductsList`  — `enabled: mode === "SINGLE_SHOP" && !!shopId`
- *   - `useShopTransactions`  — `enabled: mode === "SINGLE_SHOP" && !!shopId`
+ *   - `useShopProductsList`  — `enabled: mode === "STORE_MODE" && !!shopId`
+ *   - `useShopTransactions`  — `enabled: mode === "STORE_MODE" && !!shopId`
  *   - `useShopFinancials`    — `enabled: !!shopId` (page-level mode short-
  *                              circuit; hook accepts `shopId` directly)
  *
@@ -32,7 +32,7 @@
  * For each `(route, mode)` we:
  *
  *   1. Stub `useShopContext()` to return the generated `mode` paired with
- *      `activeShopId = mode === "SINGLE_SHOP" ? ACTIVE_SHOP_ID : null` —
+ *      `activeShopId = mode === "STORE_MODE" ? ACTIVE_SHOP_ID : null` —
  *      mirroring the store invariant so the test reflects real runtime
  *      state, not an unreachable combination.
  *   2. Render the hook through `renderHook` inside a fresh
@@ -158,8 +158,8 @@ const routeArb: fc.Arbitrary<Route> = fc.constantFrom(
 )
 
 const modeArb: fc.Arbitrary<ShopMode> = fc.constantFrom(
-  "SINGLE_SHOP",
-  "ALL_SHOPS",
+  "STORE_MODE",
+  "HQ_MODE",
   "UNSELECTED",
 )
 
@@ -250,7 +250,7 @@ describe("Property 6: single-shop section gating", () => {
         // are entitled to fire a request, which is out of scope for
         // Property 6 (positive coverage lives in each hook's own unit
         // tests).
-        fc.pre(mode !== "SINGLE_SHOP")
+        fc.pre(mode !== "STORE_MODE")
 
         // Mirror the Shop_Context_Store invariant: when mode is not
         // SINGLE_SHOP the store always has `activeShopId === null`
@@ -258,7 +258,7 @@ describe("Property 6: single-shop section gating", () => {
         // that here means we exercise the negative property in the
         // exact shape the runtime ever actually produces.
         const activeShopId =
-          mode === "SINGLE_SHOP" ? ACTIVE_SHOP_ID : null
+          mode === "STORE_MODE" ? ACTIVE_SHOP_ID : null
 
         useShopContextMock.mockReturnValue({
           activeShopId,

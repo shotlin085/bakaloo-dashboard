@@ -44,7 +44,7 @@ const PUBLIC_ROUTES = ["/login"] as const
  * visit. Any other path redirects to `/select-shop` so the user picks a shop
  * before entering the dashboard (Req 1.6).
  */
-const VENDOR_NO_SHOP_ALLOWED = ["/login", "/select-shop", "/logout"] as const
+const VENDOR_NO_SHOP_ALLOWED = ["/login", "/select-shop", "/logout", "/change-password"] as const
 
 /** Cookie names — kept in sync with the writers in `store/auth.store.ts` and `store/shop-context.store.ts`. */
 const COOKIE_AUTH_SESSION = "auth_session"

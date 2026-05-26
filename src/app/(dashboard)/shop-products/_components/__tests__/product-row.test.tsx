@@ -190,7 +190,7 @@ beforeEach(() => {
   })
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: null,
     permissions: [],
     shopMeta: null,

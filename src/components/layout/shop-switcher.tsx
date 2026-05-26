@@ -58,7 +58,6 @@ import { useIsSuperAdmin, useShopContext } from "@/hooks/useShopContext"
 import { shopRoomManager } from "@/hooks/useShopRoom"
 import { t } from "@/lib/i18n"
 import { ROLE_DEFAULTS, type PermissionToken } from "@/lib/permissions"
-import { isShopScopedKey } from "@/lib/query-keys"
 import {
   useShopContextStore,
   type ShopMeta,
@@ -158,7 +157,7 @@ function ShopSwitcherInternal({ mode, shopMeta }: ShopSwitcherInternalProps) {
 
   const allShopsLabel = t("shopScope.allShops")
   const triggerLabel =
-    mode === "SINGLE_SHOP" && shopMeta ? shopMeta.name : allShopsLabel
+    mode === "STORE_MODE" && shopMeta ? shopMeta.name : allShopsLabel
 
   const shops = data?.items ?? []
 
@@ -189,12 +188,10 @@ function ShopSwitcherInternal({ mode, shopMeta }: ShopSwitcherInternalProps) {
       useShopContextStore.getState().setAllShopsMode()
     }
 
-    // Property 13 / Req 3.4 / Req 10.3 — predicate-based invalidation drops
-    // every shop-scoped cache entry in a single pass without touching
-    // non-shop-scoped queries (e.g. `my-shops`).
-    queryClient.invalidateQueries({
-      predicate: (q) => isShopScopedKey(q.queryKey),
-    })
+    // Property 13 / Req 3.4 / Req 10.3 — clear all TanStack Query caches so
+    // any data already mounted under the previous scope is refetched against
+    // the new shop. Using `clear()` ensures no stale cross-shop data leaks.
+    queryClient.clear()
 
     // Req 3.4 + design §12 — rotate the Socket.IO rooms so live-update
     // listeners receive events for the new scope. The store subscription
@@ -255,19 +252,19 @@ function ShopSwitcherInternal({ mode, shopMeta }: ShopSwitcherInternalProps) {
               <button
                 type="button"
                 role="option"
-                aria-selected={mode === "ALL_SHOPS"}
+                aria-selected={mode === "HQ_MODE"}
                 data-testid="shop-switcher-all-shops"
                 onClick={() => applySelection(null)}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none transition-colors",
                   "hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent",
-                  mode === "ALL_SHOPS" && "bg-accent/60",
+                  mode === "HQ_MODE" && "bg-accent/60",
                 )}
               >
                 <Check
                   className={cn(
                     "h-4 w-4 shrink-0",
-                    mode === "ALL_SHOPS" ? "opacity-100" : "opacity-0",
+                    mode === "HQ_MODE" ? "opacity-100" : "opacity-0",
                   )}
                 />
                 <span className="font-medium">{allShopsLabel}</span>
@@ -311,7 +308,7 @@ function ShopSwitcherInternal({ mode, shopMeta }: ShopSwitcherInternalProps) {
 
             {filteredShops.map((shop) => {
               const selected =
-                mode === "SINGLE_SHOP" && shopMeta?.id === shop.id
+                mode === "STORE_MODE" && shopMeta?.id === shop.id
               return (
                 <li key={shop.id} role="presentation">
                   <button

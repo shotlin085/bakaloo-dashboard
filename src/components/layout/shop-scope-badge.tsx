@@ -33,7 +33,7 @@ export function ShopScopeBadge({ className }: ShopScopeBadgeProps) {
 
   // Per Req 10.2: only render when scoped to a single shop. In ALL_SHOPS or
   // UNSELECTED modes the chip would be misleading, so we render nothing.
-  if (mode !== "SINGLE_SHOP" || shopMeta == null) {
+  if (mode !== "STORE_MODE" || shopMeta == null) {
     return null
   }
 

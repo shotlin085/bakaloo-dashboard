@@ -75,7 +75,7 @@ vi.mock("@/hooks/useShopProducts", () => ({
 
 const useShopContextMock = vi.fn(() => ({
   activeShopId: "shop-a",
-  mode: "SINGLE_SHOP" as const,
+  mode: "STORE_MODE" as const,
   shopRole: null,
   permissions: [] as string[],
   shopMeta: null,

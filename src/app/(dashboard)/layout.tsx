@@ -13,6 +13,7 @@ import { SocketEventBridge } from "@/components/layout/socket-event-bridge"
 import { SocketProvider } from "@/components/providers/SocketProvider"
 import { ErrorBoundary } from "@/components/shared/error-boundary"
 import { ViewerBanner } from "@/components/shared/PermissionGate"
+import { ActiveShopCookieSync } from "@/hooks/useActiveShopCookieSync"
 import { useAuthStore } from "@/store/auth.store"
 import { useSidebarStore } from "@/store/sidebar.store"
 import { validateSession } from "@/services/auth.service"
@@ -89,6 +90,10 @@ export default function DashboardLayout({
           (Req 3.1, 3.2, 4.6, 1.6, 1.10). */}
       <ShopContextHydrator />
 
+      {/* Mirror activeShopId to a cookie so Next.js middleware can enforce
+          shop-scoped routing rules during SSR (Task 18.2, Req 1.6, 1.10). */}
+      <ActiveShopCookieSync />
+
       {/* Subscribe once to shop-scoped Socket.IO events that need to
           translate into TanStack Query cache invalidations across every
           dashboard surface (currently `new-order` → orders + dashboard
@@ -145,7 +150,7 @@ export default function DashboardLayout({
                 {/* Non-removable scope confirmation chip — mounted once so
                     every existing surface (orders, products, customers,
                     reviews, etc.) inherits it without per-page wiring.
-                    Self-gates on `mode === "SINGLE_SHOP"` and renders
+                    Self-gates on `mode === "STORE_MODE"` and renders
                     nothing in `ALL_SHOPS` / `UNSELECTED` modes (Req 10.2). */}
                 <ShopScopeBadge className="mb-4" />
                 {children}

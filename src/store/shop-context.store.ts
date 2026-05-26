@@ -25,7 +25,7 @@ import type { ShopRole } from "@/lib/permissions"
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Mode of the dashboard shop scope. */
-export type ShopMode = "ALL_SHOPS" | "SINGLE_SHOP" | "UNSELECTED"
+export type ShopMode = "HQ_MODE" | "STORE_MODE" | "UNSELECTED"
 
 /**
  * Embedded shop summary persisted in the store. Only the fields needed by the
@@ -67,15 +67,21 @@ interface ShopContextState extends ShopContextSnapshot {
   /** True once `hydrate()` has run; pages gate render on this to avoid SSR/CSR drift. */
   isHydrated: boolean
 
-  /** Set a single-shop scope. No-op for vendors when `shop.id` is outside `assignedShopIds`. */
+  /** Set a single-shop scope (STORE_MODE). No-op for vendors when `shop.id` is outside `assignedShopIds`. */
   setActiveShop: (
     shop: ShopMeta,
     role: ShopRole,
     permissions: string[],
   ) => void
 
-  /** Switch to All Shops (Super_Admin only). No-op for vendors. */
+  /** Switch to HQ_MODE (Super_Admin only). No-op for vendors. */
+  setHQMode: () => void
+
+  /** @deprecated Use `setHQMode()` instead. Alias kept for backward compat. */
   setAllShopsMode: () => void
+
+  /** Set mode explicitly. Guards against store users setting HQ_MODE. */
+  setMode: (mode: ShopMode) => void
 
   /** Update the locked vendor shop list. Called once after login from the auth profile. */
   setAssignedShopIds: (ids: string[]) => void
@@ -228,7 +234,7 @@ export const useShopContextStore = create<ShopContextState>((set, get) => ({
 
     const snap: ShopContextSnapshot = {
       activeShopId: shop.id,
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: role,
       permissions,
       shopMeta: shop,
@@ -239,17 +245,52 @@ export const useShopContextStore = create<ShopContextState>((set, get) => ({
   },
 
   setAllShopsMode: () => {
-    // Vendor tamper guard (Req 3.7): vendors cannot enter ALL_SHOPS mode.
+    // Vendor tamper guard (Req 3.7): vendors cannot enter HQ_MODE.
     const { assignedShopIds } = get()
     if (assignedShopIds.length > 0) return
 
     const snap: ShopContextSnapshot = {
       activeShopId: null,
-      mode: "ALL_SHOPS",
+      mode: "HQ_MODE",
       shopRole: null,
       permissions: [],
       shopMeta: null,
       assignedShopIds: [],
+    }
+    writeSnapshot(snap)
+    set({ ...snap, isHydrated: true })
+  },
+
+  setHQMode: () => {
+    // Vendor tamper guard (Req 3.7): vendors cannot enter HQ_MODE.
+    const { assignedShopIds } = get()
+    if (assignedShopIds.length > 0) return
+
+    const snap: ShopContextSnapshot = {
+      activeShopId: null,
+      mode: "HQ_MODE",
+      shopRole: null,
+      permissions: [],
+      shopMeta: null,
+      assignedShopIds: [],
+    }
+    writeSnapshot(snap)
+    set({ ...snap, isHydrated: true })
+  },
+
+  setMode: (mode) => {
+    // Guard: store users (vendors) cannot set HQ_MODE
+    const { assignedShopIds } = get()
+    if (mode === "HQ_MODE" && assignedShopIds.length > 0) return
+
+    const current = get()
+    const snap: ShopContextSnapshot = {
+      activeShopId: mode === "HQ_MODE" ? null : current.activeShopId,
+      mode,
+      shopRole: mode === "HQ_MODE" ? null : current.shopRole,
+      permissions: mode === "HQ_MODE" ? [] : current.permissions,
+      shopMeta: mode === "HQ_MODE" ? null : current.shopMeta,
+      assignedShopIds: current.assignedShopIds,
     }
     writeSnapshot(snap)
     set({ ...snap, isHydrated: true })

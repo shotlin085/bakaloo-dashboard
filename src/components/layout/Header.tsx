@@ -10,6 +10,7 @@ import { useConnectionStatus } from "@/hooks/useSocket"
 import { NotificationPanel } from "./NotificationPanel"
 import { GlobalSearch } from "./GlobalSearch"
 import { ShopSwitcher } from "./shop-switcher"
+import { ShopScopeIndicator } from "./shop-scope-indicator"
 import { ReconnectingIndicator } from "./reconnecting-indicator"
 import { ThemeToggle } from "./ThemeToggle"
 
@@ -58,6 +59,10 @@ export function Header() {
       <GlobalSearch />
 
       <div className="flex items-center gap-2 ml-auto">
+        {/* Shop scope indicator — shows shop name + branch_code in STORE_MODE.
+            Self-gates: renders nothing in HQ_MODE / ALL_SHOPS (Task 17.6). */}
+        <ShopScopeIndicator />
+
         {/* Super_Admin Shop_Switcher — self-gates on `useIsSuperAdmin()` and
             on `assignedShopIds.length > 0`, so it renders nothing for vendor
             users and unauthenticated states. Mounted inside the right-side

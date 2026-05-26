@@ -252,7 +252,7 @@ describe("dispatchPostLogin — shop-count routing", () => {
 
         // ── Branch A: Super_Admin (Req 1.5) ──────────────────────────────
         if (data.isSuperAdmin) {
-          expect(shopState.mode).toBe("ALL_SHOPS")
+          expect(shopState.mode).toBe("HQ_MODE")
           expect(shopState.activeShopId).toBeNull()
           expect(shopState.assignedShopIds).toEqual([])
           expect(shopState.shopMeta).toBeNull()
@@ -285,7 +285,7 @@ describe("dispatchPostLogin — shop-count routing", () => {
         // ── Branch C: Vendor with exactly one shop (Req 1.3) ─────────────
         if (n === 1) {
           const only = shops[0]
-          expect(shopState.mode).toBe("SINGLE_SHOP")
+          expect(shopState.mode).toBe("STORE_MODE")
           expect(shopState.activeShopId).toBe(only.id)
           expect(shopState.shopMeta).toEqual({
             id: only.id,

@@ -75,17 +75,17 @@ function setUser(user: TestUser | null) {
 }
 
 function setShopContext(args: {
-  mode: "ALL_SHOPS" | "SINGLE_SHOP" | "UNSELECTED"
+  mode: "HQ_MODE" | "STORE_MODE" | "UNSELECTED"
   permissions?: string[]
   assignedShopIds?: string[]
 }) {
   useShopContextStore.setState({
-    activeShopId: args.mode === "SINGLE_SHOP" ? "shop-a" : null,
+    activeShopId: args.mode === "STORE_MODE" ? "shop-a" : null,
     mode: args.mode,
-    shopRole: args.mode === "SINGLE_SHOP" ? "SHOP_ADMIN" : null,
+    shopRole: args.mode === "STORE_MODE" ? "SHOP_ADMIN" : null,
     permissions: args.permissions ?? [],
     shopMeta:
-      args.mode === "SINGLE_SHOP"
+      args.mode === "STORE_MODE"
         ? {
             id: "shop-a",
             name: "Shop A",
@@ -117,7 +117,7 @@ afterEach(() => {
 describe("useRouteRBAC", () => {
   it("authorizes a super admin with shops.read for /shops", () => {
     setUser({ role: "SUPER_ADMIN", permissions: ["shops.read"] })
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
 
     const { result } = renderHook(() => useRouteRBAC("/shops"))
     expect(result.current.isAuthorized).toBe(true)
@@ -128,7 +128,7 @@ describe("useRouteRBAC", () => {
 
   it("denies a vendor for /shops/new (super-admin only)", () => {
     setUser({ role: "SHOP_ADMIN", permissions: ["shops.write"] })
-    setShopContext({ mode: "SINGLE_SHOP", assignedShopIds: ["shop-a"] })
+    setShopContext({ mode: "STORE_MODE", assignedShopIds: ["shop-a"] })
 
     const { result } = renderHook(() => useRouteRBAC("/shops/new"))
     expect(result.current.isAuthorized).toBe(false)
@@ -137,7 +137,7 @@ describe("useRouteRBAC", () => {
 
   it("authorizes a super admin with shops.write for /shops/new and reports canWrite", () => {
     setUser({ role: "SUPER_ADMIN", permissions: ["shops.read", "shops.write"] })
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
 
     const { result } = renderHook(() => useRouteRBAC("/shops/new"))
     expect(result.current.isAuthorized).toBe(true)
@@ -146,7 +146,7 @@ describe("useRouteRBAC", () => {
 
   it("denies access to /shop-products in ALL_SHOPS mode (requiresActiveShop)", () => {
     setUser({ role: "SUPER_ADMIN", permissions: ["shop-products.read"] })
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
 
     const { result } = renderHook(() => useRouteRBAC("/shop-products"))
     expect(result.current.isAuthorized).toBe(false)
@@ -157,7 +157,7 @@ describe("useRouteRBAC", () => {
   it("authorizes /shop-products once a single shop is selected", () => {
     setUser({ role: "SHOP_ADMIN", permissions: [] })
     setShopContext({
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       permissions: ["shop-products.read"],
       assignedShopIds: ["shop-a"],
     })
@@ -178,7 +178,7 @@ describe("useRouteRBAC", () => {
 
   it("treats legacy ADMIN role as SUPER_ADMIN for super-admin-only routes", () => {
     setUser({ role: "ADMIN", permissions: ["shops.write"] })
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
 
     const { result } = renderHook(() => useRouteRBAC("/shops/new"))
     expect(result.current.isAuthorized).toBe(true)
@@ -204,7 +204,7 @@ describe("useMenuRBAC", () => {
 
   it("shows shops for super admins with shops.read", () => {
     setUser({ role: "SUPER_ADMIN", permissions: ["shops.read"] })
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
     const { result } = renderHook(() => useMenuRBAC("shops"))
     expect(result.current).toBe(true)
   })
@@ -212,7 +212,7 @@ describe("useMenuRBAC", () => {
   it("re-evaluates when the Shop_Switcher selection changes", () => {
     setUser({ role: "SUPER_ADMIN", permissions: ["shop-products.read"] })
     // Start in ALL_SHOPS — `requiresActiveShop` should hide the item.
-    setShopContext({ mode: "ALL_SHOPS" })
+    setShopContext({ mode: "HQ_MODE" })
 
     const { result } = renderHook(() => useMenuRBAC("shopProducts"))
     expect(result.current).toBe(false)
@@ -254,7 +254,7 @@ describe("useMenuVisibility", () => {
       permissions: ["shops.read", "shop-products.read"],
     })
     setShopContext({
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       permissions: ["shop-products.read"],
     })
 

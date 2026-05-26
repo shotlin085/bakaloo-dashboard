@@ -254,7 +254,7 @@ function setup(rows: ShopProduct[]): Harness {
 
   useShopContextMock.mockReturnValue({
     activeShopId: ACTIVE_SHOP,
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["shop-products.read"],
     shopMeta: null,

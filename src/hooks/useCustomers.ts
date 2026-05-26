@@ -9,11 +9,11 @@
  * based invalidation drops it on every shop change (Req 3.4, 10.3).
  *
  * Filtering rules (Req 10.4, 10.8):
- *   - `mode === "SINGLE_SHOP"`  → forward `shop_id = activeShopId` so the
+ *   - `mode === "STORE_MODE"`  → forward `shop_id = activeShopId` so the
  *     backend returns only customers with at least one allocation to that
  *     shop. The query is gated on `enabled: shopKey !== "NONE"` so it never
  *     fires while the Shop_Context_Store is still hydrating.
- *   - `mode === "ALL_SHOPS"`    → omit the `shop_id` filter; super-admins
+ *   - `mode === "HQ_MODE"`    → omit the `shop_id` filter; super-admins
  *     see the unscoped cross-shop list (Req 10.4).
  *   - `mode === "UNSELECTED"`   → `shopKey === "NONE"` and the query is
  *     disabled outright (matches the existing-page convention used by
@@ -65,7 +65,7 @@ export function useCustomers(filters: CustomerFilters) {
   //   - SINGLE_SHOP→ activeShopId; cache by id, forward shop_id=<id>.
   //   - UNSELECTED → "NONE"; query disabled, key still stable.
   const shopKey: string =
-    mode === "ALL_SHOPS"
+    mode === "HQ_MODE"
       ? "ALL"
       : activeShopId ?? NONE_SHOP_KEY
 
@@ -74,7 +74,7 @@ export function useCustomers(filters: CustomerFilters) {
   // none of the inputs change, which TanStack Query's structural sharing
   // depends on for its previous-page placeholder behavior.
   const mergedFilters: CustomerFilters = useMemo(() => {
-    if (mode === "SINGLE_SHOP" && activeShopId) {
+    if (mode === "STORE_MODE" && activeShopId) {
       return { ...filters, shop_id: activeShopId }
     }
     // ALL_SHOPS or UNSELECTED: drop any caller-supplied shop_id so the

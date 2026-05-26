@@ -139,7 +139,7 @@ describe("setActiveShop — super admin", () => {
 
     const state = useShopContextStore.getState()
     expect(state.activeShopId).toBe("shop-a")
-    expect(state.mode).toBe("SINGLE_SHOP")
+    expect(state.mode).toBe("STORE_MODE")
     expect(state.shopRole).toBe("SHOP_ADMIN")
     expect(state.permissions).toEqual(["orders.read"])
     expect(state.shopMeta).toEqual(META_A)
@@ -150,7 +150,7 @@ describe("setActiveShop — super admin", () => {
     expect(raw).not.toBeNull()
     const persisted = JSON.parse(raw as string) as ShopContextSnapshot
     expect(persisted.activeShopId).toBe("shop-a")
-    expect(persisted.mode).toBe("SINGLE_SHOP")
+    expect(persisted.mode).toBe("STORE_MODE")
   })
 })
 
@@ -162,14 +162,14 @@ describe("setAllShopsMode — super admin", () => {
 
     const state = useShopContextStore.getState()
     expect(state.activeShopId).toBeNull()
-    expect(state.mode).toBe("ALL_SHOPS")
+    expect(state.mode).toBe("HQ_MODE")
     expect(state.shopMeta).toBeNull()
     expect(state.permissions).toEqual([])
 
     const persisted = JSON.parse(
       mockStorage.getItem(STORAGE_KEY) as string,
     ) as ShopContextSnapshot
-    expect(persisted.mode).toBe("ALL_SHOPS")
+    expect(persisted.mode).toBe("HQ_MODE")
   })
 })
 
@@ -196,7 +196,7 @@ describe("vendor tamper guard", () => {
 
     const state = useShopContextStore.getState()
     expect(state.activeShopId).toBe("shop-b")
-    expect(state.mode).toBe("SINGLE_SHOP")
+    expect(state.mode).toBe("STORE_MODE")
   })
 
   it("setAllShopsMode is a no-op for vendors", () => {
@@ -208,7 +208,7 @@ describe("vendor tamper guard", () => {
     setAllShopsMode()
 
     const state = useShopContextStore.getState()
-    expect(state.mode).toBe("SINGLE_SHOP")
+    expect(state.mode).toBe("STORE_MODE")
     expect(state.activeShopId).toBe("shop-a")
   })
 })
@@ -252,7 +252,7 @@ describe("hydrate", () => {
   it("restores a previously persisted snapshot", () => {
     const persisted: ShopContextSnapshot = {
       activeShopId: "shop-a",
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: "SHOP_ADMIN",
       permissions: ["orders.read", "shop-products.read"],
       shopMeta: META_A,
@@ -264,7 +264,7 @@ describe("hydrate", () => {
 
     const state = useShopContextStore.getState()
     expect(state.activeShopId).toBe("shop-a")
-    expect(state.mode).toBe("SINGLE_SHOP")
+    expect(state.mode).toBe("STORE_MODE")
     expect(state.shopRole).toBe("SHOP_ADMIN")
     expect(state.permissions).toEqual(["orders.read", "shop-products.read"])
     expect(state.shopMeta).toEqual(META_A)
@@ -344,7 +344,7 @@ describe("middleware mirror cookie (shop-context-mw)", () => {
   it("hydrate() re-mirrors the cookie when localStorage has a snapshot", () => {
     const persisted: ShopContextSnapshot = {
       activeShopId: "shop-a",
-      mode: "SINGLE_SHOP",
+      mode: "STORE_MODE",
       shopRole: "SHOP_ADMIN",
       permissions: ["orders.read"],
       shopMeta: META_A,

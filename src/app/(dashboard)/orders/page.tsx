@@ -131,7 +131,7 @@ function OrdersContent() {
    * `<ShopScopeBadge />` in the page header already pins the visible scope —
    * so we hide it to keep the table dense on small viewports.
    */
-  const showShopColumn = mode === "ALL_SHOPS"
+  const showShopColumn = mode === "HQ_MODE"
 
   const orders = data?.orders ?? []
   const pagination = data?.pagination

@@ -206,17 +206,17 @@ interface Case {
   shops: number
   /** Expected `router.push` argument; `null` means no redirect. */
   expectedRoute: string | null
-  expectedMode: "ALL_SHOPS" | "SINGLE_SHOP" | "UNSELECTED"
+  expectedMode: "HQ_MODE" | "STORE_MODE" | "UNSELECTED"
 }
 
 const CASES: Case[] = [
   // (true, 0) and (true, 3): super admin always lands in ALL_SHOPS regardless of n
-  { isSuperAdmin: true, shops: 0, expectedRoute: "/dashboard", expectedMode: "ALL_SHOPS" },
-  { isSuperAdmin: true, shops: 3, expectedRoute: "/dashboard", expectedMode: "ALL_SHOPS" },
+  { isSuperAdmin: true, shops: 0, expectedRoute: "/dashboard", expectedMode: "HQ_MODE" },
+  { isSuperAdmin: true, shops: 3, expectedRoute: "/dashboard", expectedMode: "HQ_MODE" },
   // (false, 0): no shop assigned — error toast, no redirect
   { isSuperAdmin: false, shops: 0, expectedRoute: null, expectedMode: "UNSELECTED" },
   // (false, 1): single shop — auto-select, redirect home
-  { isSuperAdmin: false, shops: 1, expectedRoute: "/dashboard", expectedMode: "SINGLE_SHOP" },
+  { isSuperAdmin: false, shops: 1, expectedRoute: "/dashboard", expectedMode: "STORE_MODE" },
   // (false, 2) and (false, 3): redirect to /select-shop
   { isSuperAdmin: false, shops: 2, expectedRoute: "/select-shop", expectedMode: "UNSELECTED" },
   { isSuperAdmin: false, shops: 3, expectedRoute: "/select-shop", expectedMode: "UNSELECTED" },

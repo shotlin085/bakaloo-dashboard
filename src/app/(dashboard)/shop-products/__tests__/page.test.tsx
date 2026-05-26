@@ -2,7 +2,7 @@
  * Unit tests for the Shop_Products list page (task 8.3).
  *
  * Covers the page-level behaviors owned by this task:
- *   - Empty-shop short-circuit (Req 7.11) — when `mode !== "SINGLE_SHOP"`
+ *   - Empty-shop short-circuit (Req 7.11) — when `mode !== "STORE_MODE"`
  *     the page renders `<EmptyShopState />` and never reads list data.
  *   - Low-stock header chip (Req 7.6) — counter is computed from currently
  *     visible rows and reflects rows where `stock_quantity` is at or below
@@ -125,7 +125,7 @@ function makeProduct(overrides: Partial<ShopProduct> = {}): ShopProduct {
 function primeSingleShopMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["shop-products.read"],
     shopMeta: {
@@ -143,7 +143,7 @@ function primeSingleShopMode() {
 function primeAllShopsMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: null,
-    mode: "ALL_SHOPS",
+    mode: "HQ_MODE",
     shopRole: null,
     permissions: [],
     shopMeta: null,

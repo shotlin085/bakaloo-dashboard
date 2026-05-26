@@ -2,7 +2,7 @@
  * Unit tests for the Shop_Transactions ledger page (tasks 10.3 + 10.4).
  *
  * Covers the page-level behaviors owned by these tasks:
- *   - Empty-shop short-circuit (Req 9.1) — when `mode !== "SINGLE_SHOP"`
+ *   - Empty-shop short-circuit (Req 9.1) — when `mode !== "STORE_MODE"`
  *     the page renders `<EmptyShopState />` and never reads list data.
  *   - All eight columns from Req 9.3 are rendered as headers.
  *   - Running-balance chip (Req 9.7) — sourced from the first visible row's
@@ -74,7 +74,7 @@ function makeTx(overrides: Partial<ShopTransaction> = {}): ShopTransaction {
 function primeSingleShopMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: "shop-a",
-    mode: "SINGLE_SHOP",
+    mode: "STORE_MODE",
     shopRole: "SHOP_ADMIN",
     permissions: ["shop-transactions.read"],
     shopMeta: {
@@ -92,7 +92,7 @@ function primeSingleShopMode() {
 function primeAllShopsMode() {
   useShopContextMock.mockReturnValue({
     activeShopId: null,
-    mode: "ALL_SHOPS",
+    mode: "HQ_MODE",
     shopRole: null,
     permissions: [],
     shopMeta: null,

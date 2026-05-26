@@ -4,7 +4,7 @@
  * Shop_Transactions ledger page — task 10.3 of the multi-vendor dashboard.
  *
  * Renders the per-shop append-only ledger surface:
- *   - Empty state via `<EmptyShopState />` when `mode !== "SINGLE_SHOP"`,
+ *   - Empty state via `<EmptyShopState />` when `mode !== "STORE_MODE"`,
  *     and the underlying TanStack Query is disabled in that branch
  *     (Req 9.1, design §10).
  *   - Filters: `type` (multi-select via a checkbox-popover), date range
@@ -282,7 +282,7 @@ export default function ShopTransactionsPage() {
 
   // ─── Empty-shop short-circuit (Req 9.1) ──────────────────────────────────
   // Rendered before the data hooks are read so no list request fires.
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         <PageHeader

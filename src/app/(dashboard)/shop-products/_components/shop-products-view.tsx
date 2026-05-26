@@ -21,7 +21,7 @@
  * shell already provides one).
  *
  * Functional behavior is preserved verbatim from the standalone page:
- *   - Empty state via `<EmptyShopState />` when `mode !== "SINGLE_SHOP"`,
+ *   - Empty state via `<EmptyShopState />` when `mode !== "STORE_MODE"`,
  *     and the underlying TanStack Query is disabled in that branch
  *     (Req 7.11, design §11).
  *   - Filters: availability (all / available / sold out), low-stock
@@ -178,7 +178,7 @@ export function ShopProductsView({ embedded = false }: ShopProductsViewProps) {
   // Subscribes to `stock-out` / `low-stock` events scoped to the active
   // shop and applies surgical in-place patches to every cached page so the
   // current pagination/ordering is preserved (Req 7.8, 11.3, 11.4, 14.5).
-  // The hook itself short-circuits when `mode !== "SINGLE_SHOP"`, but it
+  // The hook itself short-circuits when `mode !== "STORE_MODE"`, but it
   // must be mounted unconditionally above the early-return below to keep
   // hook ordering stable across renders.
   useShopProductLiveUpdates()
@@ -268,7 +268,7 @@ export function ShopProductsView({ embedded = false }: ShopProductsViewProps) {
 
   // ─── Empty-shop short-circuit (Req 7.11) ─────────────────────────────────
   // Rendered before the data hooks are read so no list request fires.
-  if (mode !== "SINGLE_SHOP") {
+  if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
         {/* In embedded mode the parent surface owns the page title; suppress
