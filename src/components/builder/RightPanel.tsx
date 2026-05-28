@@ -7,8 +7,11 @@ import { cn } from "@/lib/utils"
 import type {
   SectionManifest,
   SectionType,
+  Theme,
   UpdateSectionMerchPayload,
 } from "@/types/theme.types"
+import ChromeRegionEditor from "./ChromeRegionEditor"
+import type { ChromeRegion } from "./chromeRegions"
 import PropertyEditor from "./PropertyEditor"
 import SectionLibrary from "./SectionLibrary"
 import { getSectionTypeMeta } from "./sectionTypesMeta"
@@ -20,6 +23,12 @@ interface RightPanelProps {
   onConfigChange: (config: Record<string, unknown>) => void
   onMerchBindingChange: (binding: UpdateSectionMerchPayload) => void
   onBack?: () => void
+  /** Currently selected chrome region (top bar, search, etc.) for theme-level editing. */
+  selectedChromeRegion?: ChromeRegion | null
+  /** Active theme bound to the current tab (for chrome editor). */
+  activeTheme?: Theme | null
+  /** Close the chrome editor and return to library/property editor. */
+  onCloseChromeEditor?: () => void
 }
 
 export default function RightPanel({
@@ -29,7 +38,20 @@ export default function RightPanel({
   onConfigChange,
   onMerchBindingChange,
   onBack,
+  selectedChromeRegion,
+  activeTheme,
+  onCloseChromeEditor,
 }: RightPanelProps) {
+  if (selectedChromeRegion) {
+    return (
+      <ChromeRegionEditor
+        region={selectedChromeRegion}
+        theme={activeTheme ?? null}
+        onClose={() => onCloseChromeEditor?.()}
+      />
+    )
+  }
+
   if (selectedSection) {
     const meta = getSectionTypeMeta(selectedSection.section_type)
     const Icon = meta.icon

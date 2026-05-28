@@ -1,6 +1,7 @@
 "use client"
 
-import { Check, Plus } from "lucide-react"
+import { useDraggable } from "@dnd-kit/core"
+import { Check, GripVertical, Plus } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { SectionType } from "@/types/theme.types"
+import { DRAG_KIND, libraryDraggableId } from "./dndTypes"
 import {
   cloneSectionDefaultConfig,
   type SectionTypeMeta,
@@ -33,14 +35,29 @@ function CardBody({
   const Icon = meta.icon
   const isAdded = currentCount > 0
 
+  // Library cards are draggable when not disabled.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: libraryDraggableId(meta.type),
+    disabled: isDisabled,
+    data: {
+      kind: DRAG_KIND.LIBRARY_SECTION,
+      sectionType: meta.type,
+      defaultConfig: cloneSectionDefaultConfig(meta),
+      source: "library" as const,
+    },
+  })
+
   return (
     <div
+      ref={setNodeRef}
+      data-testid={`library-card-${meta.type}`}
       className={cn(
         "relative rounded-2xl border bg-white p-3.5 shadow-sm transition-all duration-200",
         isDisabled
           ? "cursor-not-allowed border-slate-200 opacity-50"
           : "border-slate-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
-        isAdded && !isDisabled && "border-emerald-200/80 bg-emerald-50/30"
+        isAdded && !isDisabled && "border-emerald-200/80 bg-emerald-50/30",
+        isDragging && "opacity-40"
       )}
     >
       {/* Added indicator — top-right corner */}
@@ -51,6 +68,19 @@ function CardBody({
       ) : null}
 
       <div className="flex items-start gap-3">
+        {/* Drag handle — only visible when not disabled */}
+        {!isDisabled ? (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${meta.label} into preview`}
+            className="flex h-10 w-7 shrink-0 cursor-grab items-center justify-center rounded-lg text-slate-300 hover:bg-slate-50 hover:text-slate-500 active:cursor-grabbing"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        ) : null}
+
         {/* Icon */}
         <div
           className={cn(
@@ -94,7 +124,7 @@ function CardBody({
             </span>
           ) : (
             <span className="text-[11px] text-slate-400">
-              Not added yet
+              Drag onto preview or click Add
             </span>
           )}
         </div>

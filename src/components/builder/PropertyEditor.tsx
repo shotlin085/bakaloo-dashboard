@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import CategoryBinder from "./CategoryBinder"
 import { getSectionTypeMeta } from "./sectionTypesMeta"
+import StylePresetPicker from "./StylePresetPicker"
 import BannerEditor from "./editors/BannerEditor"
 import MosaicEditor from "./editors/MosaicEditor"
 import ProductConfigEditor from "./editors/ProductConfigEditor"
@@ -100,7 +101,12 @@ export default function PropertyEditor({
           ) : null}
         </TabsList>
 
-        <TabsContent value="style" className="mt-5">
+        <TabsContent value="style" className="mt-5 space-y-4">
+          <StylePresetPicker
+            sectionType={section.section_type}
+            config={localConfig}
+            onChange={handleConfigChange}
+          />
           <StyleEditorRouter
             section={section}
             config={localConfig}

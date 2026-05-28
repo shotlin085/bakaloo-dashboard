@@ -16,6 +16,11 @@ import {
   RotateCcw,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { useDroppable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import type { SectionManifest, ThemeData } from "@/types/theme.types"
 import {
@@ -27,6 +32,10 @@ import { useStoreContext } from "@/contexts/StoreContext"
 import { previewRegistry } from "./previews"
 import { QuickActionsToolbar } from "./QuickActionsToolbar"
 import { BuilderErrorBoundary } from "./BuilderErrorBoundary"
+import PreviewInsertionLine from "./PreviewInsertionLine"
+import PreviewSortableSection from "./PreviewSortableSection"
+import { DRAG_KIND, previewInsertSlotId } from "./dndTypes"
+import type { ChromeRegion } from "./chromeRegions"
 import styles from "./MobilePreviewFrame.module.css"
 
 interface MobilePreviewFrameProps {
@@ -42,6 +51,14 @@ interface MobilePreviewFrameProps {
   onToggleVisibility?: (sectionId: string, visible: boolean) => void
   onDuplicate?: (sectionId: string) => void
   onDelete?: (sectionId: string) => void
+  /** Click handler for chrome regions (top bar, search, category tabs, bottom nav). */
+  onChromeRegionClick?: (region: ChromeRegion) => void
+  /** Currently selected chrome region — drives the highlight outline. */
+  selectedChromeRegion?: ChromeRegion | null
+  /** Callback fired when a category tab inside the preview is clicked. */
+  onPreviewTabChange?: (tabKey: string) => void
+  /** True while a drag is active anywhere in the builder — expands insertion slots. */
+  isDragActive?: boolean
 }
 
 const PHONE_WIDTH = 430
@@ -70,6 +87,10 @@ export function MobilePreviewFrame({
   onToggleVisibility,
   onDuplicate,
   onDelete,
+  onChromeRegionClick,
+  selectedChromeRegion,
+  onPreviewTabChange,
+  isDragActive = false,
 }: MobilePreviewFrameProps) {
   const frameRef = useRef<HTMLDivElement | null>(null)
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -163,6 +184,9 @@ export function MobilePreviewFrame({
                 themeData={themeData}
                 activeTabKey={activeTabKey}
                 storeKey={activeStoreKey}
+                onRegionClick={onChromeRegionClick}
+                selectedRegion={selectedChromeRegion ?? null}
+                onPreviewTabChange={onPreviewTabChange}
               />
             </div>
 
@@ -170,60 +194,102 @@ export function MobilePreviewFrame({
               className={styles.scrollableContent}
               style={{ opacity: isStale ? 0.97 : 1, transition: "opacity 100ms ease" }}
             >
-              {orderedSections.map((section, index) => {
-                const PreviewComponent = previewRegistry[section.section_type]
-                const sectionProducts = resolveProductsForSection(products, section)
-                return (
-                  <div
-                    key={section.id}
-                    id={`preview-section-${section.id}`}
-                    ref={(el) => {
-                      if (el) sectionRefs.current.set(section.id, el)
-                      else sectionRefs.current.delete(section.id)
-                    }}
-                    style={{
-                      contain: "content",
-                      border: selectedSectionId === section.id
-                        ? "2px solid var(--store-accent, #3B82F6)"
-                        : "2px solid transparent",
-                      borderRadius: 8,
-                      transition: "border-color 200ms ease",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <BuilderErrorBoundary
-                      sectionType={section.section_type}
-                      sectionId={section.id}
-                    >
-                      <PreviewComponent
-                        section={section}
-                        isSelected={selectedSectionId === section.id}
-                        onClick={() => onSectionClick(section.id)}
-                        categories={categories}
-                        products={sectionProducts}
-                      />
-                    </BuilderErrorBoundary>
-                    {selectedSectionId === section.id && (
-                      <div className="flex justify-center py-1">
-                        <QuickActionsToolbar
+              {orderedSections.length === 0 ? (
+                <PreviewEmptyDropZone />
+              ) : (
+                <SortableContext
+                  items={orderedSections.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <PreviewInsertionLine index={0} active={isDragActive} />
+                  {orderedSections.map((section, index) => {
+                    const PreviewComponent =
+                      previewRegistry[section.section_type]
+                    const sectionProducts = resolveProductsForSection(
+                      products,
+                      section
+                    )
+                    return (
+                      <div
+                        key={section.id}
+                        id={`preview-section-${section.id}`}
+                        ref={(el) => {
+                          if (el) sectionRefs.current.set(section.id, el)
+                          else sectionRefs.current.delete(section.id)
+                        }}
+                      >
+                        <PreviewSortableSection
                           sectionId={section.id}
-                          sectionIndex={index}
-                          totalSections={orderedSections.length}
-                          isVisible={section.visible}
-                          onMoveUp={() => onMoveUp?.(section.id)}
-                          onMoveDown={() => onMoveDown?.(section.id)}
-                          onToggleVisibility={() => onToggleVisibility?.(section.id, !section.visible)}
-                          onDuplicate={() => onDuplicate?.(section.id)}
-                          onDelete={() => onDelete?.(section.id)}
+                          sectionType={section.section_type}
+                          isSelected={selectedSectionId === section.id}
+                          onClick={() => onSectionClick(section.id)}
+                        >
+                          <BuilderErrorBoundary
+                            sectionType={section.section_type}
+                            sectionId={section.id}
+                          >
+                            <PreviewComponent
+                              section={section}
+                              isSelected={selectedSectionId === section.id}
+                              onClick={() => onSectionClick(section.id)}
+                              categories={categories}
+                              products={sectionProducts}
+                            />
+                          </BuilderErrorBoundary>
+                          {selectedSectionId === section.id && (
+                            <div className="flex justify-center py-1">
+                              <QuickActionsToolbar
+                                sectionId={section.id}
+                                sectionIndex={index}
+                                totalSections={orderedSections.length}
+                                isVisible={section.visible}
+                                onMoveUp={() => onMoveUp?.(section.id)}
+                                onMoveDown={() => onMoveDown?.(section.id)}
+                                onToggleVisibility={() =>
+                                  onToggleVisibility?.(
+                                    section.id,
+                                    !section.visible
+                                  )
+                                }
+                                onDuplicate={() => onDuplicate?.(section.id)}
+                                onDelete={() => onDelete?.(section.id)}
+                              />
+                            </div>
+                          )}
+                        </PreviewSortableSection>
+                        <PreviewInsertionLine
+                          index={index + 1}
+                          active={isDragActive}
                         />
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </SortableContext>
+              )}
             </div>
 
-            <div className={styles.bottomNav}>
+            <div
+              className={styles.bottomNav}
+              data-region="bottom_nav"
+              onClick={(e) => {
+                if (!onChromeRegionClick) return
+                e.stopPropagation()
+                onChromeRegionClick("bottom_nav")
+              }}
+              style={
+                onChromeRegionClick
+                  ? {
+                      cursor: "pointer",
+                      outline:
+                        selectedChromeRegion === "bottom_nav"
+                          ? "2px solid var(--store-accent, #3B82F6)"
+                          : "2px solid transparent",
+                      outlineOffset: -2,
+                      transition: "outline-color 150ms ease",
+                    }
+                  : undefined
+              }
+            >
               <div className={styles.bottomNavDock}>
                 {storeConfig.bottomNav.map((label, index) => {
                   const Icon = NAV_ICON_MAP[label] ?? Grid2x2
@@ -244,6 +310,44 @@ export function MobilePreviewFrame({
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Empty-canvas drop target shown when the active tab has no sections.
+ * Drops resolve to insertion at index 0.
+ */
+function PreviewEmptyDropZone() {
+  const { setNodeRef, isOver } = useDroppable({
+    id: previewInsertSlotId(0),
+    data: { kind: DRAG_KIND.PREVIEW_INSERT_SLOT, index: 0 },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        margin: 16,
+        padding: "32px 16px",
+        borderRadius: 16,
+        border: `2px dashed ${
+          isOver ? "var(--store-accent, #3B82F6)" : "#CBD5E1"
+        }`,
+        background: isOver
+          ? "rgba(59, 130, 246, 0.08)"
+          : "rgba(248, 250, 252, 0.7)",
+        textAlign: "center",
+        transition: "background 150ms ease, border-color 150ms ease",
+      }}
+    >
+      <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 6 }}>📦</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>
+        Drag sections here to build this page
+      </div>
+      <div style={{ marginTop: 4, fontSize: 11, color: "#64748B" }}>
+        or click <strong>Add</strong> on any card in the section library
       </div>
     </div>
   )

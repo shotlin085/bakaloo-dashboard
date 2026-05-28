@@ -1,7 +1,19 @@
 "use client"
 
 import Link from "next/link"
-import { Suspense, useEffect, useRef, useState, type CSSProperties } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import {
+  DndContext,
+  DragOverlay as DndDragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core"
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -16,15 +28,30 @@ import {
 } from "next/navigation"
 import { toast } from "sonner"
 import BuilderToolbar from "@/components/builder/BuilderToolbar"
+import BuilderDragOverlay from "@/components/builder/DragOverlay"
 import TabManagerPanel from "@/components/builder/TabManagerPanel"
 import { TimelineBar } from "@/components/builder/TimelineBar"
 import { MobilePreviewFrame } from "@/components/builder/MobilePreviewFrame"
 import RightPanel from "@/components/builder/RightPanel"
 import SortableSectionList from "@/components/builder/SortableSectionList"
-import { StoreSwitcher } from "@/components/builder/StoreSwitcher"
 import TabNavbar from "@/components/builder/TabNavbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  isExistingSectionDrag,
+  isInsertSlotDrop,
+  isLibrarySectionDrag,
+  canAcceptSectionType,
+  type BuilderDragData,
+} from "@/components/builder/dndTypes"
+import { getSectionTypeMeta } from "@/components/builder/sectionTypesMeta"
+import {
+  applyPagePresetStyle,
+  type PageThemePreset,
+} from "@/components/builder/pagePresets"
+import { runPublishChecklist } from "@/components/builder/publishChecklist"
+import ThemePresetPicker from "@/components/builder/ThemePresetPicker"
+import { useUpdateTheme } from "@/hooks/useThemes"
 import {
   useAddSection,
   useDeleteSection,
@@ -36,6 +63,12 @@ import {
   useUpdateSection,
   useUpdateSectionMerch,
 } from "@/hooks/useSections"
+import { useBuilderHistory } from "@/hooks/useBuilderHistory"
+import {
+  clearAutosaveDraft,
+  readAutosaveDraft,
+  useBuilderAutosave,
+} from "@/hooks/useBuilderAutosave"
 import { useTabThemes } from "@/hooks/useThemes"
 import { useArchiveThemeTab, useCreateThemeTab, useThemeTabs, useUpdateThemeTab } from "@/hooks/useThemeTabs"
 import { useStoreContext } from "@/contexts/StoreContext"
@@ -45,11 +78,12 @@ import type {
   ScheduleSectionLayoutPayload,
   SectionManifest,
   SectionType,
+  Theme,
   ThemeData,
   ThemeTab,
-  ThemeStoreKey,
   UpdateSectionMerchPayload,
 } from "@/types/theme.types"
+import type { ChromeRegion } from "@/components/builder/chromeRegions"
 
 type BuilderStatus = "Draft" | "Live" | "Scheduled"
 
@@ -245,8 +279,29 @@ function ThemeBuilderPageContent() {
 
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const [selectedChromeRegion, setSelectedChromeRegion] =
+    useState<ChromeRegion | null>(null)
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null)
-  const [localSections, setLocalSections] = useState<BuilderSection[]>([])
+  const sectionsHistory = useBuilderHistory<BuilderSection[]>([])
+  const localSections = sectionsHistory.present
+  // Adapter that matches React.useState API but routes through history.
+  const setLocalSections = (
+    next: BuilderSection[] | ((prev: BuilderSection[]) => BuilderSection[])
+  ) => {
+    if (typeof next === "function") {
+      sectionsHistory.update(
+        next as (prev: BuilderSection[]) => BuilderSection[]
+      )
+    } else {
+      sectionsHistory.set(next)
+    }
+  }
+  // Resets history (used after server fetch, tab switch, discard, save).
+  const resetLocalSections = (next: BuilderSection[]) => {
+    sectionsHistory.reset(next)
+  }
+  const [activeDragData, setActiveDragData] =
+    useState<BuilderDragData | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [persistedStatus, setPersistedStatus] = useState<BuilderStatus>("Live")
   const [versionNumber, setVersionNumber] = useState(1)
@@ -294,6 +349,17 @@ function ThemeBuilderPageContent() {
     )?.theme_data ??
     tabThemes.find((theme) => theme.tab_key === "all" && theme.status === "active")
       ?.theme_data ??
+    null
+
+  // The full Theme object backing activeThemeData — needed for chrome region editing.
+  const activeTheme: Theme | null =
+    tabThemes.find(
+      (theme) => theme.tab_id === activeTab?.id && theme.status === "active"
+    ) ??
+    tabThemes.find(
+      (theme) => theme.tab_key === activeTab?.key && theme.status === "active"
+    ) ??
+    tabThemes.find((theme) => theme.tab_key === "all" && theme.status === "active") ??
     null
 
   const selectedSection =
@@ -350,7 +416,8 @@ function ThemeBuilderPageContent() {
   useEffect(() => {
     if (isDirty) return
     if (!sectionsBelongToTab(sectionsQuery.data, activeTabId)) return
-    setLocalSections(normalizeBuilderSections(sectionsQuery.data ?? []))
+    resetLocalSections(normalizeBuilderSections(sectionsQuery.data ?? []))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty, sectionsQuery.data, activeTabId])
 
   useEffect(() => {
@@ -379,23 +446,14 @@ function ThemeBuilderPageContent() {
     }
   }, [isDirty])
 
-  // Ctrl/⌘+1–4 keyboard shortcuts for store switching
+  // Auto-bind store key to the active tab's store_key.
+  // The store switcher UI is hidden — only one default mobile home layout is needed
+  // for the current mobile experience. Underlying store data is preserved for the API.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        const keyMap: Record<string, ThemeStoreKey> = {
-          "1": "zepto", "2": "off_zone", "3": "super_mall", "4": "cafe",
-        }
-        const storeKey = keyMap[e.key]
-        if (storeKey) {
-          e.preventDefault()
-          setActiveStoreKey(storeKey)
-        }
-      }
+    if (activeTab && activeTab.store_key !== activeStoreKey) {
+      setActiveStoreKey(activeTab.store_key)
     }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [setActiveStoreKey])
+  }, [activeTab, activeStoreKey, setActiveStoreKey])
 
   // On mobile/tablet, scroll to the editor panel when a section is selected
   useEffect(() => {
@@ -454,7 +512,7 @@ function ThemeBuilderPageContent() {
         setRequestedTabKey(nextTab.key)
       }
       setActiveTabId(tabId)
-      setLocalSections(normalizeBuilderSections(nextSections))
+      resetLocalSections(normalizeBuilderSections(nextSections))
       setSelectedSectionId(null)
       setIsDirty(false)
       setPersistedStatus(derivePersistedStatus(nextVersions[0] ?? null))
@@ -536,6 +594,58 @@ function ThemeBuilderPageContent() {
     setLocalSections((current) => reindexSections([...current, nextSection]))
     setSelectedSectionId(nextSection.id)
     markDirty()
+  }
+
+  /**
+   * Insert a brand-new section at a specific index. Used by drag-from-library
+   * drop handler. Reuses the same defaults that the click-Add button uses.
+   * Returns true on success so the caller can decide on UX feedback.
+   */
+  const handleInsertSection = (
+    sectionType: SectionType,
+    defaultConfig: Record<string, unknown>,
+    index: number
+  ): boolean => {
+    if (!activeTab) {
+      toast.error("Select a tab before adding a section")
+      return false
+    }
+
+    const meta = getSectionTypeMeta(sectionType)
+    const acceptance = canAcceptSectionType(localSections, sectionType, {
+      maxPerTab: meta.maxPerTab,
+      globalLimit: 15,
+    })
+    if (!acceptance.allowed) {
+      toast.error(acceptance.reason ?? "Section cannot be added")
+      return false
+    }
+
+    const now = new Date().toISOString()
+    const nextSection: BuilderSection = {
+      id: createTempId(),
+      tab_id: activeTab.id,
+      tab_key: activeTab.key,
+      store_key: activeTab.store_key,
+      section_type: sectionType,
+      sort_order: 0,
+      visible: true,
+      config: deepClone(defaultConfig),
+      merch_binding: null,
+      created_at: now,
+      updated_at: now,
+    }
+
+    setLocalSections((current) => {
+      const copy = current.slice()
+      const safeIndex = Math.max(0, Math.min(index, copy.length))
+      copy.splice(safeIndex, 0, nextSection)
+      return reindexSections(copy)
+    })
+    setSelectedSectionId(nextSection.id)
+    setSelectedChromeRegion(null)
+    markDirty()
+    return true
   }
 
   const handleRemoveSection = (id: string) => {
@@ -620,6 +730,9 @@ function ThemeBuilderPageContent() {
     })
     markDirty()
   }
+  // Suppress lint warning — kept for callers that may rely on explicit string-id reorder
+  // (e.g. external hooks or tests). The shared DnD pipeline calls setLocalSections directly.
+  void handleReorderSections
 
   const handleConfigChange = (config: Record<string, unknown>) => {
     if (!selectedSectionId) return
@@ -668,9 +781,10 @@ function ThemeBuilderPageContent() {
   }
 
   const handleDiscard = () => {
-    setLocalSections(normalizeBuilderSections(sectionsQuery.data ?? []))
+    resetLocalSections(normalizeBuilderSections(sectionsQuery.data ?? []))
     setSelectedSectionId(null)
     setIsDirty(false)
+    clearAutosaveDraft(activeTabId)
   }
 
   const persistLayout = async (targetStatus: Exclude<BuilderStatus, "Scheduled">) => {
@@ -809,7 +923,8 @@ function ThemeBuilderPageContent() {
         freshSections.data ?? []
       )
 
-      setLocalSections(normalizedFreshSections)
+      resetLocalSections(normalizedFreshSections)
+      clearAutosaveDraft(activeTabId)
       setSelectedSectionId((currentSelectedId) => {
         if (!currentSelectedId) return null
         const persistedId = selectedIdMap.get(currentSelectedId) ?? currentSelectedId
@@ -876,6 +991,219 @@ function ThemeBuilderPageContent() {
     }
   }
 
+  // ─── Phase 3: page-level theme preset handlers ────────────────────────────
+  const updateThemeMutation = useUpdateTheme()
+
+  const handleApplyPagePresetStyle = async (preset: PageThemePreset) => {
+    if (!activeTheme) {
+      toast.error("This tab has no active theme to update.")
+      return
+    }
+    const next = applyPagePresetStyle(activeTheme.theme_data, preset)
+    await updateThemeMutation.mutateAsync({
+      id: activeTheme.id,
+      payload: { theme_data: next },
+    })
+  }
+
+  const handleReplaceLayoutWithPreset = (preset: PageThemePreset) => {
+    if (!activeTab) {
+      toast.error("Select a tab before applying a preset.")
+      return
+    }
+    const now = new Date().toISOString()
+    const next: BuilderSection[] = preset.recommendedSections.map(
+      (entry, index) => {
+        const meta = getSectionTypeMeta(entry.section_type)
+        const baseConfig = JSON.parse(JSON.stringify(meta.defaultConfig)) as Record<
+          string,
+          unknown
+        >
+        return {
+          id: createTempId(),
+          tab_id: activeTab.id,
+          tab_key: activeTab.key,
+          store_key: activeTab.store_key,
+          section_type: entry.section_type,
+          sort_order: index,
+          visible: true,
+          config: { ...baseConfig, ...(entry.config ?? {}) },
+          merch_binding: null,
+          created_at: now,
+          updated_at: now,
+        }
+      }
+    )
+    setLocalSections(next)
+    setSelectedSectionId(null)
+    setSelectedChromeRegion(null)
+    markDirty()
+    toast.success(`Layout replaced with “${preset.label}”. Save Draft to persist.`)
+  }
+
+  // ─── Phase 3: publish checklist (recomputed on every render) ───────────────
+  const publishChecklist = useMemo(
+    () => runPublishChecklist(localSections),
+    [localSections]
+  )
+
+  // ─── Phase 2: shared DnD sensors + handlers ────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as BuilderDragData | undefined
+    if (data) setActiveDragData(data)
+  }
+
+  const handleDragCancel = () => setActiveDragData(null)
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDragData(null)
+
+    if (!over) return
+    const activeData = active.data.current as BuilderDragData | undefined
+    const overData = over.data.current as BuilderDragData | undefined
+
+    // 1) Library card → preview insertion slot.
+    if (activeData && isLibrarySectionDrag(activeData) && overData && isInsertSlotDrop(overData)) {
+      handleInsertSection(
+        activeData.sectionType,
+        activeData.defaultConfig,
+        overData.index
+      )
+      return
+    }
+
+    // 2) Library card dropped on an existing section → insert just before it.
+    if (
+      activeData &&
+      isLibrarySectionDrag(activeData) &&
+      typeof over.id === "string" &&
+      !String(over.id).startsWith("preview-slot:")
+    ) {
+      const targetIndex = localSections.findIndex((s) => s.id === over.id)
+      if (targetIndex >= 0) {
+        handleInsertSection(
+          activeData.sectionType,
+          activeData.defaultConfig,
+          targetIndex
+        )
+      }
+      return
+    }
+
+    // 3) Existing section reorder (stack OR preview source — both share local state).
+    if (activeData && isExistingSectionDrag(activeData)) {
+      // Drop on insertion slot → place at slot index (clamped).
+      if (overData && isInsertSlotDrop(overData)) {
+        const fromIdx = localSections.findIndex((s) => s.id === activeData.sectionId)
+        if (fromIdx < 0) return
+        // Account for shift when moving downward across the source position.
+        const insertIdx = overData.index > fromIdx ? overData.index - 1 : overData.index
+        if (insertIdx === fromIdx) return
+        setLocalSections((current) => {
+          const ordered = arrayMove(current, fromIdx, insertIdx)
+          return reindexSections(ordered)
+        })
+        markDirty()
+        return
+      }
+      // Drop on another section → swap order.
+      if (active.id !== over.id) {
+        const fromIdx = localSections.findIndex((s) => s.id === active.id)
+        const toIdx = localSections.findIndex((s) => s.id === over.id)
+        if (fromIdx >= 0 && toIdx >= 0) {
+          setLocalSections((current) => {
+            const ordered = arrayMove(current, fromIdx, toIdx)
+            return reindexSections(ordered)
+          })
+          markDirty()
+        }
+      }
+    }
+  }
+
+  // ─── Phase 2: autosave to localStorage (debounced, per-tab) ────────────────
+  useBuilderAutosave(activeTabId, localSections, isDirty, {
+    enabled: !isProcessing,
+  })
+
+  // ─── Phase 2: restore prompt on tab activation (if a fresher draft exists) ─
+  const restorePromptShownRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!activeTabId || isDirty || isProcessing) return
+    if (restorePromptShownRef.current === activeTabId) return
+    const draft = readAutosaveDraft<BuilderSection[]>(activeTabId)
+    if (!draft || !Array.isArray(draft.data) || draft.data.length === 0) return
+
+    const serverSerialized = JSON.stringify(
+      normalizeBuilderSections(sectionsQuery.data ?? [])
+    )
+    const draftSerialized = JSON.stringify(draft.data)
+    if (serverSerialized === draftSerialized) {
+      clearAutosaveDraft(activeTabId)
+      return
+    }
+
+    restorePromptShownRef.current = activeTabId
+    const ageMin = Math.max(
+      1,
+      Math.round((Date.now() - draft.timestamp) / 60_000)
+    )
+    if (
+      window.confirm(
+        `An unsaved draft from ~${ageMin} min ago was found for this tab. Restore it?`
+      )
+    ) {
+      setLocalSections(reindexSections(draft.data))
+      setIsDirty(true)
+    } else {
+      clearAutosaveDraft(activeTabId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId, isDirty, isProcessing, sectionsQuery.data])
+
+  // ─── Phase 2: undo / redo keyboard shortcuts ───────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key !== "z" && e.key !== "Z") return
+      e.preventDefault()
+      if (e.shiftKey) {
+        if (sectionsHistory.canRedo) sectionsHistory.redo()
+      } else {
+        if (sectionsHistory.canUndo) sectionsHistory.undo()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [sectionsHistory])
+
+  // dndOverlay: figure out what to render in the floating drag overlay.
+  const dndOverlay = useMemo(() => {
+    if (!activeDragData) return null
+    if (isLibrarySectionDrag(activeDragData)) {
+      return (
+        <BuilderDragOverlay
+          kind="library"
+          sectionType={activeDragData.sectionType}
+        />
+      )
+    }
+    if (isExistingSectionDrag(activeDragData)) {
+      const section = localSections.find(
+        (s) => s.id === activeDragData.sectionId
+      )
+      if (!section) return null
+      return <BuilderDragOverlay kind="existing" section={section} />
+    }
+    return null
+  }, [activeDragData, localSections])
+
   if (isLoadingTabs) {
     return <BuilderTabSkeletonState />
   }
@@ -908,15 +1236,22 @@ function ThemeBuilderPageContent() {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[linear-gradient(180deg,#f5f7fb_0%,#edf2f7_100%)] xl:overflow-hidden"
-      aria-busy={isTabSwitching}
-      style={{
-        '--store-accent': storeConfig.bg,
-        '--store-bg': `${storeConfig.bg}15`,
-        '--store-text': storeConfig.text,
-      } as CSSProperties}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
+      <div
+        className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[linear-gradient(180deg,#f5f7fb_0%,#edf2f7_100%)] xl:overflow-hidden"
+        aria-busy={isTabSwitching}
+        style={{
+          '--store-accent': storeConfig.bg,
+          '--store-bg': `${storeConfig.bg}15`,
+          '--store-text': storeConfig.text,
+        } as CSSProperties}
+      >
       {isTabSwitching ? (
         <div className="absolute inset-0 z-30 bg-white/20 backdrop-blur-[1px]">
           <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-medium text-slate-600 shadow-sm">
@@ -943,12 +1278,6 @@ function ThemeBuilderPageContent() {
               </div>
             </div>
             <div className="mt-2">
-              <StoreSwitcher
-                onStoreChange={() => {
-                  setSelectedSectionId(null)
-                  setIsDirty(false)
-                }}
-              />
               <TabNavbar
                 tabs={themeTabs}
                 activeTabId={activeTabId}
@@ -989,7 +1318,6 @@ function ThemeBuilderPageContent() {
                   sections={localSections}
                   selectedSectionId={selectedSectionId}
                   onSelect={setSelectedSectionId}
-                  onReorder={handleReorderSections}
                   onRemove={handleRemoveSection}
                   onToggleVisibility={handleToggleVisibility}
                   onDuplicate={handleDuplicateSection}
@@ -1029,6 +1357,12 @@ function ThemeBuilderPageContent() {
                 <Sparkles className="h-4 w-4 text-sky-500" />
                 {selectedSection ? selectedSection.section_type : "Library mode"}
               </div>
+              <ThemePresetPicker
+                isDirty={isDirty}
+                isBusy={updateThemeMutation.isPending}
+                onApplyStyleOnly={handleApplyPagePresetStyle}
+                onReplaceLayout={handleReplaceLayoutWithPreset}
+              />
             </div>
           </div>
 
@@ -1046,7 +1380,10 @@ function ThemeBuilderPageContent() {
                   sections={localSections}
                   selectedSectionId={selectedSectionId}
                   hoveredSectionId={hoveredSectionId}
-                  onSectionClick={setSelectedSectionId}
+                  onSectionClick={(id) => {
+                    setSelectedChromeRegion(null)
+                    setSelectedSectionId(id)
+                  }}
                   themeData={activeThemeData}
                   activeTabKey={activeTab?.key ?? "all"}
                   scale={0.98}
@@ -1055,6 +1392,16 @@ function ThemeBuilderPageContent() {
                   onToggleVisibility={handleToggleVisibility}
                   onDuplicate={handleDuplicateSection}
                   onDelete={handleRemoveSection}
+                  onChromeRegionClick={(region) => {
+                    setSelectedSectionId(null)
+                    setSelectedChromeRegion(region)
+                  }}
+                  selectedChromeRegion={selectedChromeRegion}
+                  onPreviewTabChange={(key) => {
+                    const tab = themeTabs.find((t) => t.key === key)
+                    if (tab && tab.id !== activeTabId) handleTabChange(tab.id)
+                  }}
+                  isDragActive={Boolean(activeDragData)}
                 />
               </div>
             </div>
@@ -1070,6 +1417,9 @@ function ThemeBuilderPageContent() {
               onConfigChange={handleConfigChange}
               onMerchBindingChange={handleMerchBindingChange}
               onBack={() => setSelectedSectionId(null)}
+              selectedChromeRegion={selectedChromeRegion}
+              activeTheme={activeTheme}
+              onCloseChromeEditor={() => setSelectedChromeRegion(null)}
             />
           </div>
         </aside>
@@ -1107,6 +1457,11 @@ function ThemeBuilderPageContent() {
             onSchedule={handleSchedule}
             version={displayVersion}
             status={displayStatus}
+            onUndo={() => sectionsHistory.undo()}
+            onRedo={() => sectionsHistory.redo()}
+            canUndo={sectionsHistory.canUndo}
+            canRedo={sectionsHistory.canRedo}
+            publishChecklist={publishChecklist}
             isProcessing={
               isProcessing ||
               createThemeTabMutation.isPending ||
@@ -1116,11 +1471,14 @@ function ThemeBuilderPageContent() {
               updateSectionMutation.isPending ||
               updateSectionMerchMutation.isPending ||
               duplicateSectionMutation.isPending ||
-              scheduleSectionLayoutMutation.isPending
+              scheduleSectionLayoutMutation.isPending ||
+              updateThemeMutation.isPending
             }
           />
         </div>
       </div>
-    </div>
+      </div>
+      <DndDragOverlay dropAnimation={null}>{dndOverlay}</DndDragOverlay>
+    </DndContext>
   )
 }

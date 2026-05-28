@@ -3,11 +3,19 @@
 import { useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import type { SectionManifest, SectionType } from "@/types/theme.types"
-import SectionTypeCard from "./SectionTypeCard"
-import { sectionTypesMeta } from "./sectionTypesMeta"
 import { useStoreContext } from "@/contexts/StoreContext"
+import SectionTypeCard from "./SectionTypeCard"
+import {
+  QUICK_TAGS,
+  SECTION_GROUP_META,
+  sectionTypesMeta,
+  type QuickTag,
+  type SectionTemplateGroup,
+} from "./sectionTypesMeta"
 
 interface SectionLibraryProps {
   sections: SectionManifest[]
@@ -15,6 +23,18 @@ interface SectionLibraryProps {
 }
 
 const MAX_SECTIONS_PER_TAB = 15
+type GroupFilter = "all" | SectionTemplateGroup
+
+const GROUP_OPTIONS: Array<{ value: GroupFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "header", label: SECTION_GROUP_META.header.label },
+  { value: "hero", label: SECTION_GROUP_META.hero.label },
+  { value: "offers", label: SECTION_GROUP_META.offers.label },
+  { value: "products", label: SECTION_GROUP_META.products.label },
+  { value: "categories", label: SECTION_GROUP_META.categories.label },
+  { value: "content", label: SECTION_GROUP_META.content.label },
+  { value: "seasonal", label: SECTION_GROUP_META.seasonal.label },
+]
 
 export default function SectionLibrary({
   sections,
@@ -22,15 +42,20 @@ export default function SectionLibrary({
 }: SectionLibraryProps) {
   const { activeStoreKey } = useStoreContext()
   const [query, setQuery] = useState("")
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>("all")
+  const [activeTags, setActiveTags] = useState<QuickTag[]>([])
 
   const totalSections = sections.length
   const normalizedQuery = query.trim().toLowerCase()
 
   const currentCounts = useMemo(() => {
-    return sections.reduce<Partial<Record<SectionType, number>>>((acc, section) => {
-      acc[section.section_type] = (acc[section.section_type] ?? 0) + 1
-      return acc
-    }, {})
+    return sections.reduce<Partial<Record<SectionType, number>>>(
+      (acc, section) => {
+        acc[section.section_type] = (acc[section.section_type] ?? 0) + 1
+        return acc
+      },
+      {}
+    )
   }, [sections])
 
   const addedCount = useMemo(() => {
@@ -40,22 +65,37 @@ export default function SectionLibrary({
   const filteredTypes = useMemo(() => {
     let types = sectionTypesMeta
 
-    // Store scope filter — only show types available in the active store
     types = types.filter((meta) => {
       if (!meta.storeKeys) return true
       return meta.storeKeys.includes(activeStoreKey)
     })
 
-    // Search filter
+    if (groupFilter !== "all") {
+      types = types.filter((meta) => meta.group === groupFilter)
+    }
+
+    if (activeTags.length > 0) {
+      types = types.filter((meta) =>
+        activeTags.every((tag) => meta.tags?.includes(tag))
+      )
+    }
+
     if (normalizedQuery) {
       types = types.filter((meta) => {
-        const haystack = `${meta.label} ${meta.type} ${meta.description}`.toLowerCase()
+        const haystack = `${meta.label} ${meta.type} ${meta.description} ${
+          meta.useCase ?? ""
+        } ${(meta.tags ?? []).join(" ")}`.toLowerCase()
         return haystack.includes(normalizedQuery)
       })
     }
 
     return types
-  }, [activeStoreKey, normalizedQuery])
+  }, [activeStoreKey, normalizedQuery, groupFilter, activeTags])
+
+  const toggleTag = (tag: QuickTag) =>
+    setActiveTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    )
 
   return (
     <section className="space-y-4">
@@ -86,9 +126,56 @@ export default function SectionLibrary({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search sections…"
+          placeholder="Search sections, tags, use case…"
           className="h-10 rounded-xl border-slate-200 bg-white pl-10 text-sm"
         />
+      </div>
+
+      {/* Group filter */}
+      <div className="flex flex-wrap gap-1.5">
+        {GROUP_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value}
+            type="button"
+            size="sm"
+            variant={groupFilter === opt.value ? "default" : "outline"}
+            className="h-7 rounded-full border-slate-200 px-3 text-[11px]"
+            onClick={() => setGroupFilter(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Quick-tag chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK_TAGS.map((tag) => {
+          const active = activeTags.includes(tag)
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors",
+                active
+                  ? "border-violet-300 bg-violet-50 text-violet-700"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              {tag}
+            </button>
+          )
+        })}
+        {activeTags.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setActiveTags([])}
+            className="rounded-full border border-transparent px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 hover:text-slate-700"
+          >
+            Clear
+          </button>
+        ) : null}
       </div>
 
       {/* Cards */}
@@ -117,7 +204,7 @@ export default function SectionLibrary({
 
       {filteredTypes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">
-          No section types match &ldquo;{query}&rdquo;.
+          No section templates match your filters.
         </div>
       ) : null}
     </section>

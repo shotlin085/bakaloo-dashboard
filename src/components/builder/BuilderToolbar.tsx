@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CalendarClock, Loader2, RotateCcw, Save, Send } from "lucide-react"
+import { CalendarClock, Loader2, Redo2, RotateCcw, Save, Send, Undo2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import PublishChecklistDialog from "./PublishChecklistDialog"
+import type { PublishChecklistResult } from "./publishChecklist"
 interface BuilderToolbarProps {
   isDirty: boolean
   onSave: () => Promise<void> | void
@@ -30,6 +32,13 @@ interface BuilderToolbarProps {
   version: number
   status: "Draft" | "Live" | "Scheduled"
   isProcessing?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
+  canUndo?: boolean
+  canRedo?: boolean
+  /** Phase 3: when provided, replaces the default Push Live confirmation
+   *  with a structured publish checklist (errors block publish, warnings allow). */
+  publishChecklist?: PublishChecklistResult
 }
 
 function formatLocalDateTimeValue(value?: string | null) {
@@ -59,6 +68,11 @@ export default function BuilderToolbar({
   version,
   status,
   isProcessing = false,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  publishChecklist,
 }: BuilderToolbarProps) {
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [scheduledAt, setScheduledAt] = useState(() =>
@@ -96,6 +110,35 @@ export default function BuilderToolbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          {(onUndo || onRedo) ? (
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!canUndo || isBusy}
+                onClick={onUndo}
+                className="h-7 w-7"
+                aria-label="Undo (Cmd/Ctrl+Z)"
+                title="Undo (Cmd/Ctrl+Z)"
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!canRedo || isBusy}
+                onClick={onRedo}
+                className="h-7 w-7"
+                aria-label="Redo (Cmd/Ctrl+Shift+Z)"
+                title="Redo (Cmd/Ctrl+Shift+Z)"
+              >
+                <Redo2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+
           <Button
             type="button"
             variant="ghost"
@@ -177,41 +220,49 @@ export default function BuilderToolbar({
             Save Draft
           </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                data-testid="push-live"
-                disabled={isBusy}
-                className="w-full sm:w-auto"
-              >
-                {isBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Push Live
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Push section layout live?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will persist the current draft and broadcast the refreshed
-                  section manifest to live clients.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  data-testid="confirm-push"
-                  onClick={onPushLive}
+          {publishChecklist ? (
+            <PublishChecklistDialog
+              result={publishChecklist}
+              isBusy={isBusy}
+              onConfirm={onPushLive}
+            />
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  data-testid="push-live"
+                  disabled={isBusy}
+                  className="w-full sm:w-auto"
                 >
+                  {isBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                   Push Live
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Push section layout live?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will persist the current draft and broadcast the refreshed
+                    section manifest to live clients.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    data-testid="confirm-push"
+                    onClick={onPushLive}
+                  >
+                    Push Live
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
     </div>

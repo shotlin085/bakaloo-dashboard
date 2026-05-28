@@ -10,11 +10,20 @@ import {
 import type { ThemeData } from "@/types/theme.types"
 import { ALL_STORE_KEYS, STORE_CONFIGS } from "@/contexts/StoreContext"
 import type { ThemeStoreKey } from "@/types/theme.types"
+import type { ChromeRegion } from "./chromeRegions"
 
 interface FixedHeaderPreviewProps {
   themeData: ThemeData | null
   activeTabKey: string
   storeKey: ThemeStoreKey
+  /** When provided, makes chrome regions interactive. */
+  onRegionClick?: (region: ChromeRegion) => void
+  /** Currently selected chrome region (for outline highlight). */
+  selectedRegion?: ChromeRegion | null
+  /** Hovered chrome region (for hover outline). */
+  hoveredRegion?: ChromeRegion | null
+  /** Optional callback fired when a category tab inside the preview is clicked. */
+  onPreviewTabChange?: (tabKey: string) => void
 }
 
 /**
@@ -33,6 +42,10 @@ export function FixedHeaderPreview({
   themeData,
   activeTabKey,
   storeKey,
+  onRegionClick,
+  selectedRegion,
+  hoveredRegion,
+  onPreviewTabChange,
 }: FixedHeaderPreviewProps) {
   const config = STORE_CONFIGS[storeKey]
   const activeChipIndex = ALL_STORE_KEYS.indexOf(storeKey)
@@ -44,6 +57,31 @@ export function FixedHeaderPreview({
   const promoImageUrl = themeData?.sections.searchZone.promoBoxImageUrl ?? null
   const categoryTabsBackground =
     themeData?.sections.searchZone.backgroundColor ?? "#ffffff"
+
+  const interactive = Boolean(onRegionClick)
+
+  const regionStyle = (region: ChromeRegion): React.CSSProperties => {
+    if (!interactive) return {}
+    const isSelected = selectedRegion === region
+    const isHovered = hoveredRegion === region
+    return {
+      cursor: "pointer",
+      outline: isSelected
+        ? "2px solid var(--store-accent, #3B82F6)"
+        : isHovered
+        ? "2px dashed rgba(59, 130, 246, 0.55)"
+        : "2px solid transparent",
+      outlineOffset: -2,
+      borderRadius: 4,
+      transition: "outline-color 150ms ease",
+    }
+  }
+
+  const handleRegionClick = (region: ChromeRegion) => (e: React.MouseEvent) => {
+    if (!onRegionClick) return
+    e.stopPropagation()
+    onRegionClick(region)
+  }
 
   const storeTabs = config.categories.map((label, i) => ({
     key: label.toLowerCase().replace(/\s+/g, "_"),
@@ -64,7 +102,10 @@ export function FixedHeaderPreview({
     >
       {/* Status bar */}
       <div
+        data-region="top_bar"
+        onClick={handleRegionClick("top_bar")}
         style={{
+          ...regionStyle("top_bar"),
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -90,7 +131,10 @@ export function FixedHeaderPreview({
 
       {/* Delivery header */}
       <div
+        data-region="top_bar"
+        onClick={handleRegionClick("top_bar")}
         style={{
+          ...regionStyle("top_bar"),
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -144,7 +188,10 @@ export function FixedHeaderPreview({
 
       {/* Store chips — using actual Flutter app PNG images */}
       <div
+        data-region="store_chips"
+        onClick={handleRegionClick("store_chips")}
         style={{
+          ...regionStyle("store_chips"),
           display: "grid",
           gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           gap: 8,
@@ -190,7 +237,10 @@ export function FixedHeaderPreview({
 
       {/* Search bar + promo box */}
       <div
+        data-region="search_bar"
+        onClick={handleRegionClick("search_bar")}
         style={{
+          ...regionStyle("search_bar"),
           display: "grid",
           gridTemplateColumns: "1fr 112px",
           gap: 8,
@@ -262,7 +312,10 @@ export function FixedHeaderPreview({
       {/* Category tabs — 3D icons from tab_icon_url or fallback emoji */}
       {showCategoryTabs ? (
         <div
+          data-region="category_tabs"
+          onClick={handleRegionClick("category_tabs")}
           style={{
+            ...regionStyle("category_tabs"),
             display: "flex",
             gap: 2,
             overflowX: "auto",
@@ -274,9 +327,17 @@ export function FixedHeaderPreview({
         >
           {storeTabs.map((tab) => {
             const active = tab.key === activeTabKey
+            const isInteractiveTab = Boolean(onPreviewTabChange)
             return (
               <div
                 key={tab.key}
+                role={isInteractiveTab ? "tab" : undefined}
+                aria-selected={isInteractiveTab ? active : undefined}
+                onClick={(e) => {
+                  if (!onPreviewTabChange) return
+                  e.stopPropagation()
+                  onPreviewTabChange(tab.key)
+                }}
                 style={{
                   width: 78,
                   flexShrink: 0,
@@ -284,6 +345,7 @@ export function FixedHeaderPreview({
                   flexDirection: "column",
                   alignItems: "center",
                   paddingBottom: 6,
+                  cursor: isInteractiveTab ? "pointer" : undefined,
                 }}
               >
                 <div
