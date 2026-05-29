@@ -25,12 +25,24 @@ import { useCategories } from "@/hooks/useCategories"
 import { ImageUpload } from "@/components/products/ImageUpload"
 import { AttributesEditor } from "@/components/products/attributes-editor"
 import { HighlightsEditor } from "@/components/products/highlights-editor"
+import { ProductFamilySelector } from "@/components/products/ProductFamilySelector"
+import { ProductMetadataFields } from "@/components/products/ProductMetadataFields"
+import { FamilyOptionsPanel } from "@/components/products/FamilyOptionsPanel"
 import { toast } from "sonner"
-import type { ProductAttribute, ProductPayload, ProductReturnPolicy } from "@/types"
+import type {
+  FoodType,
+  OriginTag,
+  ProductAttribute,
+  ProductPayload,
+  ProductReturnPolicy,
+} from "@/types"
 import { cn } from "@/lib/utils"
 
 interface ProductFormProps {
   productId?: string
+  /** Pre-fill product family when creating a new option from the family manager */
+  initialFamilyId?: string
+  initialFamilyName?: string
 }
 
 interface VariantRow {
@@ -87,6 +99,16 @@ interface FormData {
   avgRating: string
   ratingCount: string
   isAuthentic: boolean
+  // Product family / option fields (Phase 2)
+  productFamilyId: string | null
+  productFamilyName: string | null
+  optionLabel: string
+  optionSortOrder: string
+  isDefaultOption: boolean
+  foodType: FoodType
+  originTag: OriginTag
+  customBadges: string[]
+  displayDeliveryMinutes: string
 }
 
 const UNITS = ["kg", "g", "l", "ml", "piece", "pack", "dozen", "box"]
@@ -133,6 +155,16 @@ const INITIAL: FormData = {
   avgRating: "",
   ratingCount: "",
   isAuthentic: true,
+  // Product family / option fields default to "no family / single option"
+  productFamilyId: null,
+  productFamilyName: null,
+  optionLabel: "",
+  optionSortOrder: "0",
+  isDefaultOption: false,
+  foodType: "NONE",
+  originTag: "NONE",
+  customBadges: [],
+  displayDeliveryMinutes: "",
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -150,7 +182,11 @@ function parseOptionalNumber(value: number | string | null | undefined) {
   return Number.isFinite(nextValue) ? String(nextValue) : ""
 }
 
-export function ProductForm({ productId }: ProductFormProps) {
+export function ProductForm({
+  productId,
+  initialFamilyId,
+  initialFamilyName,
+}: ProductFormProps) {
   const router = useRouter()
   const isEdit = !!productId
   const { data: product, isLoading: productLoading } = useProductDetail(productId ?? null)
@@ -160,7 +196,17 @@ export function ProductForm({ productId }: ProductFormProps) {
 
   // Build initial form state from product (if editing) — computed once
   const initialForm = useMemo<FormData>(() => {
-    if (!product) return INITIAL
+    if (!product) {
+      // For new products, allow pre-filling family from query param
+      if (initialFamilyId) {
+        return {
+          ...INITIAL,
+          productFamilyId: initialFamilyId,
+          productFamilyName: initialFamilyName ?? null,
+        }
+      }
+      return INITIAL
+    }
     return {
       name: product.name ?? "",
       description: product.description ?? "",
@@ -215,8 +261,22 @@ export function ProductForm({ productId }: ProductFormProps) {
       avgRating: parseOptionalNumber(product.avgRating ?? product.avg_rating),
       ratingCount: parseOptionalNumber(product.ratingCount ?? product.rating_count),
       isAuthentic: product.isAuthentic ?? product.is_authentic ?? true,
+      // Product family / option fields
+      productFamilyId: product.product_family_id ?? null,
+      productFamilyName: product.family_name ?? null,
+      optionLabel: product.option_label ?? "",
+      optionSortOrder: parseOptionalNumber(product.option_sort_order) || "0",
+      isDefaultOption: product.is_default_option ?? false,
+      foodType: (product.food_type as FoodType | null) ?? "NONE",
+      originTag: (product.origin_tag as OriginTag | null) ?? "NONE",
+      customBadges: Array.isArray(product.custom_badges)
+        ? product.custom_badges
+        : [],
+      displayDeliveryMinutes: parseOptionalNumber(
+        product.display_delivery_minutes
+      ),
     }
-  }, [product])
+  }, [product, initialFamilyId, initialFamilyName])
 
   const [form, setForm] = useState<FormData>(initialForm)
 
@@ -265,7 +325,7 @@ export function ProductForm({ productId }: ProductFormProps) {
 
   const isPending = createProduct.isPending || updateProduct.isPending
 
-  const STEPS = ["general", "pricing", "media", "details", "variants", "nutrition", "seo"] as const
+  const STEPS = ["general", "pricing", "media", "details", "options", "variants", "nutrition", "seo"] as const
   type Step = (typeof STEPS)[number]
   const [step, setStep] = useState<Step>("general")
 
@@ -351,6 +411,19 @@ export function ProductForm({ productId }: ProductFormProps) {
       avgRating: form.avgRating ? parseFloat(form.avgRating) : undefined,
       ratingCount: form.ratingCount ? parseInt(form.ratingCount, 10) : undefined,
       isAuthentic: form.isAuthentic,
+      // Product family / option fields — only sent when set
+      productFamilyId: form.productFamilyId || undefined,
+      optionLabel: form.optionLabel.trim() || undefined,
+      optionSortOrder: form.optionSortOrder
+        ? parseInt(form.optionSortOrder, 10)
+        : undefined,
+      isDefaultOption: form.isDefaultOption,
+      foodType: form.foodType,
+      originTag: form.originTag,
+      customBadges: form.customBadges.length > 0 ? form.customBadges : [],
+      displayDeliveryMinutes: form.displayDeliveryMinutes
+        ? parseInt(form.displayDeliveryMinutes, 10)
+        : undefined,
     }
 
     if (isEdit && productId) {
@@ -372,12 +445,13 @@ export function ProductForm({ productId }: ProductFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={step} onValueChange={(v) => setStep(v as Step)}>
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-7">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 md:grid-cols-8">
           <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
           <TabsTrigger value="pricing" className="text-xs">Pricing</TabsTrigger>
           <TabsTrigger value="media" className="text-xs">Media</TabsTrigger>
           <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
-          <TabsTrigger value="variants" className="text-xs">Variants</TabsTrigger>
+          <TabsTrigger value="options" className="text-xs">Options</TabsTrigger>
+          <TabsTrigger value="variants" className="text-xs">Legacy Variants</TabsTrigger>
           <TabsTrigger value="nutrition" className="text-xs">Nutrition</TabsTrigger>
           <TabsTrigger value="seo" className="text-xs">SEO</TabsTrigger>
         </TabsList>
@@ -735,9 +809,140 @@ export function ProductForm({ productId }: ProductFormProps) {
           </Card>
         </TabsContent>
 
-        {/* ────── Step 5: Variants ────── */}
+        {/* ────── Step 5: Options (Phase 2) ────── */}
+        <TabsContent value="options" className="mt-6">
+          <Card className="p-6 space-y-5">
+            <div>
+              <h3 className="font-semibold">Product Family &amp; Options</h3>
+              <p className="text-xs text-muted-foreground">
+                Group multiple sizes/packs (e.g. 250g, 500g, 1kg) under one
+                family so the mobile app can show an option popup. Each option
+                stays a separate purchasable product with its own price and
+                stock per shop.
+              </p>
+            </div>
+
+            <ProductFamilySelector
+              value={form.productFamilyId}
+              onChange={(id, name) => {
+                set("productFamilyId", id)
+                set("productFamilyName", name)
+              }}
+              categoryId={form.categoryId || null}
+            />
+
+            {form.productFamilyId && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Option Label</Label>
+                    <Input
+                      value={form.optionLabel}
+                      onChange={(e) => set("optionLabel", e.target.value)}
+                      placeholder="e.g. 500g, 1kg, 4 x 95g, Pack of 2"
+                      maxLength={100}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Shown in the option popup on mobile.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sort Order</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.optionSortOrder}
+                      onChange={(e) => set("optionSortOrder", e.target.value)}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lower values appear first in the popup.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Switch
+                    checked={form.isDefaultOption}
+                    onCheckedChange={(v) => set("isDefaultOption", v)}
+                  />
+                  <div>
+                    <Label className="text-sm">Set as default option</Label>
+                    <p className="text-xs text-muted-foreground">
+                      The default option represents the family in product
+                      listings. Only one default per family — saving with
+                      this enabled may replace the previous default.
+                    </p>
+                  </div>
+                </div>
+                {form.productFamilyId && !form.optionLabel.trim() && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    This product is in a family but has no option label.
+                    Customers won&apos;t be able to tell options apart in the
+                    popup. Add a label like &quot;500g&quot; or &quot;Pack of
+                    2&quot;.
+                  </div>
+                )}
+              </>
+            )}
+
+            <Separator />
+
+            <div>
+              <h4 className="mb-1 text-sm font-semibold">
+                Display metadata
+              </h4>
+              <p className="mb-3 text-xs text-muted-foreground">
+                These fields drive the mobile product card UI: veg marker,
+                imported tag, custom badges, and delivery time.
+              </p>
+              <ProductMetadataFields
+                foodType={form.foodType}
+                originTag={form.originTag}
+                customBadges={form.customBadges}
+                displayDeliveryMinutes={form.displayDeliveryMinutes}
+                onFoodTypeChange={(v) => set("foodType", v)}
+                onOriginTagChange={(v) => set("originTag", v)}
+                onCustomBadgesChange={(v) => set("customBadges", v)}
+                onDisplayDeliveryMinutesChange={(v) =>
+                  set("displayDeliveryMinutes", v)
+                }
+              />
+            </div>
+
+            {isEdit && productId && form.productFamilyId && (
+              <FamilyOptionsPanel
+                productId={productId}
+                familyId={form.productFamilyId}
+                familyName={form.productFamilyName}
+              />
+            )}
+
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+              <p className="font-medium">How options work</p>
+              <ul className="mt-1 list-inside list-disc space-y-0.5">
+                <li>Each option is a real purchasable product.</li>
+                <li>
+                  Store price and stock are managed separately through Shop
+                  Products.
+                </li>
+                <li>Cart and checkout use the exact selected option.</li>
+              </ul>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* ────── Step 6: Legacy Display Variants ────── */}
         <TabsContent value="variants" className="mt-6">
           <Card className="p-6 space-y-4">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-medium">Legacy Display Variants</p>
+              <p className="mt-1">
+                These variants are display-only and are NOT used for cart,
+                checkout, or stock. Use the <strong>Options</strong> tab
+                above to create real purchasable grocery options.
+              </p>
+            </div>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Variants</h3>
               <Switch checked={form.variantsEnabled} onCheckedChange={(v) => set("variantsEnabled", v)} />

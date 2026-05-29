@@ -29,6 +29,8 @@ export async function getProducts(filters: ProductFilters = {}) {
   if (filters.minPrice) params.minPrice = filters.minPrice
   if (filters.maxPrice) params.maxPrice = filters.maxPrice
   if (filters.status) params.status = filters.status
+  // Phase 1: returns one representative per product family when true
+  if (filters.groupOptions) params.groupOptions = true
 
   // The backend returns: { success, message, data: Product[], pagination: {...} }
   // axios wraps this in response.data, so `data` here = { success, message, data: [...], pagination }

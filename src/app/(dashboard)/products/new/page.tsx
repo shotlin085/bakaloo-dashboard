@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ProductForm } from "@/components/products/ProductForm"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,12 @@ import { usePermissions } from "@/hooks/usePermissions"
 export default function NewProductPage() {
   const { can } = usePermissions()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Optional pre-fill from family manager / options panel:
+  // /products/new?familyId=<uuid>&familyName=<name>
+  const initialFamilyId = searchParams.get("familyId") ?? undefined
+  const initialFamilyName = searchParams.get("familyName") ?? undefined
 
   useEffect(() => {
     if (!can("products.manage")) {
@@ -29,9 +35,19 @@ export default function NewProductPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <PageHeader title="Add Product" subtitle="Create a new product in your catalog" />
+        <PageHeader
+          title={initialFamilyName ? `Add option to ${initialFamilyName}` : "Add Product"}
+          subtitle={
+            initialFamilyName
+              ? "Create another option for this product family"
+              : "Create a new product in your catalog"
+          }
+        />
       </div>
-      <ProductForm />
+      <ProductForm
+        initialFamilyId={initialFamilyId}
+        initialFamilyName={initialFamilyName}
+      />
     </div>
   )
 }

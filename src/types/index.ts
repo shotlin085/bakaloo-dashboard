@@ -56,9 +56,19 @@ export type {
   ProductReturnPolicy,
   ProductVariant,
   ProductFilters,
+  ProductOptionsResponse,
+  FoodType,
+  OriginTag,
   Category,
   CategoryTree,
 } from "./product.types"
+export { FOOD_TYPES, ORIGIN_TAGS } from "./product.types"
+export type {
+  ProductFamily,
+  ProductFamilyCreatePayload,
+  ProductFamilyUpdatePayload,
+  ProductFamilyListParams,
+} from "./product-family.types"
 export type {
   Customer,
   CustomerDetail,

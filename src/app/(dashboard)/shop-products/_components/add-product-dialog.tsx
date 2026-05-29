@@ -248,11 +248,41 @@ function CatalogTypeahead({ onPick }: CatalogTypeaheadProps) {
                   >
                     <CatalogThumb product={product} />
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-medium">
+                      <span className="flex items-center gap-1.5 truncate font-medium">
                         {product.name}
+                        {product.option_label && (
+                          <span className="rounded bg-muted px-1 text-[10px] font-normal text-muted-foreground">
+                            {product.option_label}
+                          </span>
+                        )}
+                        {product.food_type === "VEG" && (
+                          <span
+                            className="text-[10px] text-green-600"
+                            title="Vegetarian"
+                          >
+                            ●
+                          </span>
+                        )}
+                        {product.food_type === "NON_VEG" && (
+                          <span
+                            className="text-[10px] text-red-600"
+                            title="Non-vegetarian"
+                          >
+                            ●
+                          </span>
+                        )}
+                        {product.origin_tag === "IMPORTED" && (
+                          <span className="rounded bg-amber-100 px-1 text-[9px] font-medium uppercase text-amber-800">
+                            Imported
+                          </span>
+                        )}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {product.sku ? `SKU ${product.sku}` : product.unit}
+                        {product.family_name
+                          ? `${product.family_name}`
+                          : product.sku
+                          ? `SKU ${product.sku}`
+                          : product.unit}
                         {typeof product.price === "number"
                           ? ` · ${formatCurrency(product.price)}`
                           : ""}

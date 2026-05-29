@@ -1,5 +1,19 @@
 export type ProductReturnPolicy = "no_return" | "7_day" | "instant"
 
+/**
+ * Food type marker — matches backend constraint chk_products_food_type.
+ * Used for VEG/NON_VEG/EGG markers on grocery product cards.
+ */
+export const FOOD_TYPES = ["VEG", "NON_VEG", "EGG", "NONE"] as const
+export type FoodType = (typeof FOOD_TYPES)[number]
+
+/**
+ * Origin tag — matches backend constraint chk_products_origin_tag.
+ * Used for Imported/Local badges on product cards.
+ */
+export const ORIGIN_TAGS = ["IMPORTED", "LOCAL", "NONE"] as const
+export type OriginTag = (typeof ORIGIN_TAGS)[number]
+
 export interface ProductAttribute {
   label: string
   value: string
@@ -50,6 +64,15 @@ export interface ProductPayload {
   avgRating?: number
   ratingCount?: number
   isAuthentic?: boolean
+  // Product family / option fields (Phase 1 backend contract)
+  productFamilyId?: string | null
+  optionLabel?: string | null
+  optionSortOrder?: number
+  isDefaultOption?: boolean
+  foodType?: FoodType
+  originTag?: OriginTag
+  customBadges?: string[]
+  displayDeliveryMinutes?: number | null
 }
 
 /** Product in list view */
@@ -102,6 +125,18 @@ export interface Product {
   is_authentic?: boolean | null
   tags?: string[]
   total_sold?: number
+  // Product family / option fields (Phase 1 backend contract)
+  product_family_id?: string | null
+  family_name?: string | null
+  option_label?: string | null
+  option_sort_order?: number
+  is_default_option?: boolean
+  food_type?: FoodType | null
+  origin_tag?: OriginTag | null
+  custom_badges?: string[] | null
+  display_delivery_minutes?: number | null
+  /** Number of sibling options in same family (1 for standalone) */
+  option_count?: number
   created_at: string
   updated_at: string
 }
@@ -147,6 +182,31 @@ export interface ProductFilters {
   order?: "asc" | "desc"
   minPrice?: number
   maxPrice?: number
+  /** Phase 1: when true, returns one representative per product family */
+  groupOptions?: boolean
+}
+
+/** Response shape for GET /api/v1/products/:id/options */
+export interface ProductOptionsResponse {
+  family: {
+    id: string
+    name: string
+    slug: string
+    thumbnail_url?: string | null
+    description?: string | null
+  } | null
+  options: Array<
+    Product & {
+      shop_product_id?: string | null
+      shop_id?: string | null
+      sp_price?: number | null
+      sp_sale_price?: number | null
+      sp_stock_quantity?: number | null
+      sp_max_order_qty?: number | null
+      sp_is_available?: boolean | null
+      effective_price?: number | null
+    }
+  >
 }
 
 /** Category */
