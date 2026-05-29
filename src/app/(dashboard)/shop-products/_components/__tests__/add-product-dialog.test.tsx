@@ -100,6 +100,35 @@ vi.mock("@/hooks/useShopContext", () => ({
   useIsSuperAdmin: () => false,
 }))
 
+// `<AddProductDialog />` now calls `useRouter()` (to deep-link into the
+// master-product create flow) and `usePermissions()` (to gate the
+// "Create new product" escape hatch). Mock both at the module boundary so
+// the dialog mounts without an app-router provider. The default
+// `usePermissions` mock returns no permissions, so the create-new
+// affordance stays hidden — the existing catalog-pick assertions are
+// unaffected. Tests that need the affordance can override `canMock`.
+const pushMock = vi.fn()
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: pushMock,
+    replace: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
+const canMock = vi.fn((_permission: string) => false)
+vi.mock("@/hooks/usePermissions", () => ({
+  usePermissions: () => ({
+    can: canMock,
+    canAny: vi.fn(() => false),
+    canAll: vi.fn(() => false),
+    isViewer: false,
+    isSuperAdmin: false,
+    permissions: [] as string[],
+  }),
+}))
+
 // `next/image` issues warnings about `priority`/`fill` in jsdom; stub it
 // with a plain `<img>` to keep the test output clean.
 vi.mock("next/image", () => ({

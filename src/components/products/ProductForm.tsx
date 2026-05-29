@@ -43,6 +43,15 @@ interface ProductFormProps {
   /** Pre-fill product family when creating a new option from the family manager */
   initialFamilyId?: string
   initialFamilyName?: string
+  /**
+   * Destination to navigate to after a successful create/update. Defaults to
+   * the Master Catalog (`/products`). The store-selected (shop-products) flow
+   * passes `/shop-products` so creating a new master product returns the
+   * operator to their per-shop inventory, where they can immediately add the
+   * freshly created product to the active shop (Issue 2 of the product
+   * management access fix).
+   */
+  returnTo?: string
 }
 
 interface VariantRow {
@@ -186,9 +195,23 @@ export function ProductForm({
   productId,
   initialFamilyId,
   initialFamilyName,
+  returnTo,
 }: ProductFormProps) {
   const router = useRouter()
   const isEdit = !!productId
+  // Harden the post-save redirect against open-redirect: only honour an
+  // app-internal absolute path ("/...") that is not protocol-relative
+  // ("//host"). Anything else falls back to the Master Catalog.
+  const safeReturnTo = useMemo(() => {
+    if (
+      typeof returnTo === "string" &&
+      returnTo.startsWith("/") &&
+      !returnTo.startsWith("//")
+    ) {
+      return returnTo
+    }
+    return "/products"
+  }, [returnTo])
   const { data: product, isLoading: productLoading } = useProductDetail(productId ?? null)
   const { data: categories } = useCategories()
   const createProduct = useCreateProduct()
@@ -429,11 +452,11 @@ export function ProductForm({
     if (isEdit && productId) {
       updateProduct.mutate(
         { id: productId, payload },
-        { onSuccess: () => router.push("/products") }
+        { onSuccess: () => router.push(safeReturnTo) }
       )
     } else {
       createProduct.mutate(payload, {
-        onSuccess: () => router.push("/products"),
+        onSuccess: () => router.push(safeReturnTo),
       })
     }
   }

@@ -38,9 +38,10 @@
  */
 
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Controller, useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ChevronLeft, Loader2, Package, Search } from "lucide-react"
+import { ChevronLeft, Loader2, Package, Plus, Search } from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -61,6 +62,7 @@ import {
   useSearchProductCatalog,
 } from "@/hooks/useShopProducts"
 import { useShopContext } from "@/hooks/useShopContext"
+import { usePermissions } from "@/hooks/usePermissions"
 import { formatCurrency, t } from "@/lib/i18n"
 import {
   shopProductSchema,
@@ -154,6 +156,13 @@ function buildDefaultsFromProduct(
 interface CatalogTypeaheadProps {
   /** Called with the picked product so the parent can advance to step 2. */
   onPick: (product: Product) => void
+  /**
+   * When provided, renders a "Create new product" affordance above the
+   * result list. Only supplied when the operator holds master-product
+   * create authority (`products.manage`). Routing/navigation is owned by
+   * the parent so this component stays presentation-only.
+   */
+  onCreateNew?: () => void
 }
 
 /**
@@ -163,7 +172,7 @@ interface CatalogTypeaheadProps {
  * into the hook. Matches the `<UserPicker />` pattern in
  * `invite-staff-dialog.tsx` for visual consistency.
  */
-function CatalogTypeahead({ onPick }: CatalogTypeaheadProps) {
+function CatalogTypeahead({ onPick, onCreateNew }: CatalogTypeaheadProps) {
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebounce(query, 300)
 
@@ -295,6 +304,30 @@ function CatalogTypeahead({ onPick }: CatalogTypeaheadProps) {
           </ul>
         </ScrollArea>
       </div>
+
+      {/* Escape hatch — when the product isn't in the master catalog yet,
+          operators with master-product create authority can jump to the
+          full create form and return here afterward (Issue 2). Gated by the
+          parent so shop staff without the permission never see it. */}
+      {onCreateNew ? (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2">
+          <span className="text-xs text-muted-foreground">
+            {results.length === 0 && trimmed.length > 0
+              ? "Not in the catalog yet?"
+              : "Need a brand-new product?"}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCreateNew}
+            data-testid="add-product-create-new"
+          >
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Create new product
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -338,6 +371,15 @@ export function AddProductDialog({
   // this component is mounted. We still defend the submit handler with a
   // guard so a misuse never POSTs an unscoped request.
   const { activeShopId } = useShopContext()
+
+  // Master-product create authority. Adding a brand-new product to the
+  // master catalog is an HQ/Admin action (backend gates `POST /products`
+  // on `authorize(['ADMIN'])`), so the "Create new product" escape hatch
+  // is only offered when `can("products.manage")` is satisfied — which the
+  // role-aware `usePermissions` resolves true for SUPER_ADMIN / ADMIN.
+  const { can } = usePermissions()
+  const canCreateMasterProduct = can("products.manage")
+  const router = useRouter()
 
   // Mutation — bound to the active shop so its cache invalidation hits
   // the right `["shop-products", shopId]` prefix. We pass an empty
@@ -438,7 +480,21 @@ export function AddProductDialog({
         </DialogHeader>
 
         {step === 1 ? (
-          <CatalogTypeahead onPick={handlePick} />
+          <CatalogTypeahead
+            onPick={handlePick}
+            onCreateNew={
+              canCreateMasterProduct
+                ? () => {
+                    // Close the dialog before navigating so it does not
+                    // linger over the create form, then deep-link into the
+                    // master-product create flow with a return path back to
+                    // this per-shop inventory surface.
+                    onOpenChange(false)
+                    router.push("/products/new?returnTo=/shop-products")
+                  }
+                : undefined
+            }
+          />
         ) : (
           <form
             onSubmit={handleSubmit(onSubmit)}

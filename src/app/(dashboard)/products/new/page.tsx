@@ -19,6 +19,12 @@ export default function NewProductPage() {
   const initialFamilyId = searchParams.get("familyId") ?? undefined
   const initialFamilyName = searchParams.get("familyName") ?? undefined
 
+  // Optional post-save redirect target. The store-selected (shop-products)
+  // "Create new product" flow passes `?returnTo=/shop-products` so the
+  // operator lands back on their per-shop inventory after creating the
+  // master product. ProductForm sanitises this against open-redirect.
+  const returnTo = searchParams.get("returnTo") ?? undefined
+
   useEffect(() => {
     if (!can("products.manage")) {
       router.replace("/products")
@@ -47,6 +53,7 @@ export default function NewProductPage() {
       <ProductForm
         initialFamilyId={initialFamilyId}
         initialFamilyName={initialFamilyName}
+        returnTo={returnTo}
       />
     </div>
   )
