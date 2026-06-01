@@ -31,6 +31,7 @@ import {
 } from "@/hooks/useProductFamilies"
 
 import { EditFamilyDialog } from "../_components/edit-family-dialog"
+import { FamilyGuidedWorkflow } from "../_components/family-guided-workflow"
 import { FamilyOptionsTable } from "../_components/family-options-table"
 
 export default function FamilyDetailPage({
@@ -154,6 +155,8 @@ export default function FamilyDetailPage({
           </div>
         </div>
       </Card>
+
+      <FamilyGuidedWorkflow familyId={family.id} familyName={family.name} />
 
       <FamilyOptionsTable familyId={family.id} familyName={family.name} />
 

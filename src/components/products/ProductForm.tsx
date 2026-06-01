@@ -44,6 +44,11 @@ interface ProductFormProps {
   initialFamilyId?: string
   initialFamilyName?: string
   /**
+   * Pre-fill the option label (e.g. "500g") when creating a new option via a
+   * quick preset from the family guided workflow.
+   */
+  initialOptionLabel?: string
+  /**
    * Destination to navigate to after a successful create/update. Defaults to
    * the Master Catalog (`/products`). The store-selected (shop-products) flow
    * passes `/shop-products` so creating a new master product returns the
@@ -195,6 +200,7 @@ export function ProductForm({
   productId,
   initialFamilyId,
   initialFamilyName,
+  initialOptionLabel,
   returnTo,
 }: ProductFormProps) {
   const router = useRouter()
@@ -226,6 +232,7 @@ export function ProductForm({
           ...INITIAL,
           productFamilyId: initialFamilyId,
           productFamilyName: initialFamilyName ?? null,
+          optionLabel: initialOptionLabel ?? INITIAL.optionLabel,
         }
       }
       return INITIAL
@@ -299,7 +306,7 @@ export function ProductForm({
         product.display_delivery_minutes
       ),
     }
-  }, [product, initialFamilyId, initialFamilyName])
+  }, [product, initialFamilyId, initialFamilyName, initialOptionLabel])
 
   const [form, setForm] = useState<FormData>(initialForm)
 

@@ -16,6 +16,30 @@ interface ProductConfigEditorProps {
 
 const COLUMN_OPTIONS = [2, 3, 4] as const
 
+/**
+ * Product card visual styles offered to admins. Values are the canonical
+ * UPPER_SNAKE tokens persisted into `section.config.product_card_style` and
+ * read verbatim by the Flutter app (`productCardVariantFromString`). Keep these
+ * in lock-step with the Flutter `ProductCardVariant` enum.
+ *
+ * Default is QUICK_COMMERCE_COMPACT — sections saved without this key (older
+ * themes) fall back to it on the app side too.
+ */
+const PRODUCT_CARD_STYLES = [
+  {
+    value: "QUICK_COMMERCE_COMPACT",
+    label: "Quick Commerce (Compact)",
+    description: "Premium reference card — price sticker, discount line, rating & delivery.",
+  },
+  {
+    value: "BAKALOO_LEGACY_CLEAN",
+    label: "Bakaloo Legacy (Clean)",
+    description: "Classic simpler card — plain price, minimal chrome.",
+  },
+] as const
+
+const DEFAULT_PRODUCT_CARD_STYLE = "QUICK_COMMERCE_COMPACT"
+
 export default function ProductConfigEditor({
   config,
   onChange,
@@ -27,6 +51,10 @@ export default function ProductConfigEditor({
     typeof config.card_shape === "string" ? config.card_shape : "rounded"
   const autoScroll = Boolean(config.auto_scroll)
   const limit = typeof config.limit === "number" ? config.limit : 6
+  const productCardStyle =
+    typeof config.product_card_style === "string"
+      ? config.product_card_style
+      : DEFAULT_PRODUCT_CARD_STYLE
   const showColumns = sectionType === "category_product_grid"
   const showAutoScroll = sectionType === "product_carousel"
 
@@ -80,6 +108,54 @@ export default function ProductConfigEditor({
         value={cardShape}
         onChange={(value) => patchConfig({ card_shape: value })}
       />
+
+      <div className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-slate-900">
+            Product Card Style
+          </div>
+          <p className="text-xs text-slate-500">
+            Controls how product cards look in the mobile app for this section.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {PRODUCT_CARD_STYLES.map((option) => {
+            const isActive = option.value === productCardStyle
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() =>
+                  patchConfig({ product_card_style: option.value })
+                }
+                className={cn(
+                  "rounded-2xl border px-4 py-3 text-left transition-all duration-200",
+                  isActive
+                    ? "border-blue-500 bg-blue-50 shadow-[0_0_0_3px_rgba(59,130,246,0.12)]"
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                )}
+                aria-pressed={isActive}
+              >
+                <div
+                  className={cn(
+                    "text-sm font-semibold",
+                    isActive ? "text-blue-700" : "text-slate-800"
+                  )}
+                >
+                  {option.label}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {option.description}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[11px] text-slate-400">
+          Default is Quick Commerce (Compact). Existing sections without a style
+          keep this default.
+        </p>
+      </div>
 
       {showAutoScroll ? (
         <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">

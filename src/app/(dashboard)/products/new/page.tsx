@@ -15,9 +15,12 @@ export default function NewProductPage() {
   const searchParams = useSearchParams()
 
   // Optional pre-fill from family manager / options panel:
-  // /products/new?familyId=<uuid>&familyName=<name>
+  // /products/new?familyId=<uuid>&familyName=<name>&optionLabel=<label>
   const initialFamilyId = searchParams.get("familyId") ?? undefined
   const initialFamilyName = searchParams.get("familyName") ?? undefined
+  // Quick option presets (500g, 1kg, …) deep-link the option label so the
+  // operator lands on a pre-labelled new option.
+  const initialOptionLabel = searchParams.get("optionLabel") ?? undefined
 
   // Optional post-save redirect target. The store-selected (shop-products)
   // "Create new product" flow passes `?returnTo=/shop-products` so the
@@ -53,6 +56,7 @@ export default function NewProductPage() {
       <ProductForm
         initialFamilyId={initialFamilyId}
         initialFamilyName={initialFamilyName}
+        initialOptionLabel={initialOptionLabel}
         returnTo={returnTo}
       />
     </div>
