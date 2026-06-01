@@ -561,6 +561,12 @@ export function ProductForm({
         <TabsContent value="pricing" className="space-y-6 mt-6">
           <Card className="p-6 space-y-4">
             <h3 className="font-semibold">Pricing</h3>
+            <p className="text-xs text-muted-foreground">
+              <strong>MRP</strong> is the printed/list price (shown
+              struck-through). <strong>Sale Price</strong> is what the customer
+              actually pays — leave it blank for no discount. Per-store price
+              and stock are set separately in Shop Products.
+            </p>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="price">MRP (₹) *</Label>
