@@ -10,7 +10,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Edit, Loader2, X } from "lucide-react"
+import { Edit, Loader2, Plus, X } from "lucide-react"
 
 import {
   AlertDialog,
@@ -51,9 +51,10 @@ interface Props {
   familyId: string
   familyName: string
   onProductRemoved?: () => void
+  onAddOptionClick?: () => void
 }
 
-export function FamilyOptionsTable({ familyId, familyName, onProductRemoved }: Props) {
+export function FamilyOptionsTable({ familyId, familyName, onProductRemoved, onAddOptionClick }: Props) {
   const queryClient = useQueryClient()
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
@@ -111,8 +112,16 @@ export function FamilyOptionsTable({ familyId, familyName, onProductRemoved }: P
           <Skeleton className="h-14 w-full" />
         </div>
       ) : options.length === 0 ? (
-        <div className="rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
-          No options in this family yet. Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g.
+        <div className="rounded-md border border-dashed py-10 text-center">
+          <p className="text-sm text-muted-foreground mb-4">
+            No options in this family yet. Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g.
+          </p>
+          {onAddOptionClick && (
+            <Button onClick={onAddOptionClick} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Option
+            </Button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto">

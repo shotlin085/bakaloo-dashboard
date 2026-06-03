@@ -154,12 +154,17 @@ export default function FamilyDetailPage({
         </div>
       </Card>
 
-      <FamilyGuidedWorkflow familyId={family.id} familyName={family.name} />
+      <FamilyGuidedWorkflow
+        familyId={family.id}
+        familyName={family.name}
+        onAddOptionClick={() => setOpenAddOption(true)}
+      />
 
       <FamilyOptionsTable 
         familyId={family.id} 
         familyName={family.name}
         onProductRemoved={() => refetch()}
+        onAddOptionClick={() => setOpenAddOption(true)}
       />
 
       <EditFamilyDialog

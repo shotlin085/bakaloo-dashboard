@@ -40,9 +40,10 @@ const OPTION_PRESETS = [
 interface Props {
   familyId: string
   familyName: string
+  onAddOptionClick?: () => void
 }
 
-export function FamilyGuidedWorkflow({ familyId, familyName }: Props) {
+export function FamilyGuidedWorkflow({ familyId, familyName, onAddOptionClick }: Props) {
   const { mode, shopMeta } = useShopContext()
   const hasActiveShop = mode === "STORE_MODE" && Boolean(shopMeta)
 
@@ -72,23 +73,39 @@ export function FamilyGuidedWorkflow({ familyId, familyName }: Props) {
             <span className="text-sm font-semibold">Add options</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g. Each option has its own price &amp; sale price. Tap a preset to create one pre-labelled, or add a custom option.
+            Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g. Use the main &quot;Add Option&quot; button to attach existing products or create new ones. Quick presets below create new products directly.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {OPTION_PRESETS.map((label) => (
-              <Link key={label} href={optionHref(label)}>
-                <Button type="button" variant="outline" size="sm">
+            {onAddOptionClick && (
+              <Button
+                type="button"
+                onClick={onAddOptionClick}
+                size="sm"
+                className="mr-2"
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Option
+              </Button>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-muted-foreground self-center mr-2">
+                Quick create:
+              </span>
+              {OPTION_PRESETS.map((label) => (
+                <Link key={label} href={optionHref(label)}>
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="mr-1 h-3 w-3" />
+                    {label}
+                  </Button>
+                </Link>
+              ))}
+              <Link href={optionHref()}>
+                <Button type="button" size="sm" variant="outline">
                   <Plus className="mr-1 h-3 w-3" />
-                  {label}
+                  Custom
                 </Button>
               </Link>
-            ))}
-            <Link href={optionHref()}>
-              <Button type="button" size="sm">
-                <Plus className="mr-1 h-3 w-3" />
-                Custom option
-              </Button>
-            </Link>
+            </div>
           </div>
         </li>
 
