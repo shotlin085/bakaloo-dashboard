@@ -8,14 +8,27 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
-import { Edit, Plus } from "lucide-react"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Edit, Loader2, X } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listFamilyOptions } from "@/services/product-families.service"
+import { useUpdateProduct } from "@/hooks/useProducts"
+import { toast } from "sonner"
 
 interface FamilyOptionRow {
   id: string
@@ -37,28 +50,59 @@ interface FamilyOptionRow {
 interface Props {
   familyId: string
   familyName: string
+  onProductRemoved?: () => void
 }
 
-export function FamilyOptionsTable({ familyId, familyName }: Props) {
+export function FamilyOptionsTable({ familyId, familyName, onProductRemoved }: Props) {
+  const queryClient = useQueryClient()
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+
   const { data, isLoading } = useQuery({
     queryKey: ["family-options-table", familyId],
     queryFn: () => listFamilyOptions(familyId),
     staleTime: 30_000,
   })
 
+  const updateProduct = useUpdateProduct()
+
   const options = (data?.options ?? []) as unknown as FamilyOptionRow[]
+
+  const handleRemoveFromFamily = async (productId: string, productName: string) => {
+    setRemovingId(productId)
+    try {
+      const product = options.find((opt) => opt.id === productId)
+      if (!product) return
+
+      await updateProduct.mutateAsync({
+        id: productId,
+        payload: {
+          productFamilyId: null,
+          isDefaultOption: false,
+          // Keep existing values
+          name: product.name,
+          price: product.price,
+          stock: product.stock_quantity,
+          unit: product.unit,
+          isActive: product.is_active,
+        },
+      })
+      toast.success(`${productName} removed from ${familyName}`)
+      queryClient.invalidateQueries({ queryKey: ["family-options-table", familyId] })
+      onProductRemoved?.()
+    } catch (error) {
+      toast.error("Failed to remove product from family")
+      console.error(error)
+    } finally {
+      setRemovingId(null)
+      setConfirmRemoveId(null)
+    }
+  }
 
   return (
     <Card className="p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold">Options ({options.length})</h3>
-        <Link
-          href={`/products/new?familyId=${familyId}&familyName=${encodeURIComponent(familyName)}`}
-        >
-          <Button size="sm">
-            <Plus className="mr-1 h-3.5 w-3.5" /> Add option
-          </Button>
-        </Link>
+        <h3 className="font-semibold">Options in this family ({options.length})</h3>
       </div>
 
       {isLoading ? (
@@ -68,7 +112,7 @@ export function FamilyOptionsTable({ familyId, familyName }: Props) {
         </div>
       ) : options.length === 0 ? (
         <div className="rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
-          No options in this family yet.
+          No options in this family yet. Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g.
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -149,11 +193,26 @@ export function FamilyOptionsTable({ familyId, familyName }: Props) {
                       )}
                     </td>
                     <td className="py-2 text-right">
-                      <Link href={`/products/${opt.id}/edit`}>
-                        <Button size="sm" variant="ghost">
-                          <Edit className="h-3.5 w-3.5" />
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/products/${opt.id}/edit`}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setConfirmRemoveId(opt.id)}
+                          disabled={removingId === opt.id}
+                        >
+                          {removingId === opt.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <X className="h-3.5 w-3.5" />
+                          )}
                         </Button>
-                      </Link>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -162,6 +221,30 @@ export function FamilyOptionsTable({ familyId, familyName }: Props) {
           </table>
         </div>
       )}
+
+      <AlertDialog open={!!confirmRemoveId} onOpenChange={(open) => !open && setConfirmRemoveId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from family?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the product from this family, but it will not delete the product or store inventory. The product will remain active in the master catalog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const product = options.find((opt) => opt.id === confirmRemoveId)
+                if (product) {
+                  handleRemoveFromFamily(product.id, product.name)
+                }
+              }}
+            >
+              Remove from family
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

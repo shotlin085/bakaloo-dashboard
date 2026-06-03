@@ -72,9 +72,7 @@ export function FamilyGuidedWorkflow({ familyId, familyName }: Props) {
             <span className="text-sm font-semibold">Add options</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Each size/pack is a separate option with its own price &amp; sale
-            price. Tap a preset to create one pre-labelled, or add a custom
-            option.
+            Options are existing products grouped under one family, such as 95g, 3 x 95g, and 4 x 95g. Each option has its own price &amp; sale price. Tap a preset to create one pre-labelled, or add a custom option.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {OPTION_PRESETS.map((label) => (

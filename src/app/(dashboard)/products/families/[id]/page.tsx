@@ -30,6 +30,7 @@ import {
   useUpdateProductFamily,
 } from "@/hooks/useProductFamilies"
 
+import { AddOptionDialog } from "../_components/add-option-dialog"
 import { EditFamilyDialog } from "../_components/edit-family-dialog"
 import { FamilyGuidedWorkflow } from "../_components/family-guided-workflow"
 import { FamilyOptionsTable } from "../_components/family-options-table"
@@ -43,8 +44,9 @@ export default function FamilyDetailPage({
   const { can } = usePermissions()
   const router = useRouter()
   const [openEdit, setOpenEdit] = useState(false)
+  const [openAddOption, setOpenAddOption] = useState(false)
 
-  const { data: family, isLoading } = useProductFamily(id)
+  const { data: family, isLoading, refetch } = useProductFamily(id)
   const update = useUpdateProductFamily()
   const deactivate = useDeactivateProductFamily()
 
@@ -145,25 +147,33 @@ export default function FamilyDetailPage({
               <Power className="mr-1 h-3.5 w-3.5" />
               {family.is_active ? "Deactivate" : "Activate"}
             </Button>
-            <Link
-              href={`/products/new?familyId=${family.id}&familyName=${encodeURIComponent(family.name)}`}
-            >
-              <Button size="sm">
-                <Plus className="mr-1 h-3.5 w-3.5" /> Add option
-              </Button>
-            </Link>
+            <Button size="sm" onClick={() => setOpenAddOption(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add Option
+            </Button>
           </div>
         </div>
       </Card>
 
       <FamilyGuidedWorkflow familyId={family.id} familyName={family.name} />
 
-      <FamilyOptionsTable familyId={family.id} familyName={family.name} />
+      <FamilyOptionsTable 
+        familyId={family.id} 
+        familyName={family.name}
+        onProductRemoved={() => refetch()}
+      />
 
       <EditFamilyDialog
         family={family}
         open={openEdit}
         onOpenChange={setOpenEdit}
+      />
+
+      <AddOptionDialog
+        open={openAddOption}
+        onOpenChange={setOpenAddOption}
+        familyId={family.id}
+        familyName={family.name}
+        onProductAttached={() => refetch()}
       />
     </div>
   )
