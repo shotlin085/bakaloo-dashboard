@@ -38,9 +38,11 @@ import { FamilyOptionsTable } from "../_components/family-options-table"
 export default function FamilyDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string } | Promise<{ id: string }>
 }) {
-  const { id } = use(params)
+  // Support both Next.js 14 (plain object) and Next.js 15+ (Promise)
+  const resolvedParams = params instanceof Promise ? use(params) : params
+  const { id } = resolvedParams
   const { can } = usePermissions()
   const router = useRouter()
   const [openEdit, setOpenEdit] = useState(false)
