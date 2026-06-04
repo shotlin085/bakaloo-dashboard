@@ -447,6 +447,29 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     Delivery
                   </h4>
                   <div className="text-sm text-muted-foreground space-y-1">
+
+                    {/* Scheduled delivery badge */}
+                    {order.delivery_mode === 'SCHEDULED' && order.scheduled_slot_label && (
+                      <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg"
+                        style={{ backgroundColor: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+                        <Clock className="h-4 w-4 flex-shrink-0" style={{ color: '#7C3AED' }} />
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: '#7C3AED' }}>
+                            Scheduled delivery
+                          </p>
+                          <p className="text-xs" style={{ color: '#7C3AED' }}>
+                            {order.scheduled_slot_label}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {(!order.delivery_mode || order.delivery_mode === 'ASAP') && (
+                      <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg bg-green-50 border border-green-100">
+                        <Truck className="h-4 w-4 flex-shrink-0 text-green-600" />
+                        <p className="text-xs font-medium text-green-700">ASAP delivery</p>
+                      </div>
+                    )}
+
                     <p>
                       {order.delivery_address?.line1 ||
                         order.delivery_address?.address_line ||

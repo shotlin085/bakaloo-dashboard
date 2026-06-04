@@ -55,6 +55,12 @@ export interface Order {
   shop_id?: string | null
   shop_name?: string | null
   shop?: { id?: string; name?: string } | null
+  // Delivery slot fields
+  delivery_mode?: 'ASAP' | 'SCHEDULED'
+  scheduled_slot_label?: string | null
+  scheduled_slot_start?: string | null
+  scheduled_slot_end?: string | null
+  scheduled_delivery_at?: string | null
 }
 
 export interface OrderItem {
