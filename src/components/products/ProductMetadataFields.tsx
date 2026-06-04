@@ -151,7 +151,7 @@ export function ProductMetadataFields({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Adds an "Imported" or "Local" tag on the product card.
+            Adds an &quot;Imported&quot; or &quot;Local&quot; tag on the product card.
           </p>
         </div>
       </div>

@@ -236,17 +236,17 @@ function mergeSections(
       v &&
       typeof v === "object" &&
       !Array.isArray(v) &&
-      (base as Record<string, unknown>)[k]
+      (base as unknown as Record<string, unknown>)[k]
     ) {
       out[k] = {
-        ...((base as Record<string, unknown>)[k] as object),
+        ...((base as unknown as Record<string, unknown>)[k] as object),
         ...(v as object),
       }
     } else {
       out[k] = v
     }
   }
-  return out as ThemeSections
+  return out as unknown as ThemeSections
 }
 
 /** Phase 3 starter templates surfaced when a tab has no sections yet. */

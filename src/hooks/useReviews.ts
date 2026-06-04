@@ -105,6 +105,7 @@ export function useProductReviews(
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useReplyReview(_productId: string | null) {
   const qc = useQueryClient()
   return useMutation({
@@ -121,6 +122,7 @@ export function useReplyReview(_productId: string | null) {
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useModerateReview(_productId: string | null) {
   const qc = useQueryClient()
   return useMutation({
@@ -139,6 +141,7 @@ export function useModerateReview(_productId: string | null) {
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useDeleteReview(_productId: string | null) {
   const qc = useQueryClient()
   return useMutation({

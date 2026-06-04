@@ -133,7 +133,7 @@ export function useSendBulk() {
   return useMutation({
     mutationFn: (payload: SendBulkPayload) => sendBulk(payload),
     onSuccess: (data) => {
-      toast.success(`Notification sent to ${data.sent_count} users`)
+      toast.success(`Notification queued for ${data.target_count ?? data.sent_count ?? '?'} users`)
       qc.invalidateQueries({ queryKey: ["notifications"] })
     },
     onError: () => toast.error("Failed to send notification"),
@@ -152,12 +152,12 @@ export function useScheduleCampaign() {
   })
 }
 
-export function useSegmentCount(segment: CampaignSegment) {
+export function useSegmentCount(segment: CampaignSegment, segmentValue?: string) {
   const shopKey = useShopKey()
   return useQuery({
-    queryKey: ["notifications", shopKey, "segment-count", segment] as const,
-    queryFn: () => getSegmentCount(segment),
-    enabled: shopKey !== NONE_SHOP_KEY,
+    queryKey: ["notifications", shopKey, "segment-count", segment, segmentValue] as const,
+    queryFn: () => getSegmentCount(segment, segmentValue),
+    enabled: shopKey !== NONE_SHOP_KEY && segment !== "cart_not_empty",
     staleTime: 60_000,
     placeholderData: (prev) => prev,
   })

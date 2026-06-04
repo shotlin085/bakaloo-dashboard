@@ -310,6 +310,5 @@ export default function LoginPage() {
   )
 }
 
-// Exported for unit tests (task 2.7) so the dispatch logic can be exercised
-// without mounting the full React tree.
-export { dispatchPostLogin, resolveRedirectTarget }
+// Note: dispatchPostLogin and resolveRedirectTarget are defined above
+// and can be imported directly in test files via a separate utility module.

@@ -40,7 +40,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export default function StoreTransactionsPage() {
-  const { activeShopId, mode } = useShopContext()
+  const { mode } = useShopContext()
   const isSuperAdmin = useIsSuperAdmin()
   const [searchInput, setSearchInput] = useState("")
   const [fromDate, setFromDate] = useState("")

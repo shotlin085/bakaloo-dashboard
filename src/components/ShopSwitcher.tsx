@@ -32,7 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useMyShops } from "@/hooks/useMyShops"
 import { useActiveShopsForSwitcher } from "@/hooks/useShops"
-import { useIsSuperAdmin, useShopContext } from "@/hooks/useShopContext"
+import { useShopContext } from "@/hooks/useShopContext"
 import { useEffectivePermissions } from "@/hooks/useEffectivePermissions"
 import { ROLE_DEFAULTS, type PermissionToken } from "@/lib/permissions"
 import { isShopScopedKey } from "@/lib/query-keys"
@@ -263,7 +263,7 @@ function HQShopSwitcher() {
 
 function StoreShopSwitcher() {
   const queryClient = useQueryClient()
-  const { mode, shopMeta } = useShopContext()
+  const { shopMeta } = useShopContext()
   const { data: myShopsData, isLoading } = useMyShops()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")

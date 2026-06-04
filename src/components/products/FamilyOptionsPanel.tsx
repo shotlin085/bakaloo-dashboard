@@ -85,7 +85,7 @@ export function FamilyOptionsPanel({
         </div>
       ) : options.length === 0 ? (
         <div className="flex items-center justify-center rounded-md border border-dashed py-8 text-sm text-muted-foreground">
-          No sibling options yet. Click "Add option" to create another size or pack.
+          No sibling options yet. Click &quot;Add option&quot; to create another size or pack.
         </div>
       ) : (
         <div className="space-y-2">

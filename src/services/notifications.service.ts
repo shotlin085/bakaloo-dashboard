@@ -91,11 +91,12 @@ export async function scheduleCampaign(
 }
 
 export async function getSegmentCount(
-  segment: CampaignSegment
+  segment: CampaignSegment,
+  segmentValue?: string
 ): Promise<SegmentCount> {
   const { data } = await api.get<ApiResponse<SegmentCount>>(
     "/admin/notifications/segment-count",
-    { params: { segment } }
+    { params: { segment, ...(segmentValue ? { segmentValue } : {}) } }
   )
   return data.data
 }

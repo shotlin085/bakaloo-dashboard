@@ -295,13 +295,13 @@ function NotificationsContent() {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-right font-mono text-sm">
-                        {c.sent_count.toLocaleString()}
+                        {(c.sent_count ?? 0).toLocaleString()}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right font-mono text-sm">
-                        {c.opened_count.toLocaleString()}
-                        {c.sent_count > 0 && (
+                        {(c.opened_count ?? 0).toLocaleString()}
+                        {(c.sent_count ?? 0) > 0 && (c.opened_count ?? 0) > 0 && (
                           <span className="text-xs text-muted-foreground ml-1">
-                            ({((c.opened_count / c.sent_count) * 100).toFixed(1)}%)
+                            ({(((c.opened_count ?? 0) / (c.sent_count ?? 1)) * 100).toFixed(1)}%)
                           </span>
                         )}
                       </TableCell>
