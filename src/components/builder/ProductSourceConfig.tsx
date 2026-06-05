@@ -21,6 +21,13 @@ interface ProductSourceConfigProps {
   onBindingChange: (binding: UpdateSectionMerchPayload) => void
 }
 
+// PHASE 5D: Mobile-safe product limit cap for the home section slider.
+// Allowing up to 50 on mobile home can cause payload/render lag on low-end
+// devices. The backend now hard-caps at the same value (HOME_CAPS.*), but
+// showing the cap here prevents user confusion ("I set 50, why do I see 12?").
+const MOBILE_HOME_LIMIT_MAX = 20
+const MOBILE_HOME_LIMIT_WARN = 12 // show warning above this count
+
 function normalizeMerchBinding(binding: MerchBinding | null) {
   return {
     source: binding?.source ?? "category",
@@ -306,14 +313,26 @@ export default function ProductSourceConfig({
           id="merch-limit"
           type="range"
           min={4}
-          max={50}
+          max={MOBILE_HOME_LIMIT_MAX}
           step={1}
-          value={binding.limit}
+          value={Math.min(binding.limit, MOBILE_HOME_LIMIT_MAX)}
           onChange={(event) =>
             patchBinding({ limit: Number(event.target.value) || 12 })
           }
           className="h-3 cursor-pointer rounded-full border-0 bg-transparent px-0 shadow-none"
         />
+        {/* PHASE 5D: Performance warning when limit is high */}
+        {binding.limit > MOBILE_HOME_LIMIT_WARN ? (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <span className="mt-0.5 text-base leading-none">⚠️</span>
+            <span>
+              <strong>High item count</strong> — values above {MOBILE_HOME_LIMIT_WARN}{" "}
+              can slow scrolling on low-end phones. The mobile API caps this
+              section at {MOBILE_HOME_LIMIT_MAX} items regardless of the
+              configured value.
+            </span>
+          </div>
+        ) : null}
         <div className="text-sm text-slate-500">{buildSummary(binding)}</div>
       </div>
     </div>

@@ -14,6 +14,12 @@ interface ProductConfigEditorProps {
   sectionType?: SectionType
 }
 
+// PHASE 5D: Section-level product count cap for manifest sections.
+// ProductCarousel and CategoryProductGrid sections show at most 12 cards on
+// the home screen; the backend now enforces HOME_MANIFEST_SECTION_CAP=12.
+const SECTION_LIMIT_MAX = 12
+const SECTION_LIMIT_WARN = 10 // show advisory above this
+
 const COLUMN_OPTIONS = [2, 3, 4] as const
 
 /**
@@ -181,14 +187,23 @@ export default function ProductConfigEditor({
           id="product-limit"
           type="range"
           min={4}
-          max={20}
+          max={SECTION_LIMIT_MAX}
           step={1}
-          value={limit}
+          value={Math.min(limit, SECTION_LIMIT_MAX)}
           onChange={(event) =>
             patchConfig({ limit: Number(event.target.value) || 6 })
           }
           className="h-3 cursor-pointer rounded-full border-0 bg-transparent px-0 shadow-none"
         />
+        {/* PHASE 5D: Advisory when limit is near the cap */}
+        {limit > SECTION_LIMIT_WARN ? (
+          <p className="flex items-center gap-1 text-xs text-amber-700">
+            <span>⚠️</span>
+            <span>
+              Mobile API caps this section at {SECTION_LIMIT_MAX} items.
+            </span>
+          </p>
+        ) : null}
       </div>
 
       <AnimationPicker
