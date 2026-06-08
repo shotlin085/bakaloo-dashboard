@@ -224,7 +224,20 @@ export function satisfies(
     "superAdminOnly" | "rolesAllowed" | "allOf" | "anyOf"
   >,
 ): boolean {
-  if (guard.superAdminOnly && user.role !== "SUPER_ADMIN") return false
+  // SUPER_ADMIN bypasses all permission-string checks (anyOf / allOf /
+  // rolesAllowed). The backend already enforces this via
+  // fastify.authorize(['ADMIN']) — the dashboard must mirror the same rule so
+  // HQ operators are never blocked by a token-name mismatch between the backend
+  // canonical vocabulary (shops.update) and the dashboard PermissionToken
+  // constants (shops.write).
+  if (user.role === "SUPER_ADMIN") {
+    // Super admins are still blocked by superAdminOnly=false routes if we add
+    // inverse guards in the future, but today every superAdminOnly: true guard
+    // is exactly what a SUPER_ADMIN should access — so return true immediately.
+    return true
+  }
+
+  if (guard.superAdminOnly) return false
   if (guard.rolesAllowed && !guard.rolesAllowed.includes(user.role)) return false
   if (guard.allOf && !guard.allOf.every((p) => user.permissions.includes(p))) {
     return false
@@ -293,7 +306,10 @@ export function isMenuItemAllowed(
   const perm = MENU_PERMISSIONS[itemId]
   if (!perm) return true
 
-  if (perm.superAdminOnly && user.role !== "SUPER_ADMIN") return false
+  // SUPER_ADMIN bypasses all menu permission checks — mirrors satisfies()
+  if (user.role === "SUPER_ADMIN") return true
+
+  if (perm.superAdminOnly) return false
   if (perm.requiresActiveShop && !ctx.hasActiveShop) return false
   return satisfies(user, perm)
 }

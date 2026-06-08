@@ -257,18 +257,25 @@ export function useRouteRBAC(pattern: string | RouteGuard): RouteRBAC {
       isAuthorized = false
     }
 
+    // SUPER_ADMIN has all permissions — skip permission-string checks.
+    const isSuperAdmin = subject.role === "SUPER_ADMIN"
+
     // canRead / canWrite from the primary entity prefix.
     const entity = primaryEntityFor(guard)
-    const canRead = entity
-      ? subject.permissions.some(
-          (p) => p === `${entity}.read` || p.startsWith(`${entity}.read.`),
-        )
-      : false
-    const canWrite = entity
-      ? subject.permissions.some(
-          (p) => p === `${entity}.write` || p === `${entity}.delete`,
-        )
-      : false
+    const canRead = isSuperAdmin
+      ? true
+      : entity
+        ? subject.permissions.some(
+            (p) => p === `${entity}.read` || p.startsWith(`${entity}.read.`),
+          )
+        : false
+    const canWrite = isSuperAdmin
+      ? true
+      : entity
+        ? subject.permissions.some(
+            (p) => p === `${entity}.write` || p === `${entity}.delete`,
+          )
+        : false
 
     return {
       isAuthorized,
