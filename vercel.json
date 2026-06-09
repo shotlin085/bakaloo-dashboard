@@ -1,6 +1,6 @@
 {
-"rewrites": [
-{"source": "/(.*)", "destination": "/"}
-]
-
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "devCommand": "next dev --port 4501"
 }
