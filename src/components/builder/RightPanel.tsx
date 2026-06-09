@@ -141,7 +141,7 @@ export default function RightPanel({
             variant="secondary"
             className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600"
           >
-            {sections.length} active
+            {sections.filter((s) => s.visible).length} visible
           </Badge>
         </div>
       </div>

@@ -272,6 +272,24 @@ function RegionFields({
             />
           </div>
           <ThemeColorPicker
+            label="Category tabs background"
+            value={
+              sections.categoryTabs.backgroundColor ??
+              sections.searchZone.backgroundColor
+            }
+            onChange={(hex) =>
+              patchSections({
+                categoryTabs: {
+                  ...sections.categoryTabs,
+                  backgroundColor: hex,
+                },
+              })
+            }
+          />
+          <p className="text-xs text-slate-400">
+            Defaults to the Search zone background when not set independently.
+          </p>
+          <ThemeColorPicker
             label="Tab text color"
             value={sections.categoryTabs.textColor}
             onChange={(hex) =>

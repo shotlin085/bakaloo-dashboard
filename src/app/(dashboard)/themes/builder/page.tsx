@@ -18,6 +18,8 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   BadgePlus,
+  ChevronsLeft,
+  ChevronsRight,
   Layers3,
   Loader2,
   Sparkles,
@@ -30,6 +32,7 @@ import { toast } from "sonner"
 import BuilderToolbar from "@/components/builder/BuilderToolbar"
 import BuilderDragOverlay from "@/components/builder/DragOverlay"
 import TabManagerPanel from "@/components/builder/TabManagerPanel"
+import NewTabDialog from "@/components/builder/NewTabDialog"
 import { TimelineBar } from "@/components/builder/TimelineBar"
 import { MobilePreviewFrame } from "@/components/builder/MobilePreviewFrame"
 import RightPanel from "@/components/builder/RightPanel"
@@ -308,6 +311,8 @@ function ThemeBuilderPageContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isTabSwitching, setIsTabSwitching] = useState(false)
   const [tabManagerOpen, setTabManagerOpen] = useState(false)
+  const [newTabOpen, setNewTabOpen] = useState(false)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false)
 
   // Reset tab/section/dirty state when the active store changes
   const prevStoreRef = useRef(activeStoreKey)
@@ -527,28 +532,25 @@ function ThemeBuilderPageContent() {
   }
 
   const handleCreateTab = () => {
-    const label = window.prompt(
-      "Enter a label for the new tab",
-      `New Tab ${themeTabs.length + 1}`
-    )
+    setNewTabOpen(true)
+  }
 
-    if (!label?.trim()) {
-      return
-    }
-
-    const nextLabel = label.trim()
-    const key = makeUniqueTabKey(nextLabel, themeTabs)
-
+  const handleNewTabCreate = (params: {
+    label: string
+    key: string
+    store_key: import("@/types/theme.types").ThemeStoreKey
+  }) => {
     createThemeTabMutation.mutate(
       {
-        store_key: activeStoreKey,
-        key,
-        label: nextLabel,
+        store_key: params.store_key,
+        key: params.key,
+        label: params.label,
         sort_order: themeTabs.length,
         status: "active",
       },
       {
         onSuccess: (createdTab) => {
+          setNewTabOpen(false)
           setIsDirty(false)
           setSelectedSectionId(null)
           setRequestedTabKey(createdTab.key)
@@ -1262,7 +1264,7 @@ function ThemeBuilderPageContent() {
       ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-3 pb-3 pt-3 xl:flex-row xl:px-4 xl:pb-4 xl:pt-4">
-        <aside className="flex w-full min-h-0 flex-col gap-0 xl:w-[300px]">
+        <aside className={`flex min-h-0 flex-col gap-0 transition-all duration-300 w-full ${leftPanelCollapsed ? "xl:w-10" : "xl:w-[300px]"}`}>
           {/* Compact header row — back + title + tab dropdown */}
           <div className="rounded-t-[20px] border border-b-0 border-slate-200/80 bg-white px-3 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:rounded-t-[24px] sm:px-4">
             <div className="flex items-center gap-2">
@@ -1271,36 +1273,54 @@ function ThemeBuilderPageContent() {
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Section Builder
+              {!leftPanelCollapsed && (
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Section Builder
+                  </div>
                 </div>
+              )}
+              {/* Collapse toggle — xl only */}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="hidden h-8 w-8 shrink-0 rounded-lg text-slate-400 xl:flex"
+                onClick={() => setLeftPanelCollapsed((v) => !v)}
+                aria-label={leftPanelCollapsed ? "Expand panel" : "Collapse panel"}
+                title={leftPanelCollapsed ? "Expand" : "Collapse"}
+              >
+                {leftPanelCollapsed ? (
+                  <ChevronsRight className="h-4 w-4" />
+                ) : (
+                  <ChevronsLeft className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {!leftPanelCollapsed && (
+              <div className="mt-2">
+                <TabNavbar
+                  tabs={themeTabs}
+                  activeTabId={activeTabId}
+                  onTabChange={handleTabChange}
+                  onCreateTab={handleCreateTab}
+                  onOpenTabManager={() => setTabManagerOpen(true)}
+                />
               </div>
-            </div>
-            <div className="mt-2">
-              <TabNavbar
-                tabs={themeTabs}
-                activeTabId={activeTabId}
-                onTabChange={handleTabChange}
-                onCreateTab={handleCreateTab}
-                onOpenTabManager={() => setTabManagerOpen(true)}
-              />
-            </div>
+            )}
           </div>
 
-          {/* Section Stack — gets all remaining height */}
+          {/* Section Stack — hidden when collapsed, gets all remaining height */}
+          {!leftPanelCollapsed && (
           <section className="flex min-h-[280px] flex-1 flex-col rounded-b-[20px] border border-slate-200/80 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.06)] sm:rounded-b-[24px] xl:min-h-0">
             <div className="border-b border-slate-200/80 px-3 py-2.5 sm:px-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-semibold text-slate-900">
-                  Section Stack
+                  Sections
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-400">
-                    Drag to reorder · Click to edit
-                  </span>
                   <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-xs">
-                    {localSections.length}
+                    {localSections.filter((s) => s.visible).length}/{localSections.length}
                   </Badge>
                 </div>
               </div>
@@ -1308,9 +1328,9 @@ function ThemeBuilderPageContent() {
 
             <div className="min-h-0 flex-1 overflow-y-auto p-2.5 pb-4 sm:p-3 xl:pb-28">
               {sectionsQuery.isLoading && !sectionsQuery.data ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+                    <div key={i} className="h-10 animate-pulse rounded-xl bg-slate-100" />
                   ))}
                 </div>
               ) : localSections.length ? (
@@ -1325,11 +1345,19 @@ function ThemeBuilderPageContent() {
                 />
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                  This tab is empty. Add your first section from the library.
+                  <p className="font-medium">Empty tab</p>
+                  <p className="mt-1 text-xs">Add sections from the library →</p>
                 </div>
               )}
             </div>
           </section>
+          )}
+          {/* Collapsed state — show a narrow icon strip */}
+          {leftPanelCollapsed && (
+            <div className="hidden rounded-b-[20px] border border-slate-200/80 bg-white xl:flex xl:flex-1 xl:flex-col xl:items-center xl:rounded-b-[24px] xl:py-4">
+              <Layers3 className="h-5 w-5 text-slate-400" />
+            </div>
+          )}
         </aside>
 
         <main className="flex min-h-[720px] min-w-0 flex-1 flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.08)] sm:min-h-[780px] sm:rounded-[32px] xl:min-h-0">
@@ -1371,7 +1399,7 @@ function ThemeBuilderPageContent() {
             <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 xl:top-2">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/92 px-2.5 py-1 text-[10px] font-medium text-slate-500 shadow-sm sm:px-3 sm:py-1.5 sm:text-[11px]">
                 <Layers3 className="h-4 w-4" />
-                {localSections.length} sections in current draft
+                {localSections.filter((s) => s.visible).length} visible · {localSections.length} total
               </div>
             </div>
             <div className="relative flex min-h-0 w-full flex-1 items-center justify-center px-2 pb-4 pt-14 sm:px-3 xl:pb-2">
@@ -1402,6 +1430,7 @@ function ThemeBuilderPageContent() {
                     if (tab && tab.id !== activeTabId) handleTabChange(tab.id)
                   }}
                   isDragActive={Boolean(activeDragData)}
+                  themeTabs={themeTabs}
                 />
               </div>
             </div>
@@ -1434,6 +1463,15 @@ function ThemeBuilderPageContent() {
         onTabCreate={handleCreateTab}
         onTabUpdate={handleTabUpdate}
         onTabArchive={handleTabArchive}
+      />
+
+      <NewTabDialog
+        open={newTabOpen}
+        onClose={() => setNewTabOpen(false)}
+        existingTabs={themeTabs}
+        defaultStoreKey={activeStoreKey}
+        isCreating={createThemeTabMutation.isPending}
+        onCreate={handleNewTabCreate}
       />
 
       <div className="z-40 px-3 pb-3 xl:pointer-events-none xl:absolute xl:inset-x-0 xl:bottom-0 xl:px-4 xl:pb-2">

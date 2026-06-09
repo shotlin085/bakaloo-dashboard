@@ -22,7 +22,7 @@ import {
 } from "@dnd-kit/sortable"
 import { useDroppable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
-import type { SectionManifest, ThemeData } from "@/types/theme.types"
+import type { SectionManifest, ThemeData, ThemeTab } from "@/types/theme.types"
 import {
   usePreviewData,
   resolveProductsForSection,
@@ -57,6 +57,8 @@ interface MobilePreviewFrameProps {
   selectedChromeRegion?: ChromeRegion | null
   /** Callback fired when a category tab inside the preview is clicked. */
   onPreviewTabChange?: (tabKey: string) => void
+  /** Live API theme tabs — passed to FixedHeaderPreview for real icons/labels. */
+  themeTabs?: ThemeTab[]
   /** True while a drag is active anywhere in the builder — expands insertion slots. */
   isDragActive?: boolean
 }
@@ -90,6 +92,7 @@ export function MobilePreviewFrame({
   onChromeRegionClick,
   selectedChromeRegion,
   onPreviewTabChange,
+  themeTabs,
   isDragActive = false,
 }: MobilePreviewFrameProps) {
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -105,9 +108,11 @@ export function MobilePreviewFrame({
   const deferredSections = useDeferredValue(sections)
   const isStale = deferredSections !== sections
 
-  const orderedSections = [...deferredSections].sort(
-    (a, b) => a.sort_order - b.sort_order
-  )
+  // Flutter contract: visible=false sections collapse to SizedBox.shrink() — zero height.
+  // Dashboard preview must do the same: never render hidden sections.
+  const orderedSections = [...deferredSections]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .filter((s) => s.visible)
 
   useEffect(() => {
     const node = frameRef.current
@@ -184,6 +189,7 @@ export function MobilePreviewFrame({
                 themeData={themeData}
                 activeTabKey={activeTabKey}
                 storeKey={activeStoreKey}
+                themeTabs={themeTabs}
                 onRegionClick={onChromeRegionClick}
                 selectedRegion={selectedChromeRegion ?? null}
                 onPreviewTabChange={onPreviewTabChange}

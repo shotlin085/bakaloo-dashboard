@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useDebouncedCallback } from "use-debounce"
-import { Plus, X } from "lucide-react"
+import { FolderOpen, Plus, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,10 +52,10 @@ export default function CategoryBinder({
 
   useEffect(() => {
     setLocalBinding(normalizeMerchBinding(section.merch_binding))
-  }, [section.id, section.updated_at, section.merch_binding])
+  }, [section.id, section.updated_at])
 
   const categoryMap = useMemo(() => {
-    return new Map((categories ?? []).map((category) => [category.id, category.name]))
+    return new Map((categories ?? []).map((c) => [c.id, c.name]))
   }, [categories])
 
   const debouncedSave = useDebouncedCallback((binding: MerchBinding) => {
@@ -100,66 +100,86 @@ export default function CategoryBinder({
     }
   }
 
+  const boundCategories = localBinding.category_ids
+
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-slate-900">
+    <div className="space-y-4">
+      {/* ── Bound categories panel ── */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-3.5 w-3.5 text-slate-500" />
+            <span className="text-xs font-semibold text-slate-700">
               Bound Categories
-            </div>
-            <div className="mt-1 text-sm text-slate-500">
-              Categories act as the default fill source for section products.
-            </div>
+            </span>
+            {boundCategories.length > 0 && (
+              <Badge
+                variant="secondary"
+                className="rounded-full px-1.5 py-0 text-[10px] font-semibold"
+              >
+                {boundCategories.length}
+              </Badge>
+            )}
           </div>
           <Button
             type="button"
             variant="outline"
+            size="sm"
+            className="h-7 rounded-lg px-2 text-xs"
             onClick={() => setTreeModalOpen(true)}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Category
+            <Plus className="mr-1 h-3 w-3" />
+            Add
           </Button>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {localBinding.category_ids.length ? (
-            localBinding.category_ids.map((categoryId) => (
-              <Badge key={categoryId} variant="secondary" className="gap-2">
-                {categoryMap.get(categoryId) ?? categoryId}
+        {boundCategories.length > 0 ? (
+          <div className="mt-2.5 flex max-h-[100px] flex-wrap gap-1.5 overflow-y-auto">
+            {boundCategories.map((categoryId) => (
+              <Badge
+                key={categoryId}
+                variant="secondary"
+                className="gap-1 rounded-full pl-2 pr-1 text-[11px]"
+              >
+                <span className="max-w-[100px] truncate">
+                  {categoryMap.get(categoryId) ?? categoryId}
+                </span>
                 <button
                   type="button"
                   onClick={() =>
                     applyBinding({
-                      category_ids: localBinding.category_ids.filter(
-                        (value) => value !== categoryId
+                      category_ids: boundCategories.filter(
+                        (id) => id !== categoryId
                       ),
                     })
                   }
+                  aria-label={`Remove category ${categoryMap.get(categoryId) ?? categoryId}`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 shrink-0" />
                 </button>
               </Badge>
-            ))
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
-              No categories bound yet.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-[11px] text-slate-400">
+            No categories bound yet. Sections will use fallback product data.
+          </p>
+        )}
       </div>
 
+      {/* ── Product source + limit ── */}
       <ProductSourceConfig
         merchBinding={localBinding}
         onBindingChange={applyBinding}
       />
 
+      {/* ── Category tree modal ── */}
       <Dialog open={treeModalOpen} onOpenChange={setTreeModalOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Select Categories</DialogTitle>
             <DialogDescription>
-              Expand categories and choose one or more fill sources for this
+              Choose one or more categories to use as the fill source for this
               section.
             </DialogDescription>
           </DialogHeader>
@@ -174,6 +194,15 @@ export default function CategoryBinder({
               })
             }
           />
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              onClick={() => setTreeModalOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -58,7 +58,7 @@ export const STORE_CONFIGS: Record<ThemeStoreKey, StoreConfig> = {
   },
   off_zone: {
     label: "50% OFF Zone",
-    chipImage: "/preview-assets/50%_OFF_zone.png",
+    chipImage: "/preview-assets/50%25_OFF_zone.png",
     bg: "#FF6B35",          // Flutter: Color(0xFFFF6B35)
     chipActive: "#FFD4B8",
     text: "#FFFFFF",        // White text on orange bg

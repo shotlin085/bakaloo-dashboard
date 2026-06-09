@@ -7,7 +7,7 @@ import {
   SignalHigh,
   Wifi,
 } from "lucide-react"
-import type { ThemeData } from "@/types/theme.types"
+import type { ThemeData, ThemeTab } from "@/types/theme.types"
 import { ALL_STORE_KEYS, STORE_CONFIGS } from "@/contexts/StoreContext"
 import type { ThemeStoreKey } from "@/types/theme.types"
 import type { ChromeRegion } from "./chromeRegions"
@@ -16,6 +16,8 @@ interface FixedHeaderPreviewProps {
   themeData: ThemeData | null
   activeTabKey: string
   storeKey: ThemeStoreKey
+  /** Live API tab list — used for category tab icons and labels (replaces hardcoded config). */
+  themeTabs?: ThemeTab[]
   /** When provided, makes chrome regions interactive. */
   onRegionClick?: (region: ChromeRegion) => void
   /** Currently selected chrome region (for outline highlight). */
@@ -32,16 +34,16 @@ interface FixedHeaderPreviewProps {
  */
 const STORE_CHIPS = [
   { key: "bakaloo", image: "/preview-assets/Bakaloo.png" },
-  { key: "off", image: "/preview-assets/50%_OFF_zone.png" },
+  { key: "off", image: "/preview-assets/50%25_OFF_zone.png" },
   { key: "super", image: "/preview-assets/Super_mall.png" },
   { key: "cafe", image: "/preview-assets/Cafe.png" },
 ]
-
 
 export function FixedHeaderPreview({
   themeData,
   activeTabKey,
   storeKey,
+  themeTabs,
   onRegionClick,
   selectedRegion,
   hoveredRegion,
@@ -54,9 +56,13 @@ export function FixedHeaderPreview({
     themeData?.sections.storeSelector.activeChipColor ?? config.chipActive
   const categoryTabsTheme = themeData?.sections.categoryTabs
   const showCategoryTabs = categoryTabsTheme?.visible ?? true
-  const promoImageUrl = themeData?.sections.searchZone.promoBoxImageUrl ?? null
+  // Flutter contract: category-tabs row shares `searchZone.backgroundColor` by default.
+  // When the admin explicitly sets `categoryTabs.backgroundColor`, use that instead so
+  // the two regions can be styled independently from the dashboard.
   const categoryTabsBackground =
-    themeData?.sections.searchZone.backgroundColor ?? "#ffffff"
+    categoryTabsTheme?.backgroundColor ??
+    themeData?.sections.searchZone.backgroundColor ??
+    "#ffffff"
 
   const interactive = Boolean(onRegionClick)
 
@@ -77,17 +83,42 @@ export function FixedHeaderPreview({
     }
   }
 
-  const handleRegionClick = (region: ChromeRegion) => (e: React.MouseEvent) => {
-    if (!onRegionClick) return
-    e.stopPropagation()
-    onRegionClick(region)
-  }
+  const handleRegionClick =
+    (region: ChromeRegion) => (e: React.MouseEvent) => {
+      if (!onRegionClick) return
+      e.stopPropagation()
+      onRegionClick(region)
+    }
 
-  const storeTabs = config.categories.map((label, i) => ({
-    key: label.toLowerCase().replace(/\s+/g, "_"),
-    label,
-    fallbackEmoji: config.categoryIcons[i] ?? "📦",
-  }))
+  // Build real tab list from API data (matching Flutter's CategoryTabsRow).
+  // Falls back to hardcoded store config only when no API data is loaded yet.
+  const realTabs: Array<{
+    key: string
+    label: string
+    iconUrl: string | null
+    fallbackEmoji: string
+  }> = (() => {
+    const apiTabs =
+      themeTabs?.filter((t) => t.store_key === storeKey && t.status === "active")
+        .sort((a, b) => a.sort_order - b.sort_order) ?? []
+
+    if (apiTabs.length > 0) {
+      return apiTabs.map((tab, i) => ({
+        key: tab.key,
+        label: tab.label,
+        iconUrl: tab.image_url ?? null,
+        fallbackEmoji: config.categoryIcons[i] ?? "📦",
+      }))
+    }
+
+    // Fallback: hardcoded store config (used while tabs are loading)
+    return config.categories.map((label, i) => ({
+      key: label.toLowerCase().replace(/\s+/g, "_"),
+      label,
+      iconUrl: null,
+      fallbackEmoji: config.categoryIcons[i] ?? "📦",
+    }))
+  })()
 
   return (
     <div
@@ -114,7 +145,7 @@ export function FixedHeaderPreview({
           fontWeight: 700,
         }}
       >
-        <span>6:17</span>
+        <span>9:41</span>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <SignalHigh size={12} strokeWidth={2.1} />
           <Wifi size={12} strokeWidth={2.1} />
@@ -167,7 +198,7 @@ export function FixedHeaderPreview({
               opacity: 0.78,
             }}
           >
-            <span>Log in to add your delivery address</span>
+            <span>Add delivery address</span>
             <ChevronDown size={12} strokeWidth={2.2} />
           </div>
         </div>
@@ -186,7 +217,7 @@ export function FixedHeaderPreview({
         </div>
       </div>
 
-      {/* Store chips — using actual Flutter app PNG images */}
+      {/* Store chips */}
       <div
         data-region="store_chips"
         onClick={handleRegionClick("store_chips")}
@@ -224,26 +255,21 @@ export function FixedHeaderPreview({
               <img
                 src={chip.image}
                 alt={chip.key}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
             </div>
           )
         })}
       </div>
 
-      {/* Search bar + promo box */}
+      {/* Search bar — full width, no promo box.
+          Flutter removed the "Everyday Essentials" promo accessory entirely.
+          The search bar is always full width (width: double.infinity). */}
       <div
         data-region="search_bar"
         onClick={handleRegionClick("search_bar")}
         style={{
           ...regionStyle("search_bar"),
-          display: "grid",
-          gridTemplateColumns: "1fr 112px",
-          gap: 8,
           padding: "7px 12px 6px",
           background: config.gradient[2],
         }}
@@ -253,63 +279,62 @@ export function FixedHeaderPreview({
             display: "flex",
             alignItems: "center",
             gap: 10,
-            minHeight: 56,
-            padding: "0 16px",
-            borderRadius: 16,
+            height: 50,
+            padding: "0 14px",
+            borderRadius: 12,
             background: "#ffffff",
-            border: "1px solid rgba(15,23,42,0.10)",
+            border: "1px solid rgba(234,231,240,1)",
+            boxShadow: "0 4px 14px rgba(42,26,71,0.06)",
           }}
         >
-          <Search size={21} strokeWidth={2.4} />
-          <span
+          {/* Search icon (matches Flutter bakaloo-search-icon.png dimensions) */}
+          <div
             style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: "rgba(15,23,42,0.74)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              width: 28,
+              height: 28,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
             }}
           >
-            {config.label === "Bakaloo"
-              ? "Search for \"Lego\""
-              : config.label === "50% OFF Zone"
-              ? "Search for \"deals\""
-              : config.label === "Super Mall"
-              ? "Search for \"Earrings\""
-              : "Search for \"Toys\""}
+            <Search size={18} strokeWidth={2.2} color="#6B3FA0" />
+          </div>
+          {/* Purple divider — matches Flutter */}
+          <div
+            style={{
+              width: 1.5,
+              height: 20,
+              background: "#6B3FA0",
+              borderRadius: 2,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              flex: 1,
+              fontSize: 14,
+              fontWeight: 400,
+              color: "#6B6770",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontFamily: "Inter, sans-serif",
+            }}
+          >
+            Search &apos;fresh vegetables&apos;
           </span>
-        </div>
-
-        <div
-          style={{
-            minHeight: 56,
-            borderRadius: "16px 0 0 16px",
-            border: "1px solid rgba(15,23,42,0.10)",
-            background: "#ffffff",
-            display: "grid",
-            placeItems: "center",
-            overflow: "hidden",
-            padding: 4,
-          }}
-        >
-          {promoImageUrl ? (
-            <img
-              src={promoImageUrl}
-              alt="Promo"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          {/* Scan icon */}
+          <div style={{ flexShrink: 0, opacity: 0.7 }}>
+            <Search
+              size={20}
+              strokeWidth={1.8}
+              style={{ transform: "rotate(0deg)" }}
             />
-          ) : (
-            <img
-              src="/preview-assets/everyday_essentials.png"
-              alt="Everyday Essentials"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Category tabs — 3D icons from tab_icon_url or fallback emoji */}
+      {/* Category tabs — real labels and icons from API, scrollable like Flutter */}
       {showCategoryTabs ? (
         <div
           data-region="category_tabs"
@@ -317,15 +342,16 @@ export function FixedHeaderPreview({
           style={{
             ...regionStyle("category_tabs"),
             display: "flex",
-            gap: 2,
+            gap: 0,
             overflowX: "auto",
-            padding: "6px 0 0 0",
+            padding: "4px 0 0 0",
             background: categoryTabsBackground,
             borderBottom: "1px solid rgba(15,23,42,0.06)",
             scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
           }}
         >
-          {storeTabs.map((tab) => {
+          {realTabs.map((tab) => {
             const active = tab.key === activeTabKey
             const isInteractiveTab = Boolean(onPreviewTabChange)
             return (
@@ -344,10 +370,11 @@ export function FixedHeaderPreview({
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  paddingBottom: 6,
-                  cursor: isInteractiveTab ? "pointer" : undefined,
+                  paddingBottom: 4,
+                  cursor: isInteractiveTab ? "pointer" : "default",
                 }}
               >
+                {/* Tab icon — real image from API or emoji fallback */}
                 <div
                   style={{
                     width: 44,
@@ -355,38 +382,71 @@ export function FixedHeaderPreview({
                     display: "grid",
                     placeItems: "center",
                     opacity: active ? 1 : 0.6,
+                    overflow: "hidden",
                   }}
                 >
-                  <span style={{ fontSize: 28, lineHeight: 1 }}>
-                    {tab.fallbackEmoji}
-                  </span>
+                  {tab.iconUrl ? (
+                    <img
+                      src={tab.iconUrl}
+                      alt={tab.label}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                      onError={(e) => {
+                        // On image load error, fall back to emoji
+                        const target = e.currentTarget
+                        target.style.display = "none"
+                        const parent = target.parentElement
+                        if (parent && !parent.querySelector("span")) {
+                          const span = document.createElement("span")
+                          span.style.fontSize = "26px"
+                          span.style.lineHeight = "1"
+                          span.textContent = tab.fallbackEmoji
+                          parent.appendChild(span)
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 26, lineHeight: 1 }}>
+                      {tab.fallbackEmoji}
+                    </span>
+                  )}
                 </div>
+
+                {/* Tab label */}
                 <div
                   style={{
-                    marginTop: 2,
+                    marginTop: 1,
                     fontSize: 10.8,
                     fontWeight: active ? 700 : 500,
                     color: active
-                      ? categoryTabsTheme?.textColor ?? "#111827"
+                      ? (categoryTabsTheme?.textColor ?? "#111827")
                       : categoryTabsTheme?.textColor
                       ? `${categoryTabsTheme.textColor}B8`
                       : "#111827",
                     textAlign: "center",
                     whiteSpace: "nowrap",
+                    maxWidth: 74,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   {tab.label}
                 </div>
+
+                {/* Active indicator — pill bottom border, animates width */}
                 <div
                   style={{
-                    marginTop: 6,
-                    width: active ? 56 : 0,
+                    marginTop: 4,
+                    width: active ? Math.round(78 * 0.78) : 0,
                     height: 5,
                     borderRadius: "999px 999px 0 0",
                     background: active
-                      ? categoryTabsTheme?.indicatorColor ?? "#111827"
+                      ? (categoryTabsTheme?.indicatorColor ?? "#111827")
                       : "transparent",
-                    transition: "width 150ms ease",
+                    transition: "width 200ms ease",
                   }}
                 />
               </div>

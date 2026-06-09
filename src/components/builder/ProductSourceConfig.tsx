@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { CheckCircle2, Loader2, Search, X } from "lucide-react"
+import { CheckCircle2, FolderOpen, Hash, Loader2, MousePointerClick, Search, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 import type { Product } from "@/types"
 import { getProducts } from "@/services/products.service"
 import { useDebounce } from "@/hooks/useDebounce"
@@ -21,16 +22,41 @@ interface ProductSourceConfigProps {
   onBindingChange: (binding: UpdateSectionMerchPayload) => void
 }
 
-// PHASE 5D: Mobile-safe product limit cap for the home section slider.
-// Allowing up to 50 on mobile home can cause payload/render lag on low-end
-// devices. The backend now hard-caps at the same value (HOME_CAPS.*), but
-// showing the cap here prevents user confusion ("I set 50, why do I see 12?").
+// Backend caps manifest section at 12; keep slider at 20 for UX feedback
 const MOBILE_HOME_LIMIT_MAX = 20
-const MOBILE_HOME_LIMIT_WARN = 12 // show warning above this count
+const MOBILE_HOME_LIMIT_WARN = 12
+
+type SourceMode = "category" | "tag" | "manual"
+
+const SOURCE_OPTIONS: Array<{
+  value: SourceMode
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  hint: string
+}> = [
+  {
+    value: "category",
+    label: "By Category",
+    icon: FolderOpen,
+    hint: "Fill products from selected categories",
+  },
+  {
+    value: "tag",
+    label: "By Tag",
+    icon: Hash,
+    hint: "Use product tags as source",
+  },
+  {
+    value: "manual",
+    label: "Manual",
+    icon: MousePointerClick,
+    hint: "Hand-pick specific products",
+  },
+]
 
 function normalizeMerchBinding(binding: MerchBinding | null) {
   return {
-    source: binding?.source ?? "category",
+    source: (binding?.source ?? "category") as SourceMode,
     category_ids: binding?.category_ids ?? [],
     product_ids: binding?.product_ids ?? [],
     tags: binding?.tags ?? [],
@@ -41,12 +67,12 @@ function normalizeMerchBinding(binding: MerchBinding | null) {
 function buildSummary(binding: ReturnType<typeof normalizeMerchBinding>) {
   switch (binding.source) {
     case "tag":
-      return `${binding.limit} products from ${binding.tags.length} tags`
+      return `${binding.limit} products · ${binding.tags.length} tag${binding.tags.length !== 1 ? "s" : ""}`
     case "manual":
-      return `${binding.product_ids.length} manually selected products`
+      return `${binding.product_ids.length} product${binding.product_ids.length !== 1 ? "s" : ""} selected`
     case "category":
     default:
-      return `${binding.limit} products from ${binding.category_ids.length} categories`
+      return `${binding.limit} products · ${binding.category_ids.length} categor${binding.category_ids.length !== 1 ? "ies" : "y"}`
   }
 }
 
@@ -54,10 +80,7 @@ export default function ProductSourceConfig({
   merchBinding,
   onBindingChange,
 }: ProductSourceConfigProps) {
-  const binding = useMemo(
-    () => normalizeMerchBinding(merchBinding),
-    [merchBinding]
-  )
+  const binding = useMemo(() => normalizeMerchBinding(merchBinding), [merchBinding])
   const [tagInput, setTagInput] = useState(binding.tags.join(", "))
   const [productSearch, setProductSearch] = useState("")
   const debouncedSearch = useDebounce(productSearch, 250)
@@ -67,12 +90,7 @@ export default function ProductSourceConfig({
   const { data, isFetching } = useQuery({
     queryKey: ["builder", "product-search", debouncedSearch],
     queryFn: () =>
-      getProducts({
-        page: 1,
-        limit: 8,
-        search: debouncedSearch,
-        status: "active",
-      }),
+      getProducts({ page: 1, limit: 8, search: debouncedSearch, status: "active" }),
     enabled: shouldSearch,
     staleTime: 30_000,
   })
@@ -83,11 +101,10 @@ export default function ProductSourceConfig({
 
   useEffect(() => {
     if (!data?.products?.length) return
-
     setKnownProducts((current) => {
       const next = { ...current }
-      data.products.forEach((product) => {
-        next[product.id] = product
+      data.products.forEach((p) => {
+        next[p.id] = p
       })
       return next
     })
@@ -104,57 +121,52 @@ export default function ProductSourceConfig({
     })
   }
 
-  const selectedProducts = binding.product_ids.map((productId) => ({
-    id: productId,
-    name: knownProducts[productId]?.name ?? productId,
+  const selectedProducts = binding.product_ids.map((id) => ({
+    id,
+    name: knownProducts[id]?.name ?? id,
   }))
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <Label>Product Source</Label>
-        <RadioGroup
-          value={binding.source}
-          onValueChange={(value) =>
-            patchBinding({ source: value as MerchBinding["source"] })
-          }
-          className="grid gap-3 md:grid-cols-3"
-        >
-          {[
-            {
-              value: "category",
-              label: "By Category",
-              description: "Fill products from one or more categories.",
-            },
-            {
-              value: "tag",
-              label: "By Tag",
-              description: "Use comma-separated tags as the merch source.",
-            },
-            {
-              value: "manual",
-              label: "Manual Pick",
-              description: "Hand-pick products in the exact order you want.",
-            },
-          ].map((option) => (
-            <label
-              key={option.value}
-              className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 hover:border-slate-300"
-            >
-              <RadioGroupItem value={option.value} className="mt-0.5" />
-              <div>
-                <div className="text-sm font-medium text-slate-900">
-                  {option.label}
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-500">
-                  {option.description}
-                </div>
-              </div>
-            </label>
-          ))}
-        </RadioGroup>
+    <div className="space-y-4">
+      {/* ── Source selector — horizontal segmented control ── */}
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+          Product Source
+        </Label>
+
+        {/* Segmented control row */}
+        <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+          {SOURCE_OPTIONS.map((opt) => {
+            const isActive = binding.source === opt.value
+            const OptionIcon = opt.icon
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => patchBinding({ source: opt.value })}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-150",
+                  isActive
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+                aria-pressed={isActive}
+                title={opt.hint}
+              >
+                <OptionIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">{opt.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Hint text for current mode */}
+        <p className="text-[11px] text-slate-400">
+          {SOURCE_OPTIONS.find((o) => o.value === binding.source)?.hint}
+        </p>
       </div>
 
+      {/* ── Category mode ── */}
       {binding.source === "category" ? (
         <CategoryTree
           selectedIds={binding.category_ids}
@@ -168,79 +180,95 @@ export default function ProductSourceConfig({
         />
       ) : null}
 
+      {/* ── Tag mode ── */}
       {binding.source === "tag" ? (
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="space-y-2">
-            <Label htmlFor="builder-tag-input">Tags</Label>
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="builder-tag-input" className="text-xs">
+              Tags <span className="text-slate-400">(comma-separated)</span>
+            </Label>
             <Input
               id="builder-tag-input"
               value={tagInput}
-              onChange={(event) => {
-                const next = event.target.value
+              onChange={(e) => {
+                const next = e.target.value
                 setTagInput(next)
                 patchBinding({
                   tags: next
                     .split(",")
-                    .map((tag) => tag.trim())
+                    .map((t) => t.trim())
                     .filter(Boolean),
                 })
               }}
-              placeholder="festive, diwali"
+              placeholder="festive, diwali, sale"
+              className="text-sm"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {binding.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="gap-2">
-                #{tag}
-                <button
-                  type="button"
-                  onClick={() =>
-                    patchBinding({
-                      tags: binding.tags.filter((value) => value !== tag),
-                    })
-                  }
+          {binding.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {binding.tags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="gap-1 rounded-full pl-2 pr-1 text-[11px]"
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patchBinding({
+                        tags: binding.tags.filter((t) => t !== tag),
+                      })
+                    }
+                    aria-label={`Remove tag ${tag}`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
 
+      {/* ── Manual pick mode ── */}
       {binding.source === "manual" ? (
-        <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="space-y-2">
-            <Label htmlFor="manual-product-search">Product Search</Label>
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+          {/* Search */}
+          <div className="space-y-1.5">
+            <Label htmlFor="manual-product-search" className="text-xs">
+              Search products
+            </Label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <Input
                 id="manual-product-search"
                 value={productSearch}
-                onChange={(event) => setProductSearch(event.target.value)}
-                placeholder="Search by product name, SKU, or barcode"
-                className="pl-10"
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Name, SKU, barcode…"
+                className="pl-8 text-sm"
               />
             </div>
           </div>
 
+          {/* Results */}
           {shouldSearch ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60">
+            <div className="overflow-hidden rounded-lg border border-slate-200">
               {isFetching ? (
-                <div className="flex items-center gap-2 p-3 text-sm text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching products...
+                <div className="flex items-center gap-2 p-2.5 text-xs text-slate-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Searching…
                 </div>
               ) : data?.products?.length ? (
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-slate-100">
                   {data.products.map((product) => {
                     const alreadyAdded = binding.product_ids.includes(product.id)
                     return (
                       <button
                         key={product.id}
                         type="button"
-                        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={alreadyAdded}
                         onClick={() => {
                           patchBinding({
@@ -250,90 +278,92 @@ export default function ProductSourceConfig({
                         }}
                       >
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-slate-900">
+                          <p className="truncate font-medium text-slate-900">
                             {product.name}
-                          </div>
-                          <div className="truncate text-xs text-slate-500">
+                          </p>
+                          <p className="truncate text-slate-400">
                             {product.category_name ?? "Uncategorized"}
-                          </div>
+                          </p>
                         </div>
                         {alreadyAdded ? (
-                          <Badge variant="secondary">Added</Badge>
+                          <Badge variant="secondary" className="shrink-0 text-[10px]">
+                            Added
+                          </Badge>
                         ) : (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                         )}
                       </button>
                     )
                   })}
                 </div>
               ) : (
-                <div className="p-3 text-sm text-slate-500">
-                  No active products matched this search.
-                </div>
+                <p className="p-2.5 text-xs text-slate-500">
+                  No products matched.
+                </p>
               )}
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            {selectedProducts.length ? (
-              selectedProducts.map((product) => (
-                <Badge key={product.id} variant="secondary" className="gap-2">
-                  {product.name}
+          {/* Selected products */}
+          {selectedProducts.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedProducts.map((p) => (
+                <Badge
+                  key={p.id}
+                  variant="secondary"
+                  className="max-w-[160px] gap-1 rounded-full pl-2 pr-1 text-[11px]"
+                >
+                  <span className="truncate">{p.name}</span>
                   <button
                     type="button"
                     onClick={() =>
                       patchBinding({
                         product_ids: binding.product_ids.filter(
-                          (value) => value !== product.id
+                          (id) => id !== p.id
                         ),
                       })
                     }
+                    aria-label={`Remove ${p.name}`}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-2.5 w-2.5 shrink-0" />
                   </button>
                 </Badge>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
-                No manual products selected yet.
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            !shouldSearch && (
+              <p className="text-[11px] text-slate-400">
+                No products selected. Search above to add products.
+              </p>
+            )
+          )}
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor="merch-limit">Product Limit</Label>
-          <span className="text-sm font-medium text-slate-600">
+      {/* ── Product limit ── */}
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs">Product limit</Label>
+          <span className="text-xs font-semibold tabular-nums text-slate-600">
             {binding.limit}
           </span>
         </div>
-        <Input
-          id="merch-limit"
+        <input
           type="range"
           min={4}
           max={MOBILE_HOME_LIMIT_MAX}
           step={1}
           value={Math.min(binding.limit, MOBILE_HOME_LIMIT_MAX)}
-          onChange={(event) =>
-            patchBinding({ limit: Number(event.target.value) || 12 })
-          }
-          className="h-3 cursor-pointer rounded-full border-0 bg-transparent px-0 shadow-none"
+          onChange={(e) => patchBinding({ limit: Number(e.target.value) || 12 })}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-violet-600"
+          aria-label="Product limit"
         />
-        {/* PHASE 5D: Performance warning when limit is high */}
         {binding.limit > MOBILE_HOME_LIMIT_WARN ? (
-          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            <span className="mt-0.5 text-base leading-none">⚠️</span>
-            <span>
-              <strong>High item count</strong> — values above {MOBILE_HOME_LIMIT_WARN}{" "}
-              can slow scrolling on low-end phones. The mobile API caps this
-              section at {MOBILE_HOME_LIMIT_MAX} items regardless of the
-              configured value.
-            </span>
-          </div>
+          <p className="text-[10px] text-amber-700">
+            ⚠️ Mobile API caps at {MOBILE_HOME_LIMIT_MAX} items
+          </p>
         ) : null}
-        <div className="text-sm text-slate-500">{buildSummary(binding)}</div>
+        <p className="text-[11px] text-slate-400">{buildSummary(binding)}</p>
       </div>
     </div>
   )

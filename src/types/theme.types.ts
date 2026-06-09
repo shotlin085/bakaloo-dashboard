@@ -14,6 +14,10 @@ export interface CategoryTabsTheme {
   visible: boolean
   textColor: string
   indicatorColor: string
+  /** Container background for the category tabs row.
+   *  When absent (legacy themes), the preview falls back to searchZone.backgroundColor
+   *  to match Flutter's current behavior where both regions share the same container color. */
+  backgroundColor?: string
 }
 
 export interface SearchZoneTheme {

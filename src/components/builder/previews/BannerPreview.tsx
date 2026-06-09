@@ -6,24 +6,42 @@ import { cn } from "@/lib/utils"
 import type { PreviewProps } from "./index"
 import styles from "../MobilePreviewFrame.module.css"
 
-function BannerPreview({
-  section,
-  isSelected,
-  onClick,
-}: PreviewProps) {
+/**
+ * Preview for the `animated_banner` section type.
+ *
+ * Flutter renders: `AnimatedBannerSection` — a fixed-height container
+ * with a gradient background plus an optional image or Lottie animation.
+ * There is no text/subtitle rendered in Flutter — they are not part of this
+ * section's config at all. The preview must match that contract exactly.
+ */
+function BannerPreview({ section, isSelected, onClick }: PreviewProps) {
   const config = section.config as Record<string, unknown>
+
+  // Gradient colors — Flutter: bannerTheme.backgroundGradient
   const gradient = Array.isArray(config.gradient)
-    ? config.gradient.filter((value): value is string => typeof value === "string")
+    ? config.gradient.filter((v): v is string => typeof v === "string")
     : []
-  const start = gradient[0] ?? "#A8E6CF"
-  const end = gradient[1] ?? "#88D4AB"
-  const backgroundColor =
-    typeof config.container_color === "string" ? config.container_color : start
-  const imageUrl = typeof config.image_url === "string" ? config.image_url : null
-  const lottieUrl = typeof config.lottie_url === "string" ? config.lottie_url : null
-  const height = typeof config.height === "number" ? config.height : 188
-  const title = typeof config.title === "string" ? config.title : "SUMMER"
-  const subtitle = typeof config.subtitle === "string" ? config.subtitle : "Sip & Scoop"
+  const gradientStart = gradient[0] ?? "#B1EAFF"
+  const gradientEnd = gradient[1] ?? "#A8E6FF"
+
+  // Container background color — Flutter: bannerTheme.containerColor
+  const containerColor =
+    typeof config.container_color === "string"
+      ? config.container_color
+      : gradientStart
+
+  // Image or lottie URL
+  const imageUrl =
+    typeof config.image_url === "string" && config.image_url.trim()
+      ? config.image_url
+      : null
+  const lottieUrl =
+    typeof config.lottie_url === "string" && config.lottie_url.trim()
+      ? config.lottie_url
+      : null
+
+  // Height — Flutter: entry.height ?? 120
+  const height = typeof config.height === "number" ? config.height : 120
 
   return (
     <button
@@ -36,150 +54,103 @@ function BannerPreview({
       onClick={onClick}
       aria-pressed={isSelected}
     >
+      {/* Outer container — Flutter DecoratedBox(color: containerColor) */}
       <div
         style={{
-          minHeight: height,
-          padding: 0,
-          borderRadius: 0,
-          background: backgroundColor,
+          background: containerColor,
           overflow: "hidden",
-          position: "relative",
         }}
       >
-        {/* Background gradient */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: `linear-gradient(135deg, ${start}, ${end})`,
-          }}
-        />
-
-        {/* Content: split layout like Flutter */}
+        {/* Fixed-height banner area */}
         <div
           style={{
             position: "relative",
-            zIndex: 1,
-            display: "grid",
-            gridTemplateColumns: imageUrl || lottieUrl ? "1.1fr 0.9fr" : "1fr",
-            gap: 8,
-            alignItems: "end",
-            minHeight: height,
-            padding: "18px 14px 14px",
+            height,
+            overflow: "hidden",
           }}
         >
-          {/* Text side */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div
-              style={{
-                fontSize: 28,
-                fontWeight: 900,
-                lineHeight: 0.92,
-                color: "#0f172a",
-                letterSpacing: "-0.02em",
-                textTransform: "uppercase",
-              }}
-            >
-              {title}
-            </div>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                lineHeight: 1,
-                color: "#0f172a",
-                fontStyle: "italic",
-                opacity: 0.85,
-              }}
-            >
-              {subtitle}
-            </div>
-          </div>
+          {/* Background gradient — Flutter LinearGradient */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(180deg, ${gradientStart}, ${gradientEnd})`,
+            }}
+          />
+          {/* White shimmer overlay — Flutter: two Color(0x26FFFFFF) → Color(0x00FFFFFF) stops */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.06) 28%, transparent 62%)",
+              pointerEvents: "none",
+            }}
+          />
 
-          {/* Image side — real image from config */}
+          {/* Content layer */}
           {imageUrl ? (
-            <div
+            /* Network image — Flutter BoxFit.cover */
+            <img
+              src={imageUrl}
+              alt="Banner"
               style={{
-                justifySelf: "end",
+                position: "absolute",
+                inset: 0,
                 width: "100%",
-                maxWidth: 160,
-                minHeight: Math.max(110, height - 50),
-                borderRadius: 20,
-                overflow: "hidden",
-                position: "relative",
+                height: "100%",
+                objectFit: "cover",
               }}
-            >
-              <img
-                src={imageUrl}
-                alt="Banner"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            </div>
+            />
           ) : lottieUrl ? (
+            /* Lottie placeholder — shows an indicator since we can't run Lottie in browser */
             <div
               style={{
-                justifySelf: "end",
-                width: "100%",
-                maxWidth: 148,
-                minHeight: Math.max(100, height - 60),
-                borderRadius: 20,
-                overflow: "hidden",
+                position: "absolute",
+                inset: 0,
                 display: "grid",
                 placeItems: "center",
-                background: "rgba(255,255,255,0.4)",
+                gap: 6,
               }}
             >
-              <div style={{ display: "grid", placeItems: "center", gap: 6 }}>
-                <PlayCircle size={26} color="#0f172a" />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#0f172a" }}>
-                  Lottie
+              <div style={{ display: "grid", placeItems: "center", gap: 4 }}>
+                <PlayCircle
+                  size={24}
+                  color="rgba(255,255,255,0.8)"
+                  style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.18))" }}
+                />
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "rgba(255,255,255,0.75)",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  LOTTIE ANIMATION
                 </span>
               </div>
             </div>
           ) : (
-            /* Decorative placeholder — clouds/circles */
+            /* No asset configured — matches Flutter: just the gradient with shimmer */
             <div
               style={{
-                justifySelf: "end",
-                width: "100%",
-                maxWidth: 148,
-                minHeight: Math.max(100, height - 60),
-                borderRadius: 20,
-                overflow: "hidden",
-                position: "relative",
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08))",
+                position: "absolute",
+                inset: 0,
+                display: "grid",
+                placeItems: "center",
               }}
             >
-              <div
+              <span
                 style={{
-                  position: "absolute",
-                  right: -12,
-                  top: 8,
-                  width: 100,
-                  height: 100,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle at 35% 35%, rgba(71,85,105,0.12), transparent 60%)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.55)",
+                  letterSpacing: "0.06em",
                 }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  bottom: 6,
-                  width: 60,
-                  height: 60,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.5), transparent 65%)",
-                }}
-              />
+              >
+                Gradient background
+              </span>
             </div>
           )}
         </div>
