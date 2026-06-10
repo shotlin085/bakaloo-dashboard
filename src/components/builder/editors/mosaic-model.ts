@@ -58,6 +58,54 @@ export const MOSAIC_SLOTS: Record<MosaicLayout, MosaicSlots> = {
   stacked_banners: { hero: 0, mini: 3 },
 }
 
+/**
+ * Recommended upload sizes per layout variant and tile role.
+ *
+ * Derived from the Flutter widget math on a 390 dp screen at 2× density:
+ *   usableWidth = 390 − 2×5 padding = 380 dp
+ *
+ *   hero_plus_four:
+ *     hero  = 380×0.36 wide × (380/1.48) tall = 137×257 dp → 280×520 px @2×
+ *     mini  = (380×0.64−8)/2 wide × (257−8)/2 tall = 114×124 dp → 230×250 px @2×
+ *
+ *   single_hero:
+ *     hero  = 380 wide × (380/1.95) tall = 380×195 dp → 760×390 px @2×
+ *
+ *   two_by_two:
+ *     mini  = (380−8)/2 wide × ((380−8)/2)/1.05 tall = 186×177 dp → 370×355 px @2×
+ *
+ *   two_by_three:
+ *     mini  = (380−16)/3 wide × ((380−16)/3)/0.78 tall = 121×156 dp → 242×312 px @2×
+ *
+ *   stacked_banners:
+ *     mini  = 380 wide × (380/2.35) tall = 380×162 dp → 760×324 px @2×
+ */
+export interface TileSizeHint {
+  /** e.g. "760 × 390 px" */
+  size: string
+  /** e.g. "1.95 : 1 (wide landscape)" */
+  ratio: string
+}
+
+export const MOSAIC_SIZE_HINTS: Record<MosaicLayout, { hero?: TileSizeHint; mini?: TileSizeHint }> = {
+  hero_plus_four: {
+    hero: { size: "280 × 520 px", ratio: "0.54 : 1  (tall portrait)" },
+    mini: { size: "230 × 250 px", ratio: "0.92 : 1  (near square)" },
+  },
+  single_hero: {
+    hero: { size: "760 × 390 px", ratio: "1.95 : 1  (wide landscape)" },
+  },
+  two_by_two: {
+    mini: { size: "370 × 355 px", ratio: "1.04 : 1  (near square)" },
+  },
+  two_by_three: {
+    mini: { size: "242 × 312 px", ratio: "0.78 : 1  (portrait)" },
+  },
+  stacked_banners: {
+    mini: { size: "760 × 324 px", ratio: "2.35 : 1  (wide banner)" },
+  },
+}
+
 export const TAB_PAGE_OPTIONS = [
   { value: "home", label: "Home tab" },
   { value: "off_zone", label: "Off Zone tab" },

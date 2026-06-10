@@ -6,6 +6,7 @@ import LayoutVariantPicker from "./LayoutVariantPicker"
 import TileEditor from "./TileEditor"
 import {
   DEFAULT_CONTAINER_COLOR,
+  MOSAIC_SIZE_HINTS,
   MOSAIC_SLOTS,
   normalizeLayout,
   readMosaicTiles,
@@ -80,6 +81,7 @@ export default function MosaicEditor({ config, onChange }: MosaicEditorProps) {
               tile={tiles.hero}
               isHero
               defaultOpen
+              sizeHint={MOSAIC_SIZE_HINTS[layout].hero}
               onChange={updateHero}
             />
           )}
@@ -88,6 +90,7 @@ export default function MosaicEditor({ config, onChange }: MosaicEditorProps) {
               key={`mini-${index}`}
               label={`Tile ${index + 1}`}
               tile={tile}
+              sizeHint={MOSAIC_SIZE_HINTS[layout].mini}
               onChange={(next) => updateMini(index, next)}
             />
           ))}

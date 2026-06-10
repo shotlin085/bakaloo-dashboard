@@ -8,13 +8,14 @@ import { cn } from "@/lib/utils"
 import { ThemeImageUploader } from "@/components/themes/ThemeImageUploader"
 import { ThemeGradientPicker } from "@/components/themes/ThemeGradientPicker"
 import TileActionEditor from "./TileActionEditor"
-import type { MosaicTile } from "./mosaic-model"
+import type { MosaicTile, TileSizeHint } from "./mosaic-model"
 
 interface TileEditorProps {
   label: string
   tile: MosaicTile
   isHero?: boolean
   defaultOpen?: boolean
+  sizeHint?: TileSizeHint
   onChange: (tile: MosaicTile) => void
 }
 
@@ -23,6 +24,7 @@ export default function TileEditor({
   tile,
   isHero = false,
   defaultOpen = false,
+  sizeHint,
   onChange,
 }: TileEditorProps) {
   const [open, setOpen] = useState(defaultOpen)
@@ -84,6 +86,23 @@ export default function TileEditor({
             value={tile.imageUrl}
             onChange={(url) => patch({ imageUrl: url })}
           />
+
+          {sizeHint && (
+            <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5">
+              <p className="text-xs font-semibold text-blue-700">
+                Recommended upload size
+              </p>
+              <p className="mt-0.5 font-mono text-sm font-bold text-blue-900">
+                {sizeHint.size}
+              </p>
+              <p className="mt-0.5 text-xs text-blue-600">
+                Aspect ratio: {sizeHint.ratio}
+              </p>
+              <p className="mt-1 text-[10px] leading-tight text-blue-500">
+                Upload at this size for a pixel-perfect fit. The image fills the tile using <strong>cover</strong> mode — centre your subject.
+              </p>
+            </div>
+          )}
 
           <ThemeGradientPicker
             label="Background gradient (fallback / overlay)"
