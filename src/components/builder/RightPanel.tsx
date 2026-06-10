@@ -8,6 +8,7 @@ import type {
   SectionManifest,
   SectionType,
   Theme,
+  ThemeData,
   UpdateSectionMerchPayload,
 } from "@/types/theme.types"
 import ChromeRegionEditor from "./ChromeRegionEditor"
@@ -29,6 +30,8 @@ interface RightPanelProps {
   activeTheme?: Theme | null
   /** Close the chrome editor and return to library/property editor. */
   onCloseChromeEditor?: () => void
+  /** Live callback from ChromeRegionEditor whenever the draft changes — enables immediate preview */
+  onChromeRegionDraftChange?: (draft: ThemeData) => void
 }
 
 export default function RightPanel({
@@ -41,6 +44,7 @@ export default function RightPanel({
   selectedChromeRegion,
   activeTheme,
   onCloseChromeEditor,
+  onChromeRegionDraftChange,
 }: RightPanelProps) {
   if (selectedChromeRegion) {
     return (
@@ -48,6 +52,7 @@ export default function RightPanel({
         region={selectedChromeRegion}
         theme={activeTheme ?? null}
         onClose={() => onCloseChromeEditor?.()}
+        onDraftChange={onChromeRegionDraftChange}
       />
     )
   }

@@ -356,6 +356,21 @@ function ThemeBuilderPageContent() {
       ?.theme_data ??
     null
 
+  // Live preview override: when the Chrome Region Editor is open and the user
+  // is making edits, we bypass the server cache and show the unsaved draft immediately.
+  const [chromeRegionPreviewOverride, setChromeRegionPreviewOverride] =
+    useState<ThemeData | null>(null)
+
+  // Reset the override whenever the selected chrome region changes (e.g. user closes editor)
+  useEffect(() => {
+    if (!selectedChromeRegion) {
+      setChromeRegionPreviewOverride(null)
+    }
+  }, [selectedChromeRegion])
+
+  // The themeData passed to the preview: use the live override if available
+  const previewThemeData = chromeRegionPreviewOverride ?? activeThemeData
+
   // The full Theme object backing activeThemeData — needed for chrome region editing.
   const activeTheme: Theme | null =
     tabThemes.find(
@@ -1412,7 +1427,7 @@ function ThemeBuilderPageContent() {
                     setSelectedChromeRegion(null)
                     setSelectedSectionId(id)
                   }}
-                  themeData={activeThemeData}
+                  themeData={previewThemeData}
                   activeTabKey={activeTab?.key ?? "all"}
                   scale={0.98}
                   onMoveUp={handleMoveSectionUp}
@@ -1449,6 +1464,7 @@ function ThemeBuilderPageContent() {
               selectedChromeRegion={selectedChromeRegion}
               activeTheme={activeTheme}
               onCloseChromeEditor={() => setSelectedChromeRegion(null)}
+              onChromeRegionDraftChange={setChromeRegionPreviewOverride}
             />
           </div>
         </aside>

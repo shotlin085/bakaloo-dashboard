@@ -1,53 +1,62 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { ThemeColorPicker } from "@/components/themes/ThemeColorPicker"
-import { ThemeGradientPicker } from "@/components/themes/ThemeGradientPicker"
 import AnimationPicker from "./AnimationPicker"
 import LayoutVariantPicker from "./LayoutVariantPicker"
+import TileEditor from "./TileEditor"
+import {
+  DEFAULT_CONTAINER_COLOR,
+  MOSAIC_SLOTS,
+  normalizeLayout,
+  readMosaicTiles,
+  writeMosaicTiles,
+  type MosaicTile,
+  type MosaicTiles,
+} from "./mosaic-model"
 
 interface MosaicEditorProps {
   config: Record<string, unknown>
   onChange: (config: Record<string, unknown>) => void
 }
 
-function getHeroGradient(config: Record<string, unknown>): [string, string] {
-  const gradient = Array.isArray(config.hero_gradient)
-    ? config.hero_gradient.filter((entry): entry is string => typeof entry === "string")
-    : []
-
-  return [gradient[0] ?? "#FFD166", gradient[1] ?? "#F97316"]
-}
-
 export default function MosaicEditor({ config, onChange }: MosaicEditorProps) {
-  const heroGradient = getHeroGradient(config)
-  const layoutVariant =
-    typeof config.layout_variant === "string"
-      ? config.layout_variant
-      : "hero_plus_four"
+  const layout = normalizeLayout(config.layout_variant)
+  const slots = MOSAIC_SLOTS[layout]
   const containerColor =
-    typeof config.container_color === "string" ? config.container_color : "#FFF8E1"
-  const heroTitle =
-    typeof config.hero_title === "string" ? config.hero_title : "Fresh picks"
-  const heroBadgeText =
-    typeof config.hero_badge_text === "string"
-      ? config.hero_badge_text
-      : "Limited time"
+    typeof config.container_color === "string"
+      ? config.container_color
+      : DEFAULT_CONTAINER_COLOR
+
+  const tiles = readMosaicTiles(config, layout)
 
   const patchConfig = (patch: Partial<Record<string, unknown>>) => {
-    onChange({
-      ...config,
-      ...patch,
-    })
+    onChange({ ...config, ...patch })
+  }
+
+  const commitTiles = (next: MosaicTiles) => {
+    onChange(writeMosaicTiles({ ...config }, next))
+  }
+
+  const updateHero = (hero: MosaicTile) => commitTiles({ ...tiles, hero })
+
+  const updateMini = (index: number, mini: MosaicTile) => {
+    const nextMini = tiles.mini.slice()
+    nextMini[index] = mini
+    commitTiles({ ...tiles, mini: nextMini })
+  }
+
+  const changeLayout = (variant: string) => {
+    const nextLayout = normalizeLayout(variant)
+    // Re-read tiles against the new slot count, then persist so the new
+    // variant always has a correct number of tile slots.
+    const next = { ...config, layout_variant: nextLayout }
+    const reTiled = readMosaicTiles(next, nextLayout)
+    onChange(writeMosaicTiles(next, reTiled))
   }
 
   return (
     <div className="space-y-6">
-      <LayoutVariantPicker
-        value={layoutVariant}
-        onChange={(variant) => patchConfig({ layout_variant: variant })}
-      />
+      <LayoutVariantPicker value={layout} onChange={changeLayout} />
 
       <ThemeColorPicker
         label="Container Color"
@@ -55,30 +64,34 @@ export default function MosaicEditor({ config, onChange }: MosaicEditorProps) {
         onChange={(value) => patchConfig({ container_color: value })}
       />
 
-      <div className="space-y-2">
-        <Label htmlFor="mosaic-hero-title">Hero Tile Title</Label>
-        <Input
-          id="mosaic-hero-title"
-          value={heroTitle}
-          onChange={(event) => patchConfig({ hero_title: event.target.value })}
-          placeholder="Fresh picks"
-        />
-      </div>
+      <div className="space-y-3">
+        <div className="text-sm font-medium text-slate-900">
+          Tiles
+          <span className="ml-2 text-xs font-normal text-slate-500">
+            {slots.hero > 0 ? `1 hero · ` : ""}
+            {slots.mini} grid
+          </span>
+        </div>
 
-      <ThemeGradientPicker
-        label="Hero Tile Gradient"
-        value={heroGradient}
-        onChange={(gradient) => patchConfig({ hero_gradient: gradient })}
-      />
-
-      <div className="space-y-2">
-        <Label htmlFor="mosaic-badge-text">Hero Badge Text</Label>
-        <Input
-          id="mosaic-badge-text"
-          value={heroBadgeText}
-          onChange={(event) => patchConfig({ hero_badge_text: event.target.value })}
-          placeholder="Limited time"
-        />
+        <div className="space-y-2">
+          {tiles.hero && (
+            <TileEditor
+              label="Hero tile"
+              tile={tiles.hero}
+              isHero
+              defaultOpen
+              onChange={updateHero}
+            />
+          )}
+          {tiles.mini.map((tile, index) => (
+            <TileEditor
+              key={`mini-${index}`}
+              label={`Tile ${index + 1}`}
+              tile={tile}
+              onChange={(next) => updateMini(index, next)}
+            />
+          ))}
+        </div>
       </div>
 
       <AnimationPicker

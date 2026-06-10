@@ -4,48 +4,23 @@ import { memo, type CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 import type { PreviewProps } from "./index"
 import styles from "../MobilePreviewFrame.module.css"
+import {
+  DEFAULT_CONTAINER_COLOR,
+  normalizeLayout,
+  readMosaicTiles,
+  type MosaicLayout,
+  type MosaicTile,
+} from "../editors/mosaic-model"
 
-type MosaicLayout =
-  | "hero_plus_four"
-  | "two_by_three"
-  | "single_hero"
-  | "two_by_two"
-  | "stacked_banners"
-
-/** Pre-designed tile images from the Flutter app's assets/images/ */
-const MINIBOX_IMAGES = [
-  "/preview-assets/1ST_MINIBOX.png",
-  "/preview-assets/2ND_MINIBOX.png",
-  "/preview-assets/3RD_MINIBOX.png",
-  "/preview-assets/4TH_MINIBOX.png",
-]
-
-/** Default tile configs matching Flutter's SeasonalMosaicTheme.defaults() */
-const TILE_CONFIGS = [
-  { title: "Summer Cool Deals", gradient: ["#0EA5E9", "#38BDF8"] },
-  { title: "Frozen Fizz", gradient: ["#8B5CF6", "#A78BFA"] },
-  { title: "Snack Attack", gradient: ["#F97316", "#FBBF24"] },
-  { title: "Daily Essentials", gradient: ["#10B981", "#34D399"] },
-  { title: "Sweet Dreams", gradient: ["#EC4899", "#F472B6"] },
-  { title: "Mega Deals", gradient: ["#6366F1", "#818CF8"] },
-]
-
-const DEFAULT_CONTAINER_COLOR = "#DCEEFF"
-
-function MosaicPreview({
-  section,
-  isSelected,
-  onClick,
-}: PreviewProps) {
+function MosaicPreview({ section, isSelected, onClick }: PreviewProps) {
   const config = section.config as Record<string, unknown>
-  const layout =
-    typeof config.layout_variant === "string"
-      ? (config.layout_variant as MosaicLayout)
-      : "hero_plus_four"
+  const layout = normalizeLayout(config.layout_variant)
   const containerColor =
     typeof config.container_color === "string"
       ? config.container_color
       : DEFAULT_CONTAINER_COLOR
+
+  const { hero, mini } = readMosaicTiles(config, layout)
 
   return (
     <button
@@ -67,7 +42,7 @@ function MosaicPreview({
         }}
       >
         <div style={{ padding: layout === "hero_plus_four" ? "0 5px" : "0 5px 2px" }}>
-          {renderLayout(layout)}
+          {renderLayout(layout, hero, mini)}
         </div>
       </div>
     </button>
@@ -76,7 +51,11 @@ function MosaicPreview({
 
 export default memo(MosaicPreview)
 
-function renderLayout(layout: MosaicLayout) {
+function renderLayout(
+  layout: MosaicLayout,
+  hero: MosaicTile | null,
+  mini: MosaicTile[]
+) {
   switch (layout) {
     case "two_by_three":
       return (
@@ -87,8 +66,8 @@ function renderLayout(layout: MosaicLayout) {
             gap: 6,
           }}
         >
-          {Array.from({ length: 6 }, (_, i) =>
-            renderAssetTile(i, undefined, "mini", { aspectRatio: "0.78" })
+          {mini.map((tile, i) =>
+            renderTile(tile, i, "mini", { aspectRatio: "0.78" })
           )}
         </div>
       )
@@ -96,7 +75,7 @@ function renderLayout(layout: MosaicLayout) {
     case "single_hero":
       return (
         <div style={{ aspectRatio: "1.95" }}>
-          {renderAssetTile(0, undefined, "hero", { height: "100%" })}
+          {hero && renderTile(hero, 0, "hero", { height: "100%" })}
         </div>
       )
 
@@ -109,8 +88,8 @@ function renderLayout(layout: MosaicLayout) {
             gap: 6,
           }}
         >
-          {Array.from({ length: 4 }, (_, i) =>
-            renderAssetTile(i, undefined, "mini", { aspectRatio: "1.05" })
+          {mini.map((tile, i) =>
+            renderTile(tile, i, "mini", { aspectRatio: "1.05" })
           )}
         </div>
       )
@@ -118,8 +97,8 @@ function renderLayout(layout: MosaicLayout) {
     case "stacked_banners":
       return (
         <div style={{ display: "grid", gap: 6 }}>
-          {Array.from({ length: 3 }, (_, i) =>
-            renderAssetTile(i, undefined, "full", { aspectRatio: "2.35" })
+          {mini.map((tile, i) =>
+            renderTile(tile, i, "full", { aspectRatio: "2.35" })
           )}
         </div>
       )
@@ -135,9 +114,7 @@ function renderLayout(layout: MosaicLayout) {
             aspectRatio: "1.44",
           }}
         >
-          {renderAssetTile(0, undefined, "hero", {
-            height: "100%",
-          })}
+          {hero && renderTile(hero, 0, "hero", { height: "100%" })}
           <div
             style={{
               display: "grid",
@@ -146,8 +123,8 @@ function renderLayout(layout: MosaicLayout) {
               gap: 6,
             }}
           >
-            {Array.from({ length: 4 }, (_, i) =>
-              renderAssetTile(i, undefined, "mini", { height: "100%" })
+            {mini.map((tile, i) =>
+              renderTile(tile, i, "mini", { height: "100%" })
             )}
           </div>
         </div>
@@ -155,21 +132,18 @@ function renderLayout(layout: MosaicLayout) {
   }
 }
 
-function renderAssetTile(
+function renderTile(
+  tile: MosaicTile,
   index: number,
-  height: number | undefined,
   tone: "hero" | "mini" | "full",
   extraStyle: CSSProperties
 ) {
-  const tileConfig = TILE_CONFIGS[index % TILE_CONFIGS.length]
-  const assetImage = MINIBOX_IMAGES[index % MINIBOX_IMAGES.length]
-  const [colorStart, colorEnd] = tileConfig.gradient
+  const [colorStart, colorEnd] = tile.gradient
 
   return (
     <div
       key={`tile-${tone}-${index}`}
       style={{
-        minHeight: height,
         borderRadius: tone === "hero" ? 22 : 18,
         overflow: "hidden",
         position: "relative",
@@ -178,21 +152,21 @@ function renderAssetTile(
         ...extraStyle,
       }}
     >
-      {/* Asset image — the actual product collage from Flutter */}
-      <img
-        src={assetImage}
-        alt={tileConfig.title}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          objectPosition: "bottom center",
-        }}
-      />
+      {tile.imageUrl && (
+        <img
+          src={tile.imageUrl}
+          alt={tile.title}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: tile.imageFit,
+            objectPosition: "bottom center",
+          }}
+        />
+      )}
 
-      {/* Title overlay */}
       <div
         style={{
           position: "absolute",
@@ -205,10 +179,34 @@ function renderAssetTile(
           lineHeight: 0.95,
           letterSpacing: "-0.02em",
           textShadow: "0 2px 4px rgba(0,0,0,0.22)",
+          whiteSpace: "pre-line",
         }}
       >
-        {tileConfig.title}
+        {tile.title}
       </div>
+
+      {tone === "hero" && tile.badgeText && (
+        <div
+          style={{
+            position: "absolute",
+            right: 8,
+            bottom: 8,
+            padding: "3px 7px",
+            borderRadius: 999,
+            fontSize: 9,
+            fontWeight: 800,
+            color: "#ffffff",
+            background: `linear-gradient(180deg, ${
+              tile.badgeGradient?.[0] ?? "#FF4CB7"
+            }, ${tile.badgeGradient?.[1] ?? "#D91B83"})`,
+            whiteSpace: "pre-line",
+            textAlign: "center",
+            lineHeight: 1,
+          }}
+        >
+          {tile.badgeText}
+        </div>
+      )}
     </div>
   )
 }

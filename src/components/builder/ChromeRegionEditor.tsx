@@ -24,6 +24,8 @@ interface ChromeRegionEditorProps {
   region: ChromeRegion
   theme: Theme | null
   onClose: () => void
+  /** Called whenever the local draft changes — lets the parent feed live preview */
+  onDraftChange?: (draft: ThemeData) => void
 }
 
 function deepClone<T>(value: T): T {
@@ -70,6 +72,7 @@ export default function ChromeRegionEditor({
   region,
   theme,
   onClose,
+  onDraftChange,
 }: ChromeRegionEditorProps) {
   const meta = getChromeRegionMeta(region)
   const updateThemeMutation = useUpdateTheme()
@@ -95,10 +98,15 @@ export default function ChromeRegionEditor({
   }, [theme?.theme_data, draft])
 
   const patchSections = (patch: Partial<ThemeSections>) => {
-    setDraft((prev) => ({
-      ...prev,
-      sections: { ...prev.sections, ...patch },
-    }))
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        sections: { ...prev.sections, ...patch },
+      }
+      // Notify parent immediately so live preview updates without a server round-trip
+      onDraftChange?.(next)
+      return next
+    })
   }
 
   const handleApply = async () => {
@@ -109,7 +117,9 @@ export default function ChromeRegionEditor({
 
   const handleReset = () => {
     if (!theme?.theme_data) return
-    setDraft(deepClone(theme.theme_data))
+    const reset = deepClone(theme.theme_data)
+    setDraft(reset)
+    onDraftChange?.(reset)
   }
 
   const isBusy = updateThemeMutation.isPending
