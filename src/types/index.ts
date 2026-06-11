@@ -143,6 +143,14 @@ export type {
   SettingValue,
   UpdateSettingsPayload,
 } from "./settings.types"
+export type {
+  FeeSettings,
+  FeeValueType,
+  UpdateFeeSettingsPayload,
+  FeePreview,
+  FeeLine,
+  FeePreviewInput,
+} from "./fee-settings.types"
 export type { ActivityLog, ActivityLogFilters } from "./activity-log.types"
 export type { UploadedImage } from "./upload.types"
 export type {
