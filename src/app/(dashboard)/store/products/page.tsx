@@ -139,7 +139,7 @@ function ProductCard({ product }: { product: ShopProduct }) {
   return (
     <Card className="p-4 flex gap-3">
       {product.product?.image_url ? (
-        <img src={product.product.image_url} alt={product.product.name} className="h-16 w-16 rounded-lg object-cover" />
+        <img src={product.product.image_url} alt={product.product.name ?? ""} className="h-16 w-16 rounded-lg object-cover" />
       ) : (
         <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
           <Package className="h-6 w-6 text-muted-foreground" />

@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
+import { ImagePlus, Loader2, Plus, Star, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeColorPicker } from "@/components/themes/ThemeColorPicker"
 import { ThemeImageUploader } from "@/components/themes/ThemeImageUploader"
 import { useCategories } from "@/hooks/useCategories"
+import { useBanners } from "@/hooks/useBanners"
+import { useUploadImage } from "@/hooks/useUploads"
 import type {
   SectionManifest,
   UpdateSectionMerchPayload,
@@ -29,6 +32,8 @@ import MosaicEditor from "./editors/MosaicEditor"
 import ProductConfigEditor from "./editors/ProductConfigEditor"
 import AnimationPicker from "./editors/AnimationPicker"
 import ArchedShowcaseEditor from "./editors/ArchedShowcaseEditor"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface PropertyEditorProps {
   section: SectionManifest
@@ -569,18 +574,149 @@ function PromoCarouselEditor({
   const autoScrollSpeed =
     typeof config.auto_scroll_speed === "number" ? config.auto_scroll_speed : 3000
 
+  // ── Banner source ─────────────────────────────────────────────────────────
+  // "system"  → pull from /banners (the /banners admin page)
+  // "custom"  → use the images[] array uploaded directly here (1–5 images)
+  // If there are already custom images in config and banner_source is unset,
+  // treat it as "custom" (backward compat for sections saved before banner_source existed).
+  const rawCustomImages = Array.isArray(config.images)
+    ? (config.images as string[]).filter((u) => typeof u === "string" && u.trim())
+    : []
+
+  const bannerSource: "system" | "custom" =
+    typeof config.banner_source === "string"
+      ? (config.banner_source as "system" | "custom")
+      : rawCustomImages.length > 0
+        ? "custom"
+        : "system"
+
+  // System banners preview
+  const { data: systemBanners = [] } = useBanners()
+  const activeBanners = systemBanners.filter((b) => b.is_active)
+
   const patch = (patchConfig: Partial<Record<string, unknown>>) => {
     onChange({ ...config, ...patchConfig })
   }
 
+  const switchMode = (mode: "system" | "custom") => {
+    patch({ banner_source: mode })
+  }
+
   return (
     <div className="space-y-6">
-      <ThemeImageUploader
-        label="Promo Banner"
-        value={typeof config.image_url === "string" ? config.image_url : null}
-        onChange={(value) => patch({ image_url: value })}
-      />
+      {/* ── Banner Source mode selector ── */}
+      <div className="space-y-2">
+        <Label>Banner Source</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["system", "custom"] as const).map((mode) => {
+            const isActive = bannerSource === mode
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => switchMode(mode)}
+                className={cn(
+                  "flex flex-col items-start gap-1 rounded-xl border-2 px-4 py-3 text-left transition-colors",
+                  isActive
+                    ? "border-brand-500 bg-brand-50"
+                    : "border-border bg-muted/30 hover:bg-muted"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "flex h-3.5 w-3.5 items-center justify-center rounded-full border-2",
+                      isActive
+                        ? "border-brand-600 bg-brand-600"
+                        : "border-muted-foreground/40"
+                    )}
+                  >
+                    {isActive && (
+                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold capitalize">{mode === "system" ? "System" : "Custom"}</span>
+                </div>
+                <span className="text-[11px] text-muted-foreground leading-tight">
+                  {mode === "system"
+                    ? "Use banners from the /banners page"
+                    : "Upload your own banner images here"}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
+      {/* ── Mode-specific content ── */}
+      {bannerSource === "system" ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border bg-muted/20 p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">
+              Active system banners ({activeBanners.length})
+            </p>
+            {activeBanners.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground italic">
+                  No active banners found.
+                </p>
+                <a
+                  href="/banners"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100 transition-colors"
+                >
+                  <ImagePlus className="h-3.5 w-3.5" />
+                  Go to /banners to add banners
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activeBanners.slice(0, 5).map((b, i) => (
+                  <div key={b.id} className="flex items-center gap-3">
+                    <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                      {b.image_url && (
+                        <Image
+                          src={b.image_url}
+                          alt={b.title}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium">{b.title}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        #{i + 1} · {b.link_type !== "none" ? b.link_type : "No link"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {activeBanners.length > 5 && (
+                  <p className="text-[10px] text-muted-foreground">
+                    +{activeBanners.length - 5} more
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Banners are sorted by the order set on the{" "}
+            <a href="/banners" target="_blank" className="underline text-brand-600">
+              Banners page
+            </a>
+            . Only active banners within their date window are shown.
+          </p>
+        </div>
+      ) : (
+        <PromoCustomImagesEditor
+          images={rawCustomImages}
+          onChange={(images) => patch({ images, banner_source: "custom" })}
+        />
+      )}
+
+      {/* ── Appearance settings (shared) ── */}
       <div className="space-y-2">
         <Label htmlFor="promo-aspect-ratio">Aspect Ratio</Label>
         <Input
@@ -589,6 +725,9 @@ function PromoCarouselEditor({
           onChange={(event) => patch({ aspect_ratio: event.target.value })}
           placeholder="16:9"
         />
+        <p className="text-[10px] text-muted-foreground">
+          Use W:H format, e.g. 16:9 · 2:1 · 3:1. Match your uploaded image ratio for best results.
+        </p>
       </div>
 
       <RangeControl
@@ -617,6 +756,229 @@ function PromoCarouselEditor({
         value={typeof config.animation === "string" ? config.animation : "none"}
         onChange={(value) => patch({ animation: value })}
       />
+    </div>
+  )
+}
+
+/** Inner component: 1–5 custom promo images with upload + URL paste + primary-badge */
+function PromoCustomImagesEditor({
+  images,
+  onChange,
+}: {
+  images: string[]
+  onChange: (images: string[]) => void
+}) {
+  const MIN = 1
+  const MAX = 5
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [urlInput, setUrlInput] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const uploadMutation = useUploadImage()
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const remaining = MAX - images.length
+    if (remaining <= 0) {
+      toast.error(`Maximum ${MAX} banners allowed`)
+      if (fileRef.current) fileRef.current.value = ""
+      return
+    }
+    const toUpload = files.slice(0, remaining)
+    if (toUpload.length < files.length)
+      toast.warning(`Only uploading ${toUpload.length} of ${files.length} (max ${MAX})`)
+    const large = toUpload.filter((f) => f.size > 5 * 1024 * 1024)
+    if (large.length) {
+      toast.error(`${large.map((f) => f.name).join(", ")} exceed 5MB — skipped`)
+    }
+    const valid = toUpload.filter((f) => f.size <= 5 * 1024 * 1024)
+    setUploading(true)
+    const newUrls: string[] = []
+    for (const file of valid) {
+      try {
+        const result = await uploadMutation.mutateAsync(file)
+        if (result?.url && !images.includes(result.url)) newUrls.push(result.url)
+      } catch { /* toast handled by mutation */ }
+    }
+    if (newUrls.length) {
+      onChange([...images, ...newUrls])
+      toast.success(`${newUrls.length} banner(s) uploaded`)
+    }
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ""
+  }
+
+  const addUrl = () => {
+    const url = urlInput.trim()
+    if (!url) return
+    if (images.length >= MAX) { toast.error(`Maximum ${MAX} banners`); return }
+    if (images.includes(url)) { toast.warning("Already in the list"); return }
+    onChange([...images, url])
+    setUrlInput("")
+  }
+
+  const moveUp = (i: number) => {
+    if (i === 0) return
+    const next = [...images]
+    ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+    onChange(next)
+  }
+
+  const moveDown = (i: number) => {
+    if (i === images.length - 1) return
+    const next = [...images]
+    ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Size hint banner */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <p className="text-[11px] font-semibold text-amber-800 mb-1">
+          Recommended Banner Size
+        </p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+          <p className="text-[10px] text-amber-700">
+            <strong>16:9 ratio</strong> — 1200 × 675 px
+          </p>
+          <p className="text-[10px] text-amber-700">
+            <strong>2.5:1 ratio</strong> — 1200 × 480 px
+          </p>
+          <p className="text-[10px] text-amber-700">
+            <strong>3:1 ratio</strong> — 1200 × 400 px
+          </p>
+          <p className="text-[10px] text-amber-700">
+            <strong>Max file size:</strong> 5 MB
+          </p>
+        </div>
+        <p className="text-[10px] text-amber-600 mt-1">
+          Format: JPG, PNG, or WEBP. Use the same ratio as the Aspect Ratio setting above.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>
+          Custom Banners ({images.length}/{MAX})
+          {images.length < MIN && (
+            <span className="ml-2 text-[10px] font-normal text-destructive">
+              — add at least {MIN} banner
+            </span>
+          )}
+        </Label>
+      </div>
+
+      {/* Image list */}
+      <div className="space-y-2">
+        {images.map((url, i) => (
+          <div key={`${url}-${i}`} className="flex items-center gap-3 rounded-xl border bg-muted/20 p-2">
+            <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Banner ${i + 1}`} className="h-full w-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                {i === 0 && (
+                  <span className="flex items-center gap-1 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    <Star className="h-2.5 w-2.5 fill-current" /> Primary
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground truncate">Banner {i + 1}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                {url.slice(url.lastIndexOf("/") + 1).split("?")[0]}
+              </p>
+            </div>
+            {/* Reorder + remove */}
+            <div className="flex flex-col gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+                disabled={i === 0}
+                onClick={() => moveUp(i)}
+                title="Move up"
+              >
+                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor">
+                  <path d="M6 2L10 8H2L6 2Z" />
+                </svg>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+                disabled={i === images.length - 1}
+                onClick={() => moveDown(i)}
+                title="Move down"
+              >
+                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor">
+                  <path d="M6 10L2 4H10L6 10Z" />
+                </svg>
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 flex-shrink-0 text-destructive hover:bg-destructive/10"
+              onClick={() => onChange(images.filter((_, j) => j !== i))}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+
+        {images.length < MAX && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed py-5 text-muted-foreground transition-colors hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-50"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+                <span className="text-xs font-medium text-brand-600">Uploading…</span>
+              </>
+            ) : (
+              <>
+                <ImagePlus className="h-5 w-5" />
+                <span className="text-xs font-medium">
+                  {images.length === 0 ? "Upload first banner image" : "Add another banner image"}
+                </span>
+                <span className="text-[10px] text-muted-foreground/70">
+                  {MAX - images.length} slot{MAX - images.length !== 1 ? "s" : ""} remaining
+                </span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          value={urlInput}
+          onChange={(e) => setUrlInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addUrl() } }}
+          placeholder="Or paste a banner image URL…"
+          className="text-xs"
+          disabled={images.length >= MAX}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addUrl}
+          disabled={images.length >= MAX || !urlInput.trim()}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Add
+        </Button>
+      </div>
+
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFiles} className="hidden" />
     </div>
   )
 }

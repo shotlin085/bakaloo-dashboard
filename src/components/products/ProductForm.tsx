@@ -23,6 +23,7 @@ import { Save, Loader2, Plus, Trash2, Globe, ArrowRight, ArrowLeft, ChevronDown,
 import { useProductDetail, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts"
 import { useCategories } from "@/hooks/useCategories"
 import { ImageUpload } from "@/components/products/ImageUpload"
+import { ProductGalleryUpload } from "@/components/products/ProductGalleryUpload"
 import { AttributesEditor } from "@/components/products/attributes-editor"
 import { HighlightsEditor } from "@/components/products/highlights-editor"
 import { ProductFamilySelector } from "@/components/products/ProductFamilySelector"
@@ -80,6 +81,8 @@ interface FormData {
   sku: string
   barcode: string
   thumbnailUrl: string
+  /** Ordered gallery (index 0 = primary). Mirrors thumbnailUrl on submit. */
+  images: string[]
   tags: string
   isFeatured: boolean
   isActive: boolean
@@ -141,6 +144,7 @@ const INITIAL: FormData = {
   sku: "",
   barcode: "",
   thumbnailUrl: "",
+  images: [],
   tags: "",
   isFeatured: false,
   isActive: true,
@@ -249,6 +253,15 @@ export function ProductForm({
       sku: product.sku ?? "",
       barcode: product.barcode ?? "",
       thumbnailUrl: product.thumbnail_url ?? "",
+      // Seed gallery from images[]; fall back to a 1-image gallery built
+      // from the legacy thumbnail so existing products keep working.
+      images: (() => {
+        const imgs = Array.isArray(product.images)
+          ? product.images.filter((u): u is string => typeof u === "string" && u.length > 0)
+          : []
+        if (imgs.length > 0) return imgs
+        return product.thumbnail_url ? [product.thumbnail_url] : []
+      })(),
       tags: product.tags?.join(", ") ?? "",
       isFeatured: product.is_featured ?? false,
       isActive: product.is_active ?? true,
@@ -398,7 +411,8 @@ export function ProductForm({
       unit: form.unit,
       sku: form.sku || undefined,
       barcode: form.barcode || undefined,
-      thumbnailUrl: form.thumbnailUrl || undefined,
+      thumbnailUrl: (form.images[0] ?? form.thumbnailUrl) || undefined,
+      images: form.images.length > 0 ? form.images : undefined,
       lowStockThreshold: form.lowStockThreshold ? parseInt(form.lowStockThreshold, 10) : undefined,
       maxOrderQty: form.maxOrderQty ? parseInt(form.maxOrderQty, 10) : undefined,
       tags: form.tags
@@ -619,23 +633,27 @@ export function ProductForm({
         {/* ────── Step 3: Media ────── */}
         <TabsContent value="media" className="mt-6">
           <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Media</h3>
-            <div className="space-y-2">
-              <Label>Thumbnail Image</Label>
-              <ImageUpload
-                value={form.thumbnailUrl || null}
-                onChange={(url) => set("thumbnailUrl", url ?? "")}
-                label="Upload Thumbnail"
-              />
-              <p className="text-xs text-muted-foreground">Or paste URL directly:</p>
-              <Input
-                id="thumbnailUrl"
-                value={form.thumbnailUrl}
-                onChange={(e) => set("thumbnailUrl", e.target.value)}
-                placeholder="https://res.cloudinary.com/..."
-                className="text-xs"
-              />
+            <div className="space-y-1">
+              <h3 className="font-semibold">Product Images</h3>
+              <p className="text-sm text-muted-foreground">
+                Add 1–5 images. The first (primary) image appears on product
+                cards; the product detail page shows all images as a swipeable
+                gallery.
+              </p>
             </div>
+            <ProductGalleryUpload
+              value={form.images}
+              onChange={(urls) =>
+                setForm((prev) => ({
+                  ...prev,
+                  images: urls,
+                  // Keep the legacy thumbnail in sync with the primary image
+                  // so existing card rendering (which reads thumbnail_url)
+                  // always shows the chosen primary.
+                  thumbnailUrl: urls[0] ?? "",
+                }))
+              }
+            />
           </Card>
         </TabsContent>
 

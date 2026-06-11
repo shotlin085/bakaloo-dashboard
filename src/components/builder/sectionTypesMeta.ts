@@ -172,9 +172,11 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     description: "Sliding promo banner carousel for editorial or seasonal campaigns.",
     maxPerTab: 3,
     defaultConfig: {
+      banner_source: "system",
       auto_scroll_speed: 3000,
       aspect_ratio: "16:9",
       border_radius: 12,
+      images: [],
     },
     accentClassName: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
     group: "hero",

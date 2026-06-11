@@ -216,6 +216,15 @@ export function ShopProductsView({ embedded = false }: ShopProductsViewProps) {
         cell: (row) => <ProductSku product={row} />,
       },
       {
+        id: "category",
+        header: "Category",
+        cell: (row) => (
+          <span className="text-xs text-muted-foreground">
+            {row.product?.category_name ?? "—"}
+          </span>
+        ),
+      },
+      {
         id: "price",
         header: t("shopProducts.list.column.price"),
         cell: (row) => <ProductPrice product={row} />,

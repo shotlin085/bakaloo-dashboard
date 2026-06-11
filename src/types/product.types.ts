@@ -31,6 +31,8 @@ export interface ProductPayload {
   sku?: string
   barcode?: string
   thumbnailUrl?: string
+  /** Ordered gallery image URLs (index 0 = primary). Max 5. */
+  images?: string[]
   tags?: string[]
   isFeatured?: boolean
   isActive?: boolean

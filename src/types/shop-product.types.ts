@@ -7,9 +7,13 @@
 /** Embedded master-catalog product summary returned alongside a shop-product. */
 export interface ShopProductCatalogRef {
   id: string
-  name: string
-  sku: string
-  image_url: string
+  name: string | null
+  sku: string | null
+  image_url: string | null
+  /** Master-catalog category ID. */
+  category_id: string | null
+  /** Human-readable category name (joined from categories table). */
+  category_name: string | null
 }
 
 /** Full shop-product record. */
@@ -32,5 +36,9 @@ export interface ShopProduct {
   sold_out_at: string | null
   restock_eta: string | null
 
+  /** Nested master-catalog product record (joined by the backend list endpoint). */
   product: ShopProductCatalogRef
+
+  /** Name of the shop this record belongs to (joined from shops table). */
+  shop_name: string | null
 }
