@@ -19,7 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Save, Loader2, Plus, Trash2, Globe, ArrowRight, ArrowLeft, ChevronDown, ChevronUp, Sparkles, ShieldCheck, Store, Star } from "lucide-react"
+import {
+  Save, Loader2, Plus, Trash2, Globe, ArrowRight, ArrowLeft,
+  ChevronDown, ChevronUp, Sparkles, ShieldCheck, Store, Star,
+  Tag, Package, IndianRupee, Boxes, Ruler, Info,
+  Megaphone, ListChecks, Layers, ShoppingCart, ScanBarcode,
+  Hash, Scale, FileText, ToggleLeft, AlertTriangle,
+} from "lucide-react"
 import { useProductDetail, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts"
 import { useCategories } from "@/hooks/useCategories"
 import { ImageUpload } from "@/components/products/ImageUpload"
@@ -129,6 +135,16 @@ interface FormData {
 }
 
 const UNITS = ["kg", "g", "l", "ml", "piece", "pack", "dozen", "box"]
+const UNIT_LABELS: Record<string, string> = {
+  kg: "Kilogram (kg)",
+  g: "Gram (g)",
+  l: "Litre (l)",
+  ml: "Millilitre (ml)",
+  piece: "Piece",
+  pack: "Pack",
+  dozen: "Dozen",
+  box: "Box",
+}
 const CERT_OPTIONS = ["Organic", "FSSAI", "ISO", "Vegan", "Gluten-Free"]
 const DEFAULT_NUTRITION_KEYS = ["Calories", "Protein", "Fat", "Carbs", "Fiber"]
 
@@ -502,10 +518,21 @@ export function ProductForm({
 
         {/* ────── Step 1: General ────── */}
         <TabsContent value="general" className="space-y-6 mt-6">
-          <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Basic Information</h3>
+          <StepIntro
+            icon={<Tag className="h-5 w-5" />}
+            title="Start with the basics"
+            description="Tell shoppers what the product is. The name and category are what customers see and search for, so keep them clear and specific."
+          />
+
+          <SectionCard
+            icon={<FileText className="h-4 w-4" />}
+            title="Basic Information"
+            description="The core identity of the product — its name, description, and the codes your team uses to track it."
+          >
             <div className="space-y-2">
-              <Label htmlFor="name">Product Name *</Label>
+              <FieldLabel htmlFor="name" icon={<Package className="h-3.5 w-3.5" />} required>
+                Product Name
+              </FieldLabel>
               <Input
                 id="name"
                 value={form.name}
@@ -513,9 +540,15 @@ export function ProductForm({
                 placeholder="e.g. Organic Whole Milk 500ml"
                 required
               />
+              <FieldHint>
+                The full name shoppers see on the card and product page. Include the
+                variant if it matters — e.g. &ldquo;Maggi Noodles 500g&rdquo;.
+              </FieldHint>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <FieldLabel htmlFor="description" icon={<FileText className="h-3.5 w-3.5" />}>
+                Description
+              </FieldLabel>
               <Textarea
                 id="description"
                 value={form.description}
@@ -523,34 +556,52 @@ export function ProductForm({
                 placeholder="Product details, ingredients, storage info..."
                 rows={4}
               />
+              <FieldHint>
+                A short paragraph describing the product. Shown on the product detail
+                page in the app.
+              </FieldHint>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="sku">SKU</Label>
+                <FieldLabel htmlFor="sku" icon={<Hash className="h-3.5 w-3.5" />}>SKU</FieldLabel>
                 <Input id="sku" value={form.sku} onChange={(e) => set("sku", e.target.value)} placeholder="e.g. MLK-ORG-500" />
+                <FieldHint>Your internal stock code. Helps your team find this product — not shown to shoppers.</FieldHint>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="barcode">Barcode</Label>
+                <FieldLabel htmlFor="barcode" icon={<ScanBarcode className="h-3.5 w-3.5" />}>Barcode</FieldLabel>
                 <Input id="barcode" value={form.barcode} onChange={(e) => set("barcode", e.target.value)} placeholder="e.g. 8901234567890" />
+                <FieldHint>The printed EAN/UPC barcode on the pack. Used for scanning at the warehouse.</FieldHint>
               </div>
             </div>
-          </Card>
+          </SectionCard>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-6 space-y-4">
-              <h3 className="font-semibold">Status</h3>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isActive">Active</Label>
+            <SectionCard
+              icon={<ToggleLeft className="h-4 w-4" />}
+              title="Status"
+              description="Control where this product shows up."
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isActive">Active</Label>
+                  <FieldHint>Visible and buyable in the app.</FieldHint>
+                </div>
                 <Switch id="isActive" checked={form.isActive} onCheckedChange={(v) => set("isActive", v)} />
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isFeatured">Featured</Label>
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isFeatured">Featured</Label>
+                  <FieldHint>Highlighted in featured rows.</FieldHint>
+                </div>
                 <Switch id="isFeatured" checked={form.isFeatured} onCheckedChange={(v) => set("isFeatured", v)} />
               </div>
-            </Card>
+            </SectionCard>
 
-            <Card className="p-6 space-y-4">
-              <h3 className="font-semibold">Category</h3>
+            <SectionCard
+              icon={<Layers className="h-4 w-4" />}
+              title="Category"
+              description="Where the product is filed in the catalog."
+            >
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 value={form.categoryId}
@@ -561,73 +612,111 @@ export function ProductForm({
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-            </Card>
+              <FieldHint>Decides which category page and filters the product appears under.</FieldHint>
+            </SectionCard>
 
-            <Card className="p-6 space-y-4">
-              <h3 className="font-semibold">Tags</h3>
-              <Input value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="organic, dairy, milk (comma separated)" />
-              <p className="text-xs text-muted-foreground">Comma-separated list</p>
-            </Card>
+            <SectionCard
+              icon={<Tag className="h-4 w-4" />}
+              title="Tags"
+              description="Keywords that help shoppers find it in search."
+            >
+              <Input value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="organic, dairy, milk" />
+              <FieldHint>Separate each tag with a comma. These boost search matches — e.g. &ldquo;organic, dairy, milk&rdquo;.</FieldHint>
+            </SectionCard>
           </div>
         </TabsContent>
 
         {/* ────── Step 2: Pricing & Inventory ────── */}
         <TabsContent value="pricing" className="space-y-6 mt-6">
-          <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Pricing</h3>
-            <p className="text-xs text-muted-foreground">
-              <strong>MRP</strong> is the printed/list price (shown
-              struck-through). <strong>Sale Price</strong> is what the customer
-              actually pays — leave it blank for no discount. Per-store price
-              and stock are set separately in Shop Products.
-            </p>
-            <div className="grid grid-cols-3 gap-4">
+          <StepIntro
+            icon={<IndianRupee className="h-5 w-5" />}
+            title="Set the price and how much is in the pack"
+            description="Tell shoppers what they pay and exactly what they get — the price, the unit it’s sold by, and the pack size (like 500 g or 1 kg)."
+          />
+
+          <SectionCard
+            icon={<IndianRupee className="h-4 w-4" />}
+            title="Pricing"
+            description="MRP is the printed price (shown struck-through). Sale Price is what the shopper actually pays — leave it blank for no discount. Per-store price and stock are set separately in Shop Products."
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">MRP (₹) *</Label>
+                <FieldLabel htmlFor="price" required>MRP (₹)</FieldLabel>
                 <Input id="price" type="number" step="0.01" min="0" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="0.00" required />
+                <FieldHint>The full printed price. Shown struck-through when there’s a discount.</FieldHint>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="salePrice">Sale Price (₹)</Label>
+                <FieldLabel htmlFor="salePrice">Sale Price (₹)</FieldLabel>
                 <Input id="salePrice" type="number" step="0.01" min="0" value={form.salePrice} onChange={(e) => set("salePrice", e.target.value)} placeholder="0.00" />
+                <FieldHint>What the shopper actually pays. Leave blank for no discount.</FieldHint>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="costPrice">Cost Price (₹)</Label>
+                <FieldLabel htmlFor="costPrice">Cost Price (₹)</FieldLabel>
                 <Input id="costPrice" type="number" step="0.01" min="0" value={form.costPrice} onChange={(e) => set("costPrice", e.target.value)} placeholder="0.00" />
+                <FieldHint>What it costs you. Used for profit reports — never shown to shoppers.</FieldHint>
               </div>
             </div>
             {form.salePrice && form.price && parseFloat(form.salePrice) < parseFloat(form.price) && (
-              <p className="text-xs text-green-600">
-                Discount: {Math.round(((parseFloat(form.price) - parseFloat(form.salePrice)) / parseFloat(form.price)) * 100)}% off
-              </p>
-            )}
-          </Card>
-
-          <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Inventory</h3>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="stock">Stock Quantity *</Label>
-                <Input id="stock" type="number" min="0" step="1" value={form.stock} onChange={(e) => set("stock", e.target.value)} required />
+              <div className="inline-flex items-center gap-1.5 rounded-md bg-success-bg px-2.5 py-1 text-xs font-medium text-success">
+                <Tag className="h-3.5 w-3.5" />
+                {Math.round(((parseFloat(form.price) - parseFloat(form.salePrice)) / parseFloat(form.price)) * 100)}% off for shoppers
               </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            icon={<Ruler className="h-4 w-4" />}
+            title="Pack Size & Unit"
+            description="Say exactly how much is in one pack. “Sold By” is the measure (weight, volume, or count); “Pack Size” is the amount printed under the product name — e.g. 500 g noodles, 1 kg atta."
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <FieldLabel htmlFor="unit" icon={<Scale className="h-3.5 w-3.5" />}>Sold By (Unit)</FieldLabel>
                 <Select value={form.unit} onValueChange={(v) => set("unit", v)}>
                   <SelectTrigger id="unit"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {UNITS.map((u) => (<SelectItem key={u} value={u}>{u}</SelectItem>))}
+                    {UNITS.map((u) => (<SelectItem key={u} value={u}>{UNIT_LABELS[u] ?? u}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                <FieldHint>The base measure — by weight (kg/g), volume (l/ml), or count (piece/pack/dozen/box).</FieldHint>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lowStock">Low Stock Alert</Label>
-                <Input id="lowStock" type="number" min="0" step="1" value={form.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maxOrder">Max Order Qty</Label>
-                <Input id="maxOrder" type="number" min="1" step="1" value={form.maxOrderQty} onChange={(e) => set("maxOrderQty", e.target.value)} placeholder="No limit" />
+                <FieldLabel htmlFor="netQuantity" icon={<Package className="h-3.5 w-3.5" />}>Pack Size</FieldLabel>
+                <Input
+                  id="netQuantity"
+                  value={form.netQuantity}
+                  onChange={(e) => set("netQuantity", e.target.value)}
+                  placeholder="e.g. 500 g, 1 kg, 6 pieces"
+                  maxLength={200}
+                />
+                <FieldHint>The exact amount in one pack, exactly as the shopper should see it — this is the label under the product name (e.g. “500 g”).</FieldHint>
               </div>
             </div>
-          </Card>
+          </SectionCard>
+
+          <SectionCard
+            icon={<Boxes className="h-4 w-4" />}
+            title="Inventory"
+            description="How many you have, when to be warned you’re running low, and the most a shopper can buy at once."
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <FieldLabel htmlFor="stock" icon={<Boxes className="h-3.5 w-3.5" />} required>Stock Quantity</FieldLabel>
+                <Input id="stock" type="number" min="0" step="1" value={form.stock} onChange={(e) => set("stock", e.target.value)} required />
+                <FieldHint>How many units are available to sell right now.</FieldHint>
+              </div>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="lowStock" icon={<Info className="h-3.5 w-3.5" />}>Low Stock Alert</FieldLabel>
+                <Input id="lowStock" type="number" min="0" step="1" value={form.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} />
+                <FieldHint>Get warned when stock drops to this number, so you can restock in time.</FieldHint>
+              </div>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="maxOrder" icon={<ShoppingCart className="h-3.5 w-3.5" />}>Max Order Qty</FieldLabel>
+                <Input id="maxOrder" type="number" min="1" step="1" value={form.maxOrderQty} onChange={(e) => set("maxOrderQty", e.target.value)} placeholder="No limit" />
+                <FieldHint>The most a single shopper can buy in one order. Leave blank for no limit.</FieldHint>
+              </div>
+            </div>
+          </SectionCard>
         </TabsContent>
 
         {/* ────── Step 3: Media ────── */}
@@ -659,6 +748,11 @@ export function ProductForm({
 
         {/* ────── Step 4: Details ────── */}
         <TabsContent value="details" className="space-y-6 mt-6">
+          <StepIntro
+            icon={<Sparkles className="h-5 w-5" />}
+            title="Extra details that build trust"
+            description="All optional, but they make the product page richer — brand info, key highlights, a spec table, and supplier/return settings. Pack size now lives on the Pricing step."
+          />
           <CollapsibleCard
             title="Brand Details"
             description="Organize merchandising metadata for branding and packaging."
@@ -701,28 +795,12 @@ export function ProductForm({
 
           <Card className="p-6 space-y-4">
             <div className="space-y-1">
-              <h3 className="font-semibold">Net Quantity</h3>
+              <h3 className="font-semibold flex items-center gap-2">
+                <Megaphone className="h-4 w-4 text-brand-600" />
+                Highlights
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Capture the shopper-facing pack or quantity label exactly as it should appear.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="netQuantity">Net Quantity</Label>
-              <Input
-                id="netQuantity"
-                value={form.netQuantity}
-                onChange={(e) => set("netQuantity", e.target.value)}
-                placeholder="e.g., 1 pack (6 pairs)"
-                maxLength={200}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-6 space-y-4">
-            <div className="space-y-1">
-              <h3 className="font-semibold">Highlights</h3>
-              <p className="text-sm text-muted-foreground">
-                Short, scannable points for PDP cards and merchandising modules.
+                Short bullet points shown on the product page — e.g. &ldquo;100% whole wheat&rdquo;, &ldquo;No palm oil&rdquo;, &ldquo;Rich in protein&rdquo;.
               </p>
             </div>
             <HighlightsEditor
@@ -733,9 +811,12 @@ export function ProductForm({
 
           <Card className="p-6 space-y-4">
             <div className="space-y-1">
-              <h3 className="font-semibold">Product Attributes</h3>
+              <h3 className="font-semibold flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-brand-600" />
+                Product Attributes
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Structured label-value pairs for specs, sizing, materials, or composition.
+                A spec table of label–value pairs shown on the product page — e.g. Material: Cotton, Size: Large, Weight: 250 g.
               </p>
             </div>
             <AttributesEditor
@@ -863,19 +944,35 @@ export function ProductForm({
           </Card>
         </TabsContent>
 
-        {/* ────── Step 5: Options (Phase 2) ────── */}
-        <TabsContent value="options" className="mt-6">
-          <Card className="p-6 space-y-5">
-            <div>
-              <h3 className="font-semibold">Product Family &amp; Options</h3>
-              <p className="text-xs text-muted-foreground">
-                Group multiple sizes/packs (e.g. 250g, 500g, 1kg) under one
-                family so the mobile app can show an option popup. Each option
-                stays a separate purchasable product with its own price and
-                stock per shop.
-              </p>
-            </div>
+        {/* ────── Step 5: Options ────── */}
+        <TabsContent value="options" className="space-y-6 mt-6">
+          <StepIntro
+            icon={<Layers className="h-5 w-5" />}
+            title="Optional — group sizes of the same product"
+            description="Only needed if this product comes in more than one size or pack (like 250 g, 500 g, 1 kg). Grouping them lets the app show one card with a size picker. Selling a single size? You can skip this step."
+          />
 
+          {/* Plain-language explainer of the whole flow */}
+          <div className="rounded-xl border border-info/30 bg-info-bg p-4 dark:bg-info/10">
+            <div className="flex items-start gap-3">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+              <div className="space-y-2 text-xs leading-relaxed text-foreground/80">
+                <p className="text-sm font-semibold text-foreground">How it works in 3 steps</p>
+                <ol className="ml-4 list-decimal space-y-1">
+                  <li><span className="font-medium text-foreground">Pick a family</span> — the shared name, e.g. &ldquo;Maggi Noodles&rdquo;.</li>
+                  <li><span className="font-medium text-foreground">Label this size</span> — what this exact product is, e.g. &ldquo;500 g&rdquo;.</li>
+                  <li><span className="font-medium text-foreground">Repeat</span> for each size — they all appear under one card with a picker.</li>
+                </ol>
+                <p>Each size stays a separate product with its own price and stock per shop.</p>
+              </div>
+            </div>
+          </div>
+
+          <SectionCard
+            icon={<Boxes className="h-4 w-4" />}
+            title="Step 1 — Product Family"
+            description="The shared name that ties sizes together. Pick an existing family or create a new one. Leave empty for single-size products."
+          >
             <ProductFamilySelector
               value={form.productFamilyId}
               onChange={(id, name) => {
@@ -884,106 +981,91 @@ export function ProductForm({
               }}
               categoryId={form.categoryId || null}
             />
+          </SectionCard>
 
-            {form.productFamilyId && (
-              <>
-                <Separator />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Option Label</Label>
-                    <Input
-                      value={form.optionLabel}
-                      onChange={(e) => set("optionLabel", e.target.value)}
-                      placeholder="e.g. 500g, 1kg, 4 x 95g, Pack of 2"
-                      maxLength={100}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Shown in the option popup on mobile.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Sort Order</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.optionSortOrder}
-                      onChange={(e) => set("optionSortOrder", e.target.value)}
-                      placeholder="0"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Lower values appear first in the popup.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Switch
-                    checked={form.isDefaultOption}
-                    onCheckedChange={(v) => set("isDefaultOption", v)}
+          {form.productFamilyId && (
+            <SectionCard
+              icon={<Ruler className="h-4 w-4" />}
+              title="Step 2 — This product’s size"
+              description="Describe which size this specific product is within the family."
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <FieldLabel icon={<Tag className="h-3.5 w-3.5" />}>Option Label</FieldLabel>
+                  <Input
+                    value={form.optionLabel}
+                    onChange={(e) => set("optionLabel", e.target.value)}
+                    placeholder="e.g. 500g, 1kg, Pack of 2"
+                    maxLength={100}
                   />
-                  <div>
-                    <Label className="text-sm">Set as default option</Label>
-                    <p className="text-xs text-muted-foreground">
-                      The default option represents the family in product
-                      listings. Only one default per family — saving with
-                      this enabled may replace the previous default.
-                    </p>
-                  </div>
+                  <FieldHint>The size shown in the picker on mobile. Keep it short — &ldquo;500 g&rdquo;, &ldquo;1 kg&rdquo;, &ldquo;Pack of 2&rdquo;.</FieldHint>
                 </div>
-                {form.productFamilyId && !form.optionLabel.trim() && (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    This product is in a family but has no option label.
-                    Customers won&apos;t be able to tell options apart in the
-                    popup. Add a label like &quot;500g&quot; or &quot;Pack of
-                    2&quot;.
-                  </div>
-                )}
-              </>
-            )}
+                <div className="space-y-2">
+                  <FieldLabel icon={<ListChecks className="h-3.5 w-3.5" />}>Sort Order</FieldLabel>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.optionSortOrder}
+                    onChange={(e) => set("optionSortOrder", e.target.value)}
+                    placeholder="0"
+                  />
+                  <FieldHint>Controls the order in the picker. Lower numbers show first (0 = top).</FieldHint>
+                </div>
+              </div>
 
-            <Separator />
+              <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Set as default size</Label>
+                  <FieldHint>
+                    The default size represents the whole family in listings. Only one
+                    per family — turning this on may replace the previous default.
+                  </FieldHint>
+                </div>
+                <Switch
+                  checked={form.isDefaultOption}
+                  onCheckedChange={(v) => set("isDefaultOption", v)}
+                />
+              </div>
 
-            <div>
-              <h4 className="mb-1 text-sm font-semibold">
-                Display metadata
-              </h4>
-              <p className="mb-3 text-xs text-muted-foreground">
-                These fields drive the mobile product card UI: veg marker,
-                imported tag, custom badges, and delivery time.
-              </p>
-              <ProductMetadataFields
-                foodType={form.foodType}
-                originTag={form.originTag}
-                customBadges={form.customBadges}
-                displayDeliveryMinutes={form.displayDeliveryMinutes}
-                onFoodTypeChange={(v) => set("foodType", v)}
-                onOriginTagChange={(v) => set("originTag", v)}
-                onCustomBadgesChange={(v) => set("customBadges", v)}
-                onDisplayDeliveryMinutesChange={(v) =>
-                  set("displayDeliveryMinutes", v)
-                }
-              />
-            </div>
+              {!form.optionLabel.trim() && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    This product is in a family but has no size label yet. Shoppers
+                    won&apos;t be able to tell the sizes apart — add a label like
+                    &ldquo;500 g&rdquo; or &ldquo;Pack of 2&rdquo;.
+                  </span>
+                </div>
+              )}
+            </SectionCard>
+          )}
 
-            {isEdit && productId && form.productFamilyId && (
-              <FamilyOptionsPanel
-                productId={productId}
-                familyId={form.productFamilyId}
-                familyName={form.productFamilyName}
-              />
-            )}
+          <SectionCard
+            icon={<Sparkles className="h-4 w-4" />}
+            title="Card Display"
+            description="Controls how the product looks on the mobile card — the veg/non-veg dot, an Imported/Local tag, custom badges, and a delivery-time label."
+          >
+            <ProductMetadataFields
+              foodType={form.foodType}
+              originTag={form.originTag}
+              customBadges={form.customBadges}
+              displayDeliveryMinutes={form.displayDeliveryMinutes}
+              onFoodTypeChange={(v) => set("foodType", v)}
+              onOriginTagChange={(v) => set("originTag", v)}
+              onCustomBadgesChange={(v) => set("customBadges", v)}
+              onDisplayDeliveryMinutesChange={(v) =>
+                set("displayDeliveryMinutes", v)
+              }
+            />
+          </SectionCard>
 
-            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-              <p className="font-medium">How options work</p>
-              <ul className="mt-1 list-inside list-disc space-y-0.5">
-                <li>Each option is a real purchasable product.</li>
-                <li>
-                  Store price and stock are managed separately through Shop
-                  Products.
-                </li>
-                <li>Cart and checkout use the exact selected option.</li>
-              </ul>
-            </div>
-          </Card>
+          {isEdit && productId && form.productFamilyId && (
+            <FamilyOptionsPanel
+              productId={productId}
+              familyId={form.productFamilyId}
+              familyName={form.productFamilyName}
+            />
+          )}
         </TabsContent>
 
         {/* ────── Step 6: Legacy Display Variants ────── */}
@@ -1174,6 +1256,94 @@ export function ProductForm({
       </div>
     </form>
   )
+}
+
+/**
+ * StepIntro — a friendly banner at the top of each wizard step. Explains in
+ * plain language what the step is for, so non-technical operators know why
+ * they are filling it in.
+ */
+function StepIntro({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-brand-200/70 bg-brand-50/70 px-4 py-3 dark:border-brand-800/60 dark:bg-brand-900/20">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+        {icon}
+      </div>
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * SectionCard — a card with an icon, title, and a short "why this matters"
+ * description. Used to give every group of fields clear context.
+ */
+function SectionCard({
+  icon,
+  title,
+  description,
+  children,
+  className,
+}: {
+  icon: React.ReactNode
+  title: string
+  description?: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <Card className={cn("p-6 space-y-5", className)}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-800 dark:bg-brand-900/30 dark:text-brand-300">
+          {icon}
+        </div>
+        <div className="space-y-0.5">
+          <h3 className="font-semibold leading-tight">{title}</h3>
+          {description ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </Card>
+  )
+}
+
+/** FieldLabel — a Label with an optional leading icon and required marker. */
+function FieldLabel({
+  htmlFor,
+  icon,
+  required,
+  children,
+}: {
+  htmlFor?: string
+  icon?: React.ReactNode
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Label htmlFor={htmlFor} className="flex items-center gap-1.5">
+      {icon ? <span className="text-muted-foreground">{icon}</span> : null}
+      {children}
+      {required ? <span className="text-destructive">*</span> : null}
+    </Label>
+  )
+}
+
+/** FieldHint — consistent small helper text shown under a field. */
+function FieldHint({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs leading-relaxed text-muted-foreground">{children}</p>
 }
 
 function CollapsibleCard({
