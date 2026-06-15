@@ -372,6 +372,10 @@ function ThemeBuilderPageContent() {
   const previewThemeData = chromeRegionPreviewOverride ?? activeThemeData
 
   // The full Theme object backing activeThemeData — needed for chrome region editing.
+  // IMPORTANT: Do NOT fall back to the "all" tab theme here. If this tab has no own
+  // active theme record, activeTheme must be null so the ChromeRegionEditor shows
+  // the "no active theme" warning and blocks saving to the wrong (fallback) theme.
+  // The "all" fallback is intentionally only used for previewThemeData (read-only display).
   const activeTheme: Theme | null =
     tabThemes.find(
       (theme) => theme.tab_id === activeTab?.id && theme.status === "active"
@@ -379,7 +383,6 @@ function ThemeBuilderPageContent() {
     tabThemes.find(
       (theme) => theme.tab_key === activeTab?.key && theme.status === "active"
     ) ??
-    tabThemes.find((theme) => theme.tab_key === "all" && theme.status === "active") ??
     null
 
   const selectedSection =
