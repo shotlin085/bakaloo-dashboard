@@ -83,11 +83,6 @@ export const SECTION_STYLE_PRESETS: Partial<
       label: "3-up Grid",
       patch: { columns: 3, card_shape: "rounded" },
     },
-    {
-      id: "compact",
-      label: "Compact",
-      patch: { columns: 4, card_shape: "square" },
-    },
   ],
   round_category_icons: [
     {

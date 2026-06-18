@@ -14,7 +14,9 @@ interface ProductConfigEditorProps {
   sectionType?: SectionType
 }
 
-const COLUMN_OPTIONS = [2, 3, 4] as const
+// 4-up grids are not supported on mobile — keep this in lock-step with the
+// columns.clamp(2, 3) in the Flutter app's _buildCategoryProductGrid.
+const COLUMN_OPTIONS = [2, 3] as const
 
 /**
  * Product card visual styles offered to admins. Values are the canonical
