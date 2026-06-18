@@ -9,9 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { DARK_MODE_ENABLED } from "@/components/providers/ThemeProvider"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
+
+  // Dark mode is disabled product-side (see ThemeProvider's kill-switch) —
+  // don't expose a control that can't actually change anything.
+  if (!DARK_MODE_ENABLED) {
+    return null
+  }
 
   return (
     <DropdownMenu>
