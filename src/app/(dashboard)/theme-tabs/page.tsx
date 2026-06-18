@@ -92,6 +92,18 @@ const STATUS_OPTIONS = [
   { value: "archived", label: "Archived" },
 ] as const
 
+// Mirrors HOME_CAPS in bakaloo-backend/src/modules/themes/public.controller.js.
+// The mobile home API always clamps to these caps regardless of what's saved
+// here, so keep the dashboard input max in lock-step to avoid admins setting
+// a number that silently gets truncated.
+const MERCH_LIMIT_CAPS = {
+  seasonal_mosaic: 8,
+  featured: 12,
+  deals: 12,
+  trending: 12,
+} as const
+const CATEGORY_RAIL_LIMIT_CAP = 8
+
 interface ThemeTabFormData {
   store_key: ThemeStoreKey
   key: string
@@ -786,6 +798,7 @@ export default function ThemeTabsPage() {
                     title="Seasonal Mosaic"
                     description="Controls the products feeding the seasonal hero + mini tiles."
                     value={form.merch_config.seasonal_mosaic}
+                    maxLimit={MERCH_LIMIT_CAPS.seasonal_mosaic}
                     categories={categories ?? []}
                     categoryMap={categoryMap}
                     productMap={productMap}
@@ -796,6 +809,7 @@ export default function ThemeTabsPage() {
                     title="Featured"
                     description="Primary featured products for this tab."
                     value={form.merch_config.featured}
+                    maxLimit={MERCH_LIMIT_CAPS.featured}
                     categories={categories ?? []}
                     categoryMap={categoryMap}
                     productMap={productMap}
@@ -806,6 +820,7 @@ export default function ThemeTabsPage() {
                     title="Deals"
                     description="Discount-led products and sale inventory."
                     value={form.merch_config.deals}
+                    maxLimit={MERCH_LIMIT_CAPS.deals}
                     categories={categories ?? []}
                     categoryMap={categoryMap}
                     productMap={productMap}
@@ -816,6 +831,7 @@ export default function ThemeTabsPage() {
                     title="Trending"
                     description="Fast-moving and high-intent items."
                     value={form.merch_config.trending}
+                    maxLimit={MERCH_LIMIT_CAPS.trending}
                     categories={categories ?? []}
                     categoryMap={categoryMap}
                     productMap={productMap}
@@ -849,6 +865,7 @@ export default function ThemeTabsPage() {
                             key={`${rail.category_id}-${index}`}
                             index={index}
                             value={rail}
+                            maxLimit={CATEGORY_RAIL_LIMIT_CAP}
                             categories={categories ?? []}
                             categoryMap={categoryMap}
                             productMap={productMap}
@@ -938,6 +955,7 @@ function MerchSectionEditor({
   title,
   description,
   value,
+  maxLimit,
   categories,
   categoryMap,
   productMap,
@@ -946,6 +964,7 @@ function MerchSectionEditor({
   title: string
   description: string
   value: MerchSectionConfig
+  maxLimit: number
   categories: Category[]
   categoryMap: Map<string, string>
   productMap: Map<string, Product>
@@ -976,12 +995,12 @@ function MerchSectionEditor({
           <Input
             type="number"
             min={1}
-            max={50}
+            max={maxLimit}
             value={value.limit}
             onChange={(event) =>
               onChange({
                 ...value,
-                limit: Math.max(1, Math.min(50, Number(event.target.value) || 1)),
+                limit: Math.max(1, Math.min(maxLimit, Number(event.target.value) || 1)),
               })
             }
           />
@@ -1049,6 +1068,7 @@ function MerchSectionEditor({
 function CategoryRailEditor({
   index,
   value,
+  maxLimit,
   categories,
   categoryMap,
   productMap,
@@ -1057,6 +1077,7 @@ function CategoryRailEditor({
 }: {
   index: number
   value: CategoryRailConfig
+  maxLimit: number
   categories: Category[]
   categoryMap: Map<string, string>
   productMap: Map<string, Product>
@@ -1124,12 +1145,12 @@ function CategoryRailEditor({
             <Input
               type="number"
               min={1}
-              max={50}
+              max={maxLimit}
               value={value.limit}
               onChange={(event) =>
                 onChange({
                   ...value,
-                  limit: Math.max(1, Math.min(50, Number(event.target.value) || 1)),
+                  limit: Math.max(1, Math.min(maxLimit, Number(event.target.value) || 1)),
                 })
               }
             />

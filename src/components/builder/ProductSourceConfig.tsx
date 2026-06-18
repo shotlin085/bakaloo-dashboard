@@ -22,9 +22,12 @@ interface ProductSourceConfigProps {
   onBindingChange: (binding: UpdateSectionMerchPayload) => void
 }
 
-// Backend caps manifest section at 12; keep slider at 20 for UX feedback
-const MOBILE_HOME_LIMIT_MAX = 20
-const MOBILE_HOME_LIMIT_WARN = 12
+// Backend hard-caps every manifest section (product_carousel,
+// category_product_grid, trending_products, arched_product_showcase) at 12
+// products — see HOME_MANIFEST_SECTION_CAP in public.controller.js. This is
+// the single product-limit control for these sections; keep it in lock-step
+// with that constant.
+const MOBILE_HOME_LIMIT_MAX = 12
 
 type SourceMode = "category" | "tag" | "manual"
 
@@ -358,11 +361,6 @@ export default function ProductSourceConfig({
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-violet-600"
           aria-label="Product limit"
         />
-        {binding.limit > MOBILE_HOME_LIMIT_WARN ? (
-          <p className="text-[10px] text-amber-700">
-            ⚠️ Mobile API caps at {MOBILE_HOME_LIMIT_MAX} items
-          </p>
-        ) : null}
         <p className="text-[11px] text-slate-400">{buildSummary(binding)}</p>
       </div>
     </div>

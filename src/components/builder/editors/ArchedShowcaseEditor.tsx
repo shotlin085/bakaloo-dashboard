@@ -377,7 +377,6 @@ export default function ArchedShowcaseEditor({
     typeof config.arch_height === "number" ? config.arch_height : 14
   const cornerRadius =
     typeof config.corner_radius === "number" ? config.corner_radius : 24
-  const limit = typeof config.limit === "number" ? config.limit : 10
 
   // ── Banner sub-config ──
   const bannerConfig = (
@@ -695,15 +694,6 @@ export default function ArchedShowcaseEditor({
           step={2}
           unit="px"
           onChange={(value) => patchConfig({ corner_radius: value })}
-        />
-        <RangeControl
-          id="product-limit"
-          label="Product Limit"
-          value={limit}
-          min={4}
-          max={20}
-          step={1}
-          onChange={(value) => patchConfig({ limit: value })}
         />
       </CollapsibleZone>
 
