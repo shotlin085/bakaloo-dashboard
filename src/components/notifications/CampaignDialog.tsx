@@ -35,12 +35,14 @@ const SEGMENTS: { value: CampaignSegment; label: string; description: string; ne
 
 const DEEP_LINK_PRESETS = [
   { label: "Home", value: "/home" },
-  { label: "Notifications", value: "/notifications" },
+  { label: "Notifications", value: "/profile/notifications" },
   { label: "Cart", value: "/cart" },
-  { label: "Wallet", value: "/wallet" },
+  { label: "Wallet", value: "/profile/wallet" },
   { label: "Orders", value: "/orders" },
   { label: "Categories", value: "/categories" },
   { label: "Offers / Price Drop", value: "/categories?tab=price_drop" },
+  { label: "Search", value: "/search" },
+  { label: "Wishlist", value: "/profile/wishlist" },
 ]
 
 interface Props {

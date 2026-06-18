@@ -180,8 +180,11 @@ export function TemplateDialog({ open, onOpenChange, template }: Props) {
                 id="t-deeplink"
                 value={form.deep_link ?? ""}
                 onChange={(e) => setForm({ ...form, deep_link: e.target.value })}
-                placeholder="app://screen/id"
+                placeholder="/home  /orders  /cart  /profile/notifications  /profile/wallet"
               />
+              <p className="text-[11px] text-muted-foreground">
+                Use app paths: <span className="font-mono">/home</span>, <span className="font-mono">/orders</span>, <span className="font-mono">/cart</span>, <span className="font-mono">/profile/notifications</span>, <span className="font-mono">/profile/wallet</span>, <span className="font-mono">/product/:id</span>
+              </p>
             </div>
           </div>
 
