@@ -11,7 +11,6 @@ import {
   Smartphone,
   Save,
   RotateCcw,
-  CreditCard,
   Bell,
   Key,
   MapPin,
@@ -24,7 +23,6 @@ import {
   Copy,
   CheckCircle2,
   Loader2,
-  AlertTriangle,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
@@ -54,13 +52,6 @@ interface SettingKey {
   label: string
   type: "number" | "text" | "boolean"
   suffix?: string
-  /** When set, toggling this boolean setting opens a confirm dialog first. */
-  confirmCopy?: {
-    enableTitle: string
-    enableBody: string
-    disableTitle: string
-    disableBody: string
-  }
 }
 
 interface SettingsGroup {
@@ -127,57 +118,6 @@ const GROUPS: SettingsGroup[] = [
     keys: [
       { key: "loyalty_rate", label: "Points per ₹1 Spent", type: "number" },
       { key: "loyalty_value", label: "Value per Point", type: "number", suffix: "₹" },
-    ],
-  },
-  {
-    label: "Payment",
-    icon: CreditCard,
-    keys: [
-      {
-        key: "cod_enabled",
-        label: "Cash on Delivery",
-        type: "boolean",
-        confirmCopy: {
-          enableTitle: "Enable Cash on Delivery?",
-          enableBody:
-            "Customers will see Cash on Delivery as a payment option at checkout, subject to the minimum/maximum amount below.",
-          disableTitle: "Disable Cash on Delivery?",
-          disableBody:
-            "Cash on Delivery will be hidden from checkout immediately. Customers will need to pay online or via wallet instead.",
-        },
-      },
-      {
-        key: "cod_min_order_amount",
-        label: "COD Available Above",
-        type: "number",
-        suffix: "₹",
-      },
-      {
-        key: "razorpay_enabled",
-        label: "Online Payment (Razorpay)",
-        type: "boolean",
-        confirmCopy: {
-          enableTitle: "Enable Online Payment?",
-          enableBody:
-            "Customers will see Pay Online (Razorpay) as a payment option at checkout.",
-          disableTitle: "Disable Online Payment?",
-          disableBody:
-            "Online payment will be hidden from checkout immediately. Customers will need to pay with COD or wallet instead.",
-        },
-      },
-      {
-        key: "wallet_enabled",
-        label: "Bakaloo Wallet",
-        type: "boolean",
-        confirmCopy: {
-          enableTitle: "Enable Wallet Payment?",
-          enableBody:
-            "Customers will see Bakaloo Wallet as a payment option at checkout.",
-          disableTitle: "Disable Wallet Payment?",
-          disableBody:
-            "Wallet payment will be hidden from checkout immediately. Customers will need to pay with COD or online instead.",
-        },
-      },
     ],
   },
   {
@@ -309,13 +249,6 @@ function SettingsContent() {
   const [twoFaVerifying, setTwoFaVerifying] = useState(false)
   const [twoFaSecret] = useState("JBSWY3DPEHPK3PXP") // Placeholder secret
   const [twoFaVerified, setTwoFaVerified] = useState(false)
-
-  // Pending toggle awaiting confirmation (COD / Razorpay / Wallet enable switches)
-  const [pendingToggle, setPendingToggle] = useState<{
-    key: string
-    nextValue: boolean
-    confirmCopy: NonNullable<SettingKey["confirmCopy"]>
-  } | null>(null)
 
   // Sync incoming settings into draft
   useEffect(() => {
@@ -453,17 +386,9 @@ function SettingsContent() {
                             currentValue === true ||
                             currentValue === "true"
                           }
-                          onCheckedChange={(checked) => {
-                            if (setting.confirmCopy) {
-                              setPendingToggle({
-                                key: setting.key,
-                                nextValue: checked,
-                                confirmCopy: setting.confirmCopy,
-                              })
-                              return
-                            }
+                          onCheckedChange={(checked) =>
                             handleChange(setting.key, checked)
-                          }}
+                          }
                           disabled={!canManage}
                         />
                       </div>
@@ -636,44 +561,6 @@ function SettingsContent() {
             >
               {twoFaVerifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Verify & Enable
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment method toggle confirmation */}
-      <Dialog
-        open={pendingToggle !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingToggle(null)
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {pendingToggle?.nextValue
-                ? pendingToggle.confirmCopy.enableTitle
-                : pendingToggle?.confirmCopy.disableTitle}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingToggle?.nextValue
-                ? pendingToggle.confirmCopy.enableBody
-                : pendingToggle?.confirmCopy.disableBody}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingToggle(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!pendingToggle) return
-                handleChange(pendingToggle.key, pendingToggle.nextValue)
-                setPendingToggle(null)
-              }}
-            >
-              Yes, I Agree
             </Button>
           </DialogFooter>
         </DialogContent>

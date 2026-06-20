@@ -114,6 +114,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
             href: "/settings/payment-offers",
             icon: "Gift",
           },
+          { label: "Payments", href: "/settings/payments", icon: "CreditCard" },
         ],
       },
       {
@@ -180,7 +181,6 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { label: "Team & Roles", href: "/team", icon: "Shield" },
       { label: "Themes", href: "/themes", icon: "Palette" },
       { label: "Theme Tabs", href: "/theme-tabs", icon: "Tags" },
-      { label: "General Settings", href: "/settings", icon: "Settings" },
     ],
   },
 ]
