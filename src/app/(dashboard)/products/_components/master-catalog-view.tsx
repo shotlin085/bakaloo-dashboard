@@ -89,6 +89,7 @@ export function MasterCatalogView() {
   const [category, setCategory] = useState("all_categories")
   const [status, setStatus] = useState<ProductFilters["status"]>("")
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(20)
   const [viewMode, setViewMode] = useState<ViewMode>("table")
 
   const [showImport, setShowImport] = useState(false)
@@ -100,12 +101,12 @@ export function MasterCatalogView() {
   const filters: ProductFilters = useMemo(
     () => ({
       page,
-      limit: 20,
+      limit,
       search: debouncedSearch || undefined,
       category: category !== "all_categories" ? category : undefined,
       status: status || undefined,
     }),
-    [page, debouncedSearch, category, status],
+    [page, limit, debouncedSearch, category, status],
   )
 
   const { data, isLoading } = useProducts(filters)
@@ -602,56 +603,76 @@ export function MasterCatalogView() {
       )}
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
+      {pagination && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {(pagination.page - 1) * pagination.limit + 1}–
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} products
-          </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Showing {(pagination.page - 1) * pagination.limit + 1}–
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+              {pagination.total} products
+            </p>
+            <Select
+              value={String(limit)}
+              onValueChange={(v) => {
+                setLimit(Number(v))
+                setPage(1)
+              }}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.min(pagination.totalPages, 7) }, (_, i) => {
-              let pageNum: number
-              if (pagination.totalPages <= 7) {
-                pageNum = i + 1
-              } else if (page <= 4) {
-                pageNum = i + 1
-              } else if (page >= pagination.totalPages - 3) {
-                pageNum = pagination.totalPages - 6 + i
-              } else {
-                pageNum = page - 3 + i
-              }
-              return (
-                <Button
-                  key={pageNum}
-                  variant={page === pageNum ? "default" : "outline"}
-                  size="icon"
-                  className="h-8 w-8 text-xs"
-                  onClick={() => setPage(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              )
-            })}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page === pagination.totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <SelectTrigger className="h-7 w-[110px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="100">100 / page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: Math.min(pagination.totalPages, 7) }, (_, i) => {
+                let pageNum: number
+                if (pagination.totalPages <= 7) {
+                  pageNum = i + 1
+                } else if (page <= 4) {
+                  pageNum = i + 1
+                } else if (page >= pagination.totalPages - 3) {
+                  pageNum = pagination.totalPages - 6 + i
+                } else {
+                  pageNum = page - 3 + i
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={page === pageNum ? "default" : "outline"}
+                    size="icon"
+                    className="h-8 w-8 text-xs"
+                    onClick={() => setPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                )
+              })}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={page === pagination.totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

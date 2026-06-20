@@ -82,7 +82,7 @@ function OrdersContent() {
   )
   const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "">("")
   const [page, setPage] = useState(1)
-  const [limit] = useState(20)
+  const [limit, setLimit] = useState(20)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
@@ -579,56 +579,76 @@ function OrdersContent() {
         </Table>
 
         {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
+        {pagination && (
           <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
-            <p className="text-xs text-muted-foreground">
-              Showing {(pagination.page - 1) * pagination.limit + 1}–
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-              {pagination.total} orders
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="h-8 text-xs"
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                Showing {(pagination.page - 1) * pagination.limit + 1}–
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+                {pagination.total} orders
+              </p>
+              <Select
+                value={String(limit)}
+                onValueChange={(v) => {
+                  setLimit(Number(v))
+                  setPage(1)
+                }}
               >
-                Previous
-              </Button>
-              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
-                let pageNum: number
-                if (pagination.totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (page <= 3) {
-                  pageNum = i + 1
-                } else if (page >= pagination.totalPages - 2) {
-                  pageNum = pagination.totalPages - 4 + i
-                } else {
-                  pageNum = page - 2 + i
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={pageNum === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPage(pageNum)}
-                    className="h-8 w-8 text-xs p-0"
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= pagination.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-8 text-xs"
-              >
-                Next
-              </Button>
+                <SelectTrigger className="h-7 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="100">100 / page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="h-8 text-xs"
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+                  let pageNum: number
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (page <= 3) {
+                    pageNum = i + 1
+                  } else if (page >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i
+                  } else {
+                    pageNum = page - 2 + i
+                  }
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className="h-8 w-8 text-xs p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  )
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= pagination.totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="h-8 text-xs"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
