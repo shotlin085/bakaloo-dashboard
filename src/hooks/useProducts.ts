@@ -72,8 +72,27 @@ export function useDeleteProduct() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteProduct(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       toast.success("Product deleted")
+      // Delete is a soft-delete on the backend (marks the product
+      // Inactive rather than removing the row, so order history that
+      // references it stays intact). Strip it from the cached list
+      // immediately so it actually disappears from view instead of
+      // reappearing under "All Status" after the refetch below.
+      qc.setQueriesData<{ products: { id: string }[]; pagination: unknown } | undefined>(
+        {
+          // Only the list query ["products", filters] has this
+          // { products, pagination } shape — exclude
+          // ["products", "detail", productId] which holds a single
+          // ProductDetail object.
+          predicate: (query) => query.queryKey[1] !== "detail",
+          queryKey: ["products"],
+        },
+        (data) =>
+          data
+            ? { ...data, products: data.products.filter((p) => p.id !== id) }
+            : data
+      )
       qc.invalidateQueries({ queryKey: ["products"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to delete product"),
