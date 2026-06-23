@@ -243,9 +243,13 @@ export default function CategoriesPage() {
                   key={cat.id}
                   category={cat}
                   depth={0}
-                  onEdit={canManage ? openEdit : undefined}
+                  onEdit={canManage ? (cat) => setTimeout(() => openEdit(cat), 0) : undefined}
                   onDelete={canManage ? (id) => deleteCategory.mutate(id) : undefined}
-                  onAddChild={canManage ? (parentId) => openCreate(parentId) : undefined}
+                  onAddChild={
+                    canManage
+                      ? (parentId) => setTimeout(() => openCreate(parentId), 0)
+                      : undefined
+                  }
                 />
               ))}
             </SortableContext>
