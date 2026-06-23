@@ -193,9 +193,11 @@ export default function CategoriesPage() {
   const set = (key: keyof CategoryFormData, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  // Flatten categories for parent select (exclude current category and its children)
+  // Categories are limited to two levels, so only top-level categories
+  // (no parent of their own) can be picked as a parent — picking a
+  // subcategory here would create a third level.
   const parentOptions = (categories ?? []).filter(
-    (c) => c.id !== editingId
+    (c) => c.id !== editingId && !c.parent_id
   )
 
   return (
@@ -473,10 +475,14 @@ function CategoryRow({
               <Pencil className="h-3.5 w-3.5 mr-2" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAddChild(category.id)}>
-              <Plus className="h-3.5 w-3.5 mr-2" />
-              Add Subcategory
-            </DropdownMenuItem>
+            {/* Categories are limited to two levels — a subcategory
+                (depth > 0) can't have its own subcategory. */}
+            {depth === 0 && (
+              <DropdownMenuItem onClick={() => onAddChild(category.id)}>
+                <Plus className="h-3.5 w-3.5 mr-2" />
+                Add Subcategory
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
