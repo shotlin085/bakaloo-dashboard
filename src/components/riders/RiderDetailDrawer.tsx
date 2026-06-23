@@ -14,6 +14,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Select,
@@ -34,6 +42,7 @@ import {
   DollarSign,
   FileText,
   Loader2,
+  Eye,
 } from "lucide-react"
 import {
   useRiderDetail,
@@ -92,6 +101,8 @@ export function RiderDetailDrawer({ riderId, open, onClose }: RiderDetailDrawerP
     amount: 0,
     method: "BANK_TRANSFER",
   })
+  const [rejectingDocId, setRejectingDocId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
   const currentLat = toFiniteNumber(rider?.current_lat)
   const currentLng = toFiniteNumber(rider?.current_lng)
 
@@ -424,15 +435,24 @@ export function RiderDetailDrawer({ riderId, open, onClose }: RiderDetailDrawerP
                         key={doc.id}
                         className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg"
                       >
-                        <div className="flex items-center gap-2">
+                        <a
+                          href={doc.doc_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 hover:underline"
+                          title="View uploaded document"
+                        >
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm capitalize">{doc.doc_type.replace(/_/g, " ")}</p>
+                            <p className="text-sm capitalize flex items-center gap-1">
+                              {doc.doc_type.replace(/_/g, " ")}
+                              <Eye className="h-3 w-3 text-muted-foreground" />
+                            </p>
                             <p className="text-[10px] text-muted-foreground">
                               {new Date(doc.uploaded_at).toLocaleDateString()}
                             </p>
                           </div>
-                        </div>
+                        </a>
                         <div className="flex items-center gap-1.5">
                           {doc.verified || doc.status === "APPROVED" ? (
                             <Badge variant="default" className="text-[10px]">Verified</Badge>
@@ -459,13 +479,10 @@ export function RiderDetailDrawer({ riderId, open, onClose }: RiderDetailDrawerP
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 text-red-600"
-                                onClick={() =>
-                                  verifyMutation.mutate({
-                                    riderId: riderId!,
-                                    documentId: doc.id,
-                                    payload: { status: "REJECTED", note: "Rejected by admin" },
-                                  })
-                                }
+                                onClick={() => {
+                                  setRejectingDocId(doc.id)
+                                  setRejectReason("")
+                                }}
                                 disabled={verifyMutation.isPending}
                               >
                                 <XCircle className="h-4 w-4" />
@@ -564,6 +581,48 @@ export function RiderDetailDrawer({ riderId, open, onClose }: RiderDetailDrawerP
           )}
         </ScrollArea>
       </SheetContent>
+
+      {/* Reject document — collect a reason so the rider knows what to fix and re-upload */}
+      <Dialog
+        open={rejectingDocId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRejectingDocId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Reason (shown to the rider)</Label>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Photo is blurry, please re-upload a clearer copy"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingDocId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!rejectReason.trim() || verifyMutation.isPending}
+              onClick={() => {
+                verifyMutation.mutate({
+                  riderId: riderId!,
+                  documentId: rejectingDocId!,
+                  payload: { status: "REJECTED", note: rejectReason.trim() },
+                })
+                setRejectingDocId(null)
+              }}
+            >
+              Reject &amp; request re-upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   )
 }
