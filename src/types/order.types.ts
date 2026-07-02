@@ -5,6 +5,12 @@ export interface DeliveryAddress {
   line2?: string
   label?: string
   address_line?: string
+  // Checkout snapshots this address from the customer's saved address row,
+  // whose repository formats columns to camelCase (`addressLine1` etc) —
+  // that's the shape actually stored in `orders.delivery_address`.
+  addressLine1?: string
+  addressLine2?: string
+  landmark?: string
   city: string
   state?: string
   pincode: string

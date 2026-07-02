@@ -45,6 +45,7 @@ import {
   RotateCcw,
   Ban,
   Printer,
+  Navigation,
 } from "lucide-react"
 import {
   useOrderDetail,
@@ -121,6 +122,24 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
     Number(order.savings_total || 0) > 0 ||
     Boolean(order.delivery_instructions?.trim())
   )
+
+  // Checkout stores the address snapshot with camelCase keys
+  // (`addressLine1`/`addressLine2`, from the addresses repository's
+  // snake_case -> camelCase formatter) — fall back to the older
+  // `line1`/`address_line` keys for any legacy/manually-created orders.
+  const deliveryAddr = order?.delivery_address
+  const streetAddress =
+    deliveryAddr?.addressLine1 || deliveryAddr?.line1 || deliveryAddr?.address_line
+  const deliveryLat = deliveryAddr?.lat ?? deliveryAddr?.latitude
+  const deliveryLng = deliveryAddr?.lng ?? deliveryAddr?.longitude
+  const hasDeliveryCoords =
+    typeof deliveryLat === "number" &&
+    typeof deliveryLng === "number" &&
+    Number.isFinite(deliveryLat) &&
+    Number.isFinite(deliveryLng)
+  const deliveryMapsUrl = hasDeliveryCoords
+    ? `https://www.google.com/maps/search/?api=1&query=${deliveryLat},${deliveryLng}`
+    : null
 
   const handleStatusChange = (newStatus: string) => {
     if (!order) return
@@ -442,10 +461,29 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
                 {/* Delivery */}
                 <div>
-                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    Delivery
-                  </h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      Delivery
+                    </h4>
+                    {deliveryMapsUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        asChild
+                      >
+                        <a
+                          href={deliveryMapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Navigation className="h-3 w-3 mr-1" />
+                          View live on Map
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground space-y-1">
 
                     {/* Scheduled delivery badge */}
@@ -470,16 +508,21 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       </div>
                     )}
 
-                    <p>
-                      {order.delivery_address?.line1 ||
-                        order.delivery_address?.address_line ||
-                        "Address not available"}
-                    </p>
-                    {order.delivery_address?.city && (
+                    <p>{streetAddress || "Address not available"}</p>
+                    {deliveryAddr?.addressLine2 && <p>{deliveryAddr.addressLine2}</p>}
+                    {deliveryAddr?.landmark && (
+                      <p className="text-xs">Landmark: {deliveryAddr.landmark}</p>
+                    )}
+                    {deliveryAddr?.city && (
                       <p>
-                        {order.delivery_address.city}
-                        {order.delivery_address.state && `, ${order.delivery_address.state}`}
-                        {order.delivery_address.pincode && ` – ${order.delivery_address.pincode}`}
+                        {deliveryAddr.city}
+                        {deliveryAddr.state && `, ${deliveryAddr.state}`}
+                        {deliveryAddr.pincode && ` – ${deliveryAddr.pincode}`}
+                      </p>
+                    )}
+                    {hasDeliveryCoords && (
+                      <p className="text-xs font-mono">
+                        {deliveryLat!.toFixed(6)}, {deliveryLng!.toFixed(6)}
                       </p>
                     )}
                     {order.delivery_notes && (
