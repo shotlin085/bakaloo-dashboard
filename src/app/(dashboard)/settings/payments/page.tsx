@@ -2,14 +2,21 @@
 
 /**
  * Payments settings — enable/disable COD, Razorpay (online), and Wallet at
- * checkout, plus the COD minimum order amount. Backed by the generic
- * `bakaloo-backend` /api/v1/admin/settings key/value store (same one the
- * Fastify order-placement gate reads — see PaymentSettingsService), so a
+ * checkout, plus the COD minimum AND maximum order amount. Backed by the
+ * generic `bakaloo-backend` /api/v1/admin/settings key/value store (same one
+ * the Fastify order-placement gate reads — see PaymentSettingsService), so a
  * save here takes effect on the next checkout immediately, no rebuild.
+ *
+ * This is the only place cod_min_order_amount / cod_max_amount should be
+ * edited — a previous duplicate "Max COD Amount" field on the General
+ * Settings page caused admins to set it there instead, which (combined with
+ * the minimum) could collapse COD to a single-rupee working window. See
+ * migration 065_cleanup_dead_settings_and_cod_fix.sql.
  */
 
 import { useCallback, useEffect, useState } from "react"
 import { AlertTriangle, Banknote, CreditCard, Loader2, Save, Wallet } from "lucide-react"
+import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
@@ -81,6 +88,7 @@ const TOGGLES: ToggleConfig[] = [
 ]
 
 const COD_MIN_KEY = "cod_min_order_amount"
+const COD_MAX_KEY = "cod_max_amount"
 
 export default function PaymentsSettingsPage() {
   const { data: settings, isLoading } = useSettings()
@@ -110,6 +118,16 @@ export default function PaymentsSettingsPage() {
 
   function handleSave() {
     if (!settings) return
+
+    const codMax = getNumberValue(COD_MAX_KEY)
+    const codMin = getNumberValue(COD_MIN_KEY)
+    if (codMax <= codMin) {
+      toast.error(
+        "COD maximum must be greater than the minimum — as set, Cash on Delivery would only work for one exact order total."
+      )
+      return
+    }
+
     const payload: Record<string, string | number | boolean> = {}
     for (const [key, val] of Object.entries(draft)) {
       if (settings[key] && settings[key].value !== val) {
@@ -202,21 +220,45 @@ export default function PaymentsSettingsPage() {
                 </div>
 
                 {toggle.key === "cod_enabled" && (
-                  <div className="mt-3 ml-7 space-y-1.5 max-w-xs">
-                    <Label className="text-sm">COD Available Above</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        value={getNumberValue(COD_MIN_KEY)}
-                        onChange={(e) => handleChange(COD_MIN_KEY, Number(e.target.value) || 0)}
-                        className="max-w-[160px]"
-                      />
-                      <span className="text-sm text-muted-foreground">₹</span>
+                  <div className="mt-3 ml-7 space-y-4 max-w-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Minimum order</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={getNumberValue(COD_MIN_KEY)}
+                            onChange={(e) => handleChange(COD_MIN_KEY, Number(e.target.value) || 0)}
+                          />
+                          <span className="text-sm text-muted-foreground">₹</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Maximum order</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={getNumberValue(COD_MAX_KEY)}
+                            onChange={(e) => handleChange(COD_MAX_KEY, Number(e.target.value) || 0)}
+                          />
+                          <span className="text-sm text-muted-foreground">₹</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Orders below this bill total won&apos;t offer Cash on Delivery.
-                    </p>
+                    {getNumberValue(COD_MAX_KEY) <= getNumberValue(COD_MIN_KEY) ? (
+                      <p className="text-xs text-destructive">
+                        Maximum must be greater than the minimum, or Cash on Delivery will only
+                        ever work for a single exact order total.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Cash on Delivery is offered only when the bill total is between the
+                        minimum and maximum above (₹{getNumberValue(COD_MIN_KEY)}–₹
+                        {getNumberValue(COD_MAX_KEY)}).
+                      </p>
+                    )}
                   </div>
                 )}
 

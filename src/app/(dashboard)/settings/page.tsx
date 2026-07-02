@@ -3,8 +3,6 @@
 import { Suspense, useState, useEffect, useCallback } from "react"
 import {
   Settings,
-  Truck,
-  DollarSign,
   Store,
   Shield,
   Bike,
@@ -61,25 +59,17 @@ interface SettingsGroup {
 }
 
 const GROUPS: SettingsGroup[] = [
-  {
-    label: "Delivery",
-    icon: Truck,
-    keys: [
-      { key: "delivery_fee", label: "Delivery Fee", type: "number", suffix: "₹" },
-      { key: "free_delivery_above", label: "Free Delivery Above", type: "number", suffix: "₹" },
-      { key: "delivery_radius_km", label: "Delivery Radius", type: "number", suffix: "km" },
-      { key: "express_delivery_min", label: "Express Delivery Time", type: "number", suffix: "min" },
-    ],
-  },
-  {
-    label: "Pricing & Limits",
-    icon: DollarSign,
-    keys: [
-      { key: "platform_fee", label: "Platform Fee", type: "number", suffix: "₹" },
-      { key: "min_order_amount", label: "Min Order Amount", type: "number", suffix: "₹" },
-      { key: "cod_max_amount", label: "Max COD Amount", type: "number", suffix: "₹" },
-    ],
-  },
+  // NOTE (2026-07-02): the old "Delivery" and "Pricing & Limits" groups that
+  // used to live here (delivery_fee, free_delivery_above, platform_fee,
+  // min_order_amount, cod_max_amount, delivery_radius_km, express_delivery_min)
+  // have been removed. None of those app_settings keys were ever read by any
+  // order/cart calculation — they duplicated fields that live on the real,
+  // wired-up pages below and only caused admins to edit the wrong place with
+  // no effect. See migration 065_cleanup_dead_settings_and_cod_fix.sql.
+  //   - Delivery + all fee toggles (delivery/handling/platform/small-cart/
+  //     rain/packaging) → Settings → Fees (/settings/fees)
+  //   - Cash on Delivery min/max + payment method toggles → Settings →
+  //     Payments (/settings/payments)
   {
     label: "Store Info",
     icon: Store,
