@@ -17,7 +17,7 @@
  * Requirements: 10.7 (Master Catalog branch of the products tab control)
  */
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -85,47 +85,140 @@ import { usePermissions } from "@/hooks/usePermissions"
 
 type ViewMode = "table" | "grid"
 
+const VALID_STATUSES: NonNullable<ProductFilters["status"]>[] = [
+  "active",
+  "inactive",
+  "on_sale",
+  "low_stock",
+  "out_of_stock",
+]
+const VALID_LIMITS = [20, 50, 100]
+const DEFAULT_LIMIT = 20
+
 export function MasterCatalogView() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("all_categories")
-  const [status, setStatus] = useState<ProductFilters["status"]>("")
-  // Pagination is seeded from the URL (`?page=`) so a saved product's
-  // post-edit redirect and a plain page refresh both land back on the same
-  // page instead of always resetting to page 1.
+  // All list filters — search, category, status, page and page size — are
+  // seeded from the URL query string so a bookmarked/shared link, a saved
+  // product's post-edit redirect, and a plain page refresh all land back on
+  // the exact same filtered view instead of resetting to defaults.
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "")
+  const [category, setCategory] = useState(
+    () => searchParams.get("category") ?? "all_categories",
+  )
+  const [status, setStatus] = useState<ProductFilters["status"]>(() => {
+    const fromUrl = searchParams.get("status") as ProductFilters["status"]
+    return fromUrl && VALID_STATUSES.includes(fromUrl) ? fromUrl : ""
+  })
   const [page, setPageState] = useState(() => {
     const fromUrl = Number(searchParams.get("page"))
     return Number.isFinite(fromUrl) && fromUrl > 0 ? fromUrl : 1
   })
-  const [limit, setLimit] = useState(20)
+  const [limit, setLimit] = useState(() => {
+    const fromUrl = Number(searchParams.get("limit"))
+    return VALID_LIMITS.includes(fromUrl) ? fromUrl : DEFAULT_LIMIT
+  })
   const [viewMode, setViewMode] = useState<ViewMode>("table")
 
+  // Merges the given filter values into the URL query string in a single
+  // `router.replace` (shallow, no scroll/refetch of the rest of the app).
+  // Keeping every filter change to one `replace` call avoids two handlers
+  // racing each other over the same tick — `useSearchParams()` doesn't
+  // reflect a `replace` until the next render, so chaining separate
+  // single-param updates (e.g. category then page) would have the second
+  // call silently drop the first's change.
+  const updateQuery = useCallback(
+    (updates: {
+      search?: string
+      category?: string
+      status?: ProductFilters["status"]
+      page?: number
+      limit?: number
+    }) => {
+      const params = new URLSearchParams(searchParams.toString())
+      const set = (key: string, value: string | undefined, isDefault: boolean) => {
+        if (!value || isDefault) params.delete(key)
+        else params.set(key, value)
+      }
+      if ("search" in updates)
+        set("search", updates.search, !updates.search)
+      if ("category" in updates)
+        set("category", updates.category, updates.category === "all_categories")
+      if ("status" in updates)
+        set("status", updates.status, !updates.status)
+      if ("page" in updates)
+        set("page", String(updates.page), updates.page === 1)
+      if ("limit" in updates)
+        set("limit", String(updates.limit), updates.limit === DEFAULT_LIMIT)
+      const query = params.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams],
+  )
+
   // Wraps setPage so every page change is mirrored into the URL query
-  // string (via a shallow `router.replace`, no scroll/refetch of the rest
-  // of the app). Accepts the same argument shapes the old `setPage` calls
+  // string. Accepts the same argument shapes the old `setPage` calls
   // already use (a plain number or a `(prev) => next` updater).
   const setPage = useCallback(
     (next: number | ((prev: number) => number)) => {
       setPageState((prev) => {
         const resolved = typeof next === "function" ? next(prev) : next
-        const params = new URLSearchParams(searchParams.toString())
-        if (resolved > 1) {
-          params.set("page", String(resolved))
-        } else {
-          params.delete("page")
-        }
-        const query = params.toString()
-        router.replace(query ? `${pathname}?${query}` : pathname, {
-          scroll: false,
-        })
+        updateQuery({ page: resolved })
         return resolved
       })
     },
-    [pathname, router, searchParams],
+    [updateQuery],
   )
+
+  const handleCategoryChange = useCallback(
+    (v: string) => {
+      setCategory(v)
+      setPageState(1)
+      updateQuery({ category: v, page: 1 })
+    },
+    [updateQuery],
+  )
+
+  const handleStatusChange = useCallback(
+    (v: string) => {
+      const next = v === "all_status" ? "" : (v as ProductFilters["status"])
+      setStatus(next)
+      setPageState(1)
+      updateQuery({ status: next, page: 1 })
+    },
+    [updateQuery],
+  )
+
+  const handleLimitChange = useCallback(
+    (v: string) => {
+      const next = Number(v)
+      setLimit(next)
+      setPageState(1)
+      updateQuery({ limit: next, page: 1 })
+    },
+    [updateQuery],
+  )
+
+  // Search is debounced before it drives the query (see `debouncedSearch`
+  // below) — the URL should follow that same debounced value rather than
+  // updating on every keystroke. The `isFirstRun` guard stops the effect
+  // from firing on mount, which would otherwise strip `page`/other filters
+  // already present in a deep-linked URL.
+  const debouncedSearch = useDebounce(search, 400)
+  const isFirstSearchSync = useRef(true)
+  useEffect(() => {
+    if (isFirstSearchSync.current) {
+      isFirstSearchSync.current = false
+      return
+    }
+    setPageState(1)
+    updateQuery({ search: debouncedSearch, page: 1 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   // Edit links carry the current list URL (path + query, including the
   // page we're on) as `?returnTo=` so ProductForm can navigate back here
@@ -137,7 +230,6 @@ export function MasterCatalogView() {
 
   const [showImport, setShowImport] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const debouncedSearch = useDebounce(search, 400)
   const { can } = usePermissions()
   const canManage = can("products.manage")
 
@@ -183,8 +275,9 @@ export function MasterCatalogView() {
     setSearch("")
     setCategory("all_categories")
     setStatus("")
-    setPage(1)
-  }, [])
+    setPageState(1)
+    updateQuery({ search: "", category: "all_categories", status: "", page: 1 })
+  }, [updateQuery])
 
   const getStockBadge = (stock: number, threshold: number) => {
     if (stock === 0)
@@ -260,20 +353,11 @@ export function MasterCatalogView() {
               placeholder="Search by name, SKU, barcode..."
               className="pl-9 h-9"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <Select
-            value={category}
-            onValueChange={(v) => {
-              setCategory(v)
-              setPage(1)
-            }}
-          >
+          <Select value={category} onValueChange={handleCategoryChange}>
             <SelectTrigger className="w-[180px] h-9">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
@@ -287,13 +371,7 @@ export function MasterCatalogView() {
             </SelectContent>
           </Select>
 
-          <Select
-            value={status || "all_status"}
-            onValueChange={(v) => {
-              setStatus(v === "all_status" ? "" : (v as ProductFilters["status"]))
-              setPage(1)
-            }}
-          >
+          <Select value={status || "all_status"} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-[160px] h-9">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -654,13 +732,7 @@ export function MasterCatalogView() {
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
               {pagination.total} products
             </p>
-            <Select
-              value={String(limit)}
-              onValueChange={(v) => {
-                setLimit(Number(v))
-                setPage(1)
-              }}
-            >
+            <Select value={String(limit)} onValueChange={handleLimitChange}>
               <SelectTrigger className="h-7 w-[110px] text-xs">
                 <SelectValue />
               </SelectTrigger>
