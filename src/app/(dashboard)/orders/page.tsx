@@ -1,8 +1,8 @@
 "use client"
 
-import { Suspense, useState, useCallback } from "react"
+import { Suspense, useState, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import {
   Search,
@@ -72,32 +72,211 @@ export default function OrdersPage() {
   )
 }
 
+const DEFAULT_LIMIT = 20
+const VALID_LIMITS = [20, 50, 100]
+
 function OrdersContent() {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // State
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "">(
-    (searchParams.get("status") as OrderStatus) || ""
+  // Every filter (status tab, search, payment method, date range, amount
+  // range, delivery type, rider, area), pagination, and the currently open
+  // order are all seeded from the URL — a bookmarked/shared link, a page
+  // refresh, or the browser back button all land back on the exact same
+  // filtered view. Matches the routing already added to /products and
+  // /customers (e.g. `?status=active&segment=vip&sort=name`).
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "")
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "">(() => {
+    const v = searchParams.get("status")
+    return v && (ORDER_STATUSES as readonly string[]).includes(v) ? (v as OrderStatus) : ""
+  })
+  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "">(() => {
+    const v = searchParams.get("payment")
+    return v && v in PAYMENT_METHOD_LABELS ? (v as PaymentMethod) : ""
+  })
+  const [page, setPageState] = useState(() => {
+    const fromUrl = Number(searchParams.get("page"))
+    return Number.isFinite(fromUrl) && fromUrl > 0 ? fromUrl : 1
+  })
+  const [limit, setLimit] = useState(() => {
+    const fromUrl = Number(searchParams.get("limit"))
+    return VALID_LIMITS.includes(fromUrl) ? fromUrl : DEFAULT_LIMIT
+  })
+  const [selectedOrderId, setSelectedOrderIdState] = useState<string | null>(
+    () => searchParams.get("order")
   )
-  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "">("")
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(20)
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({})
-  const [minAmount, setMinAmount] = useState("")
-  const [maxAmount, setMaxAmount] = useState("")
-  const [deliveryType, setDeliveryType] = useState("")
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>(() => {
+    const start = searchParams.get("startDate")
+    const end = searchParams.get("endDate")
+    return {
+      from: start ? new Date(start) : undefined,
+      to: end ? new Date(end) : undefined,
+    }
+  })
+  const [minAmount, setMinAmount] = useState(() => searchParams.get("minAmount") ?? "")
+  const [maxAmount, setMaxAmount] = useState(() => searchParams.get("maxAmount") ?? "")
+  const [deliveryType, setDeliveryType] = useState(() => searchParams.get("deliveryType") ?? "")
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkStatusValue, setBulkStatusValue] = useState<OrderStatus | "">("")
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
   const [bulkRiderId, setBulkRiderId] = useState("")
-  const [riderFilter, setRiderFilter] = useState("")
-  const [areaFilter, setAreaFilter] = useState("")
+  const [riderFilter, setRiderFilter] = useState(() => searchParams.get("rider") ?? "")
+  const [areaFilter, setAreaFilter] = useState(() => searchParams.get("area") ?? "")
 
+  // Merges the given filter values into the URL query string in a single
+  // `router.replace` (shallow, no scroll/refetch of the rest of the app).
+  // A single call per action avoids two handlers racing each other over
+  // the same tick — `useSearchParams()` doesn't reflect a `replace` until
+  // the next render, so chaining separate single-param updates would have
+  // the second call silently drop the first's change.
+  const updateQuery = useCallback(
+    (updates: Record<string, string | number | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined || value === "") params.delete(key)
+        else params.set(key, String(value))
+      }
+      const query = params.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams],
+  )
+
+  const setPage = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      setPageState((prev) => {
+        const resolved = typeof next === "function" ? next(prev) : next
+        updateQuery({ page: resolved > 1 ? resolved : undefined })
+        return resolved
+      })
+    },
+    [updateQuery],
+  )
+
+  const openOrder = useCallback(
+    (id: string) => {
+      setSelectedOrderIdState(id)
+      updateQuery({ order: id })
+    },
+    [updateQuery],
+  )
+
+  const closeOrder = useCallback(() => {
+    setSelectedOrderIdState(null)
+    updateQuery({ order: undefined })
+  }, [updateQuery])
+
+  const handleStatusTab = useCallback(
+    (status: string) => {
+      const next = status === "ALL" ? "" : (status as OrderStatus)
+      setStatusFilter(next)
+      setPageState(1)
+      updateQuery({ status: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handlePaymentChange = useCallback(
+    (v: string) => {
+      const next = v === "all_methods" ? "" : (v as PaymentMethod)
+      setPaymentFilter(next)
+      setPageState(1)
+      updateQuery({ payment: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleDateRangeChange = useCallback(
+    (r: { from?: Date; to?: Date }) => {
+      setDateRange(r)
+      setPageState(1)
+      updateQuery({
+        startDate: r.from ? format(r.from, "yyyy-MM-dd") : undefined,
+        endDate: r.to ? format(r.to, "yyyy-MM-dd") : undefined,
+        page: undefined,
+      })
+    },
+    [updateQuery],
+  )
+
+  const handleDeliveryTypeChange = useCallback(
+    (v: string) => {
+      const next = v === "all_types" ? "" : v
+      setDeliveryType(next)
+      setPageState(1)
+      updateQuery({ deliveryType: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleMinAmountChange = useCallback(
+    (v: string) => {
+      setMinAmount(v)
+      setPageState(1)
+      updateQuery({ minAmount: v, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleMaxAmountChange = useCallback(
+    (v: string) => {
+      setMaxAmount(v)
+      setPageState(1)
+      updateQuery({ maxAmount: v, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleRiderChange = useCallback(
+    (v: string) => {
+      const next = v === "all_riders" ? "" : v
+      setRiderFilter(next)
+      setPageState(1)
+      updateQuery({ rider: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleAreaChange = useCallback(
+    (v: string) => {
+      setAreaFilter(v)
+      setPageState(1)
+      updateQuery({ area: v, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleLimitChange = useCallback(
+    (v: string) => {
+      const next = Number(v)
+      setLimit(next)
+      setPageState(1)
+      updateQuery({ limit: next === DEFAULT_LIMIT ? undefined : next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  // Search is debounced before it drives the query — the URL follows that
+  // same debounced value rather than updating on every keystroke. The
+  // `isFirstSearchSync` guard stops this from firing on mount, which would
+  // otherwise strip `page`/other filters already present in a deep-linked
+  // URL.
   const debouncedSearch = useDebounce(search, 400)
+  const isFirstSearchSync = useRef(true)
+  useEffect(() => {
+    if (isFirstSearchSync.current) {
+      isFirstSearchSync.current = false
+      return
+    }
+    setPageState(1)
+    updateQuery({ search: debouncedSearch, page: undefined })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   const filters: OrderFilters = {
     page,
@@ -136,14 +315,6 @@ function OrdersContent() {
   const orders = data?.orders ?? []
   const pagination = data?.pagination
 
-  const handleStatusTab = useCallback(
-    (status: string) => {
-      setStatusFilter(status === "ALL" ? "" : (status as OrderStatus))
-      setPage(1)
-    },
-    []
-  )
-
   const handleExport = () => {
     exportOrders.mutate({
       status: statusFilter || undefined,
@@ -160,8 +331,21 @@ function OrdersContent() {
     setDeliveryType("")
     setRiderFilter("")
     setAreaFilter("")
-    setPage(1)
+    setPageState(1)
     setSelectedIds(new Set())
+    updateQuery({
+      search: undefined,
+      status: undefined,
+      payment: undefined,
+      startDate: undefined,
+      endDate: undefined,
+      minAmount: undefined,
+      maxAmount: undefined,
+      deliveryType: undefined,
+      rider: undefined,
+      area: undefined,
+      page: undefined,
+    })
   }
 
   const toggleSelect = (id: string) => {
@@ -256,10 +440,7 @@ function OrdersContent() {
             aria-label="Search orders"
             placeholder="Search order ID, customer name, phone..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
           />
         </div>
@@ -285,13 +466,7 @@ function OrdersContent() {
       {/* Expanded Filters */}
       {showFilters && (
         <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/50 border animate-fade-in">
-          <Select
-            value={paymentFilter}
-            onValueChange={(v) => {
-              setPaymentFilter(v as PaymentMethod | "")
-              setPage(1)
-            }}
-          >
+          <Select value={paymentFilter || "all_methods"} onValueChange={handlePaymentChange}>
             <SelectTrigger className="h-9 w-[170px]">
               <SelectValue placeholder="Payment Method" />
             </SelectTrigger>
@@ -307,20 +482,11 @@ function OrdersContent() {
 
           <DateRangePicker
             value={dateRange}
-            onChange={(r) => {
-              setDateRange(r)
-              setPage(1)
-            }}
+            onChange={handleDateRangeChange}
             className="w-[220px]"
           />
 
-          <Select
-            value={deliveryType}
-            onValueChange={(v) => {
-              setDeliveryType(v === "all_types" ? "" : v)
-              setPage(1)
-            }}
-          >
+          <Select value={deliveryType || "all_types"} onValueChange={handleDeliveryTypeChange}>
             <SelectTrigger className="h-9 w-[150px]">
               <SelectValue placeholder="Delivery Type" />
             </SelectTrigger>
@@ -337,10 +503,7 @@ function OrdersContent() {
               type="number"
               placeholder="Min ₹"
               value={minAmount}
-              onChange={(e) => {
-                setMinAmount(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => handleMinAmountChange(e.target.value)}
               className="h-9 w-[90px] text-xs"
             />
             <span className="text-xs text-muted-foreground">–</span>
@@ -348,22 +511,13 @@ function OrdersContent() {
               type="number"
               placeholder="Max ₹"
               value={maxAmount}
-              onChange={(e) => {
-                setMaxAmount(e.target.value)
-                setPage(1)
-              }}
+              onChange={(e) => handleMaxAmountChange(e.target.value)}
               className="h-9 w-[90px] text-xs"
             />
           </div>
 
           {/* Rider Filter */}
-          <Select
-            value={riderFilter || "all_riders"}
-            onValueChange={(v) => {
-              setRiderFilter(v === "all_riders" ? "" : v)
-              setPage(1)
-            }}
-          >
+          <Select value={riderFilter || "all_riders"} onValueChange={handleRiderChange}>
             <SelectTrigger className="h-9 w-[170px]">
               <SelectValue placeholder="Assigned Rider" />
             </SelectTrigger>
@@ -381,10 +535,7 @@ function OrdersContent() {
           <Input
             placeholder="Area / Pincode"
             value={areaFilter}
-            onChange={(e) => {
-              setAreaFilter(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => handleAreaChange(e.target.value)}
             className="h-9 w-[140px] text-xs"
           />
         </div>
@@ -508,8 +659,12 @@ function OrdersContent() {
               </TableRow>
             ) : (
               orders.map((order) => {
+                // `order.status` should always be a known OrderStatus, but
+                // fall back to a labeled "Unknown" badge (never a bare,
+                // unlabeled dot) if a row ever shows up with a null/legacy
+                // value the badge map doesn't recognize.
                 const status = STATUS_CONFIG[order.status] ?? {
-                  label: order.status,
+                  label: order.status || "Unknown",
                   bg: "#F3F4F6",
                   text: "#6B7280",
                   icon: "●",
@@ -518,7 +673,7 @@ function OrdersContent() {
                   <TableRow
                     key={order.id}
                     className="cursor-pointer hover:bg-muted/30 transition-colors"
-                    onClick={() => setSelectedOrderId(order.id)}
+                    onClick={() => openOrder(order.id)}
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
@@ -587,13 +742,7 @@ function OrdersContent() {
                 {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
                 {pagination.total} orders
               </p>
-              <Select
-                value={String(limit)}
-                onValueChange={(v) => {
-                  setLimit(Number(v))
-                  setPage(1)
-                }}
-              >
+              <Select value={String(limit)} onValueChange={handleLimitChange}>
                 <SelectTrigger className="h-7 w-[110px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -657,7 +806,7 @@ function OrdersContent() {
       <OrderDetailDrawer
         orderId={selectedOrderId}
         open={!!selectedOrderId}
-        onClose={() => setSelectedOrderId(null)}
+        onClose={closeOrder}
       />
 
       {/* Bulk Status Update Dialog */}

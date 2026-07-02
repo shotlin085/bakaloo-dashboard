@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -109,12 +108,25 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
   const [refundOpen, setRefundOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [refundForm, setRefundForm] = useState({ amount: "", reason: "", refundTo: "wallet" })
+  const [refundForm, setRefundForm] = useState({ reason: "", refundTo: "wallet" })
   const [cancelForm, setCancelForm] = useState({ reason: "", refundTo: "wallet" })
 
   const allowedTransitions = order
     ? STATUS_TRANSITIONS[order.status] ?? []
     : []
+
+  // A refund only makes sense once money has actually changed hands —
+  // `payment_status` is set to PAID for both online orders (at capture)
+  // and COD orders (when the rider marks the order delivered, i.e. cash
+  // collected — see `delivery.repository.js`). "Original Payment Method"
+  // is further restricted to orders with a captured Razorpay transaction —
+  // there's no gateway charge to reverse for COD cash. The refund amount
+  // itself is never admin-editable: it's always exactly what was paid.
+  const isPaid = order?.payment_status === "PAID"
+  const paidAmount = order?.payment?.amount ?? order?.total_amount ?? 0
+  const hasGatewayPayment = !!(
+    order?.payment?.status === "PAID" && order?.payment?.razorpay_payment_id
+  )
   const hasCartEnhancementDetails = !!order && (
     Number(order.handling_fee || 0) > 0 ||
     Number(order.late_night_fee || 0) > 0 ||
@@ -189,7 +201,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       color: STATUS_CONFIG[order.status]?.text ?? "#6B7280",
                     }}
                   >
-                    {STATUS_CONFIG[order.status]?.icon} {STATUS_CONFIG[order.status]?.label ?? order.status}
+                    {STATUS_CONFIG[order.status]?.icon} {STATUS_CONFIG[order.status]?.label ?? order.status ?? "Unknown"}
                   </Badge>
 
                   {allowedTransitions.length > 0 && (
@@ -237,13 +249,13 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                 {/* Refund / Cancel Actions */}
                 {order.status !== "CANCELLED" && order.status !== "REFUNDED" && (
                   <div className="flex items-center gap-2">
-                    {order.status === "DELIVERED" && (
+                    {order.status === "DELIVERED" && isPaid && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                         onClick={() => {
-                          setRefundForm({ amount: String(order.total_amount), reason: "", refundTo: "wallet" })
+                          setRefundForm({ reason: "", refundTo: "wallet" })
                           setRefundOpen(true)
                         }}
                       >
@@ -257,7 +269,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                         size="sm"
                         className="h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30"
                         onClick={() => {
-                          setCancelForm({ reason: "", refundTo: "wallet" })
+                          setCancelForm({ reason: "", refundTo: isPaid ? "wallet" : "none" })
                           setCancelOpen(true)
                         }}
                       >
@@ -592,17 +604,10 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label>Refund Amount (₹)</Label>
-            <Input
-              type="number"
-              min={1}
-              max={order?.total_amount ?? 0}
-              value={refundForm.amount}
-              onChange={(e) => setRefundForm((f) => ({ ...f, amount: e.target.value }))}
-              className="mt-1"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Max: {order ? formatINR(order.total_amount) : "—"}
+            <Label>Refund Amount</Label>
+            <p className="text-lg font-semibold mt-1">{formatINR(paidAmount)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Locked to the amount the customer actually paid — not editable.
             </p>
           </div>
           <div>
@@ -625,9 +630,11 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {hasGatewayPayment && (
+                  <SelectItem value="original">Original Payment Method</SelectItem>
+                )}
                 <SelectItem value="wallet">Wallet Balance</SelectItem>
-                <SelectItem value="original">Original Payment Method</SelectItem>
-                <SelectItem value="manual">Manual / Offline</SelectItem>
+                <SelectItem value="none">No Refund</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -636,15 +643,14 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
           <Button variant="outline" onClick={() => setRefundOpen(false)}>Cancel</Button>
           <Button
             variant="destructive"
-            disabled={!refundForm.amount || !refundForm.reason || refundOrder.isPending}
+            disabled={!refundForm.reason || refundOrder.isPending}
             onClick={() => {
               if (!order) return
               refundOrder.mutate({
                 orderId: order.id,
                 payload: {
-                  amount: parseFloat(refundForm.amount),
                   reason: refundForm.reason,
-                  refundTo: refundForm.refundTo as "wallet" | "original" | "manual",
+                  refundTo: refundForm.refundTo as "wallet" | "original" | "none",
                 },
               }, { onSuccess: () => setRefundOpen(false) })
             }}
@@ -681,22 +687,33 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Refund To</Label>
-            <Select
-              value={cancelForm.refundTo}
-              onValueChange={(v) => setCancelForm((f) => ({ ...f, refundTo: v }))}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="wallet">Wallet Balance</SelectItem>
-                <SelectItem value="original">Original Payment Method</SelectItem>
-                <SelectItem value="none">No Refund</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {isPaid ? (
+            <div>
+              <Label>Refund To</Label>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                Customer paid {formatINR(paidAmount)} — refund is locked to that amount.
+              </p>
+              <Select
+                value={cancelForm.refundTo}
+                onValueChange={(v) => setCancelForm((f) => ({ ...f, refundTo: v }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {hasGatewayPayment && (
+                    <SelectItem value="original">Original Payment Method</SelectItem>
+                  )}
+                  <SelectItem value="wallet">Wallet Balance</SelectItem>
+                  <SelectItem value="none">No Refund</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              This order was never paid — there is nothing to refund.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setCancelOpen(false)}>Back</Button>

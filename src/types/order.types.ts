@@ -170,11 +170,14 @@ export interface AssignRiderPayload {
   riderId: string
 }
 
-/** Refund payload */
+/**
+ * Refund payload. No `amount` field — the refund amount is never
+ * admin-editable; the backend always refunds exactly what the customer
+ * paid (see `AdminOrdersService.refundOrder`).
+ */
 export interface RefundOrderPayload {
-  amount: number
   reason: string
-  refundTo: "wallet" | "original" | "manual"
+  refundTo: "wallet" | "original" | "none"
 }
 
 /** Cancel payload */

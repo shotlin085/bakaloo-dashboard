@@ -44,7 +44,7 @@ export function RecentOrders({ data, isLoading }: RecentOrdersProps) {
             <div className="space-y-1">
               {data.map((order) => {
                 const status = STATUS_CONFIG[order.status as OrderStatus] ?? {
-                  label: order.status,
+                  label: order.status || "Unknown",
                   bg: "#F3F4F6",
                   text: "#6B7280",
                 }
