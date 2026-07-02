@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Card, CardContent } from "@/components/ui/card"
@@ -53,23 +54,162 @@ import { formatINR, formatDate, formatRelativeTime } from "@/lib/utils"
 import { useDebounce } from "@/hooks/useDebounce"
 import { usePermissions } from "@/hooks/usePermissions"
 
-export default function CustomersPage() {
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState<"active" | "blocked" | "">("")
-  const [sort, setSort] = useState("created_at")
-  const [segment, setSegment] = useState<"" | "vip" | "churned">("")
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(20)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [joinedFrom, setJoinedFrom] = useState("")
-  const [joinedTo, setJoinedTo] = useState("")
-  const [minOrders, setMinOrders] = useState("")
-  const [maxOrders, setMaxOrders] = useState("")
-  const [minSpent, setMinSpent] = useState("")
-  const [maxSpent, setMaxSpent] = useState("")
+const DEFAULT_LIMIT = 20
+const VALID_LIMITS = [20, 50, 100]
 
+export default function CustomersPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Every filter (plus the open customer's id and pagination) is seeded
+  // from the URL so a bookmarked/shared link, a page refresh, or the
+  // browser back button all land back on the exact same filtered view and
+  // re-open the same customer's profile — matches the routing added to the
+  // /products list.
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "")
+  const [status, setStatus] = useState<"active" | "blocked" | "">(() => {
+    const v = searchParams.get("status")
+    return v === "active" || v === "blocked" ? v : ""
+  })
+  const [sort, setSort] = useState(() => searchParams.get("sort") ?? "created_at")
+  const [segment, setSegment] = useState<"" | "vip" | "churned">(() => {
+    const v = searchParams.get("segment")
+    return v === "vip" || v === "churned" ? v : ""
+  })
+  const [page, setPageState] = useState(() => {
+    const fromUrl = Number(searchParams.get("page"))
+    return Number.isFinite(fromUrl) && fromUrl > 0 ? fromUrl : 1
+  })
+  const [limit, setLimit] = useState(() => {
+    const fromUrl = Number(searchParams.get("limit"))
+    return VALID_LIMITS.includes(fromUrl) ? fromUrl : DEFAULT_LIMIT
+  })
+  const [selectedId, setSelectedIdState] = useState<string | null>(
+    () => searchParams.get("customer"),
+  )
+  const [joinedFrom, setJoinedFrom] = useState(() => searchParams.get("joinedFrom") ?? "")
+  const [joinedTo, setJoinedTo] = useState(() => searchParams.get("joinedTo") ?? "")
+  const [minOrders, setMinOrders] = useState(() => searchParams.get("minOrders") ?? "")
+  const [maxOrders, setMaxOrders] = useState(() => searchParams.get("maxOrders") ?? "")
+  const [minSpent, setMinSpent] = useState(() => searchParams.get("minSpent") ?? "")
+  const [maxSpent, setMaxSpent] = useState(() => searchParams.get("maxSpent") ?? "")
+  const [showAdvanced, setShowAdvanced] = useState(
+    () => !!(joinedFrom || joinedTo || minOrders || maxOrders || minSpent || maxSpent),
+  )
+
+  // Merges the given filter values into the URL query string in a single
+  // `router.replace` (shallow, no scroll/refetch of the rest of the app).
+  // A single call per action avoids two handlers racing each other over
+  // the same tick — `useSearchParams()` doesn't reflect a `replace` until
+  // the next render, so chaining separate single-param updates would have
+  // the second call silently drop the first's change.
+  const updateQuery = useCallback(
+    (updates: Record<string, string | number | null | undefined>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined || value === null || value === "") {
+          params.delete(key)
+        } else {
+          params.set(key, String(value))
+        }
+      }
+      const query = params.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      })
+    },
+    [pathname, router, searchParams],
+  )
+
+  const setPage = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      setPageState((prev) => {
+        const resolved = typeof next === "function" ? next(prev) : next
+        updateQuery({ page: resolved > 1 ? resolved : undefined })
+        return resolved
+      })
+    },
+    [updateQuery],
+  )
+
+  const openCustomer = useCallback(
+    (id: string) => {
+      setSelectedIdState(id)
+      updateQuery({ customer: id })
+    },
+    [updateQuery],
+  )
+
+  const closeCustomer = useCallback(() => {
+    setSelectedIdState(null)
+    updateQuery({ customer: undefined })
+  }, [updateQuery])
+
+  const handleStatusChange = useCallback(
+    (v: string) => {
+      const next = v === "all_status" ? "" : (v as "active" | "blocked")
+      setStatus(next)
+      setPageState(1)
+      updateQuery({ status: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleSegmentChange = useCallback(
+    (v: string) => {
+      const next = v === "all_segment" ? "" : (v as "vip" | "churned")
+      setSegment(next)
+      setPageState(1)
+      updateQuery({ segment: next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleSortChange = useCallback(
+    (v: string) => {
+      setSort(v)
+      setPageState(1)
+      updateQuery({ sort: v === "created_at" ? undefined : v, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleLimitChange = useCallback(
+    (v: string) => {
+      const next = Number(v)
+      setLimit(next)
+      setPageState(1)
+      updateQuery({ limit: next === DEFAULT_LIMIT ? undefined : next, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  const handleAdvancedChange = useCallback(
+    (key: string, value: string, setter: (v: string) => void) => {
+      setter(value)
+      setPageState(1)
+      updateQuery({ [key]: value, page: undefined })
+    },
+    [updateQuery],
+  )
+
+  // Search is debounced before it drives the query — the URL follows that
+  // same debounced value rather than updating on every keystroke. The
+  // `isFirstRun` guard stops this from firing on mount, which would
+  // otherwise strip `page`/other filters already present in a deep-linked
+  // URL.
   const debouncedSearch = useDebounce(search, 400)
+  const isFirstSearchSync = useRef(true)
+  useEffect(() => {
+    if (isFirstSearchSync.current) {
+      isFirstSearchSync.current = false
+      return
+    }
+    setPageState(1)
+    updateQuery({ search: debouncedSearch, page: undefined })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
 
   const filters: CustomerFilters = useMemo(
     () => ({
@@ -112,8 +252,21 @@ export default function CustomersPage() {
     setMaxOrders("")
     setMinSpent("")
     setMaxSpent("")
-    setPage(1)
-  }, [])
+    setPageState(1)
+    updateQuery({
+      search: undefined,
+      status: undefined,
+      segment: undefined,
+      sort: undefined,
+      joinedFrom: undefined,
+      joinedTo: undefined,
+      minOrders: undefined,
+      maxOrders: undefined,
+      minSpent: undefined,
+      maxSpent: undefined,
+      page: undefined,
+    })
+  }, [updateQuery])
 
   // Segment helpers
   const getSegment = useCallback((c: { order_count: number; total_spent: number; last_order_at: string | null }) => {
@@ -211,17 +364,11 @@ export default function CustomersPage() {
               placeholder="Search name, phone, email..."
               className="pl-9 h-9"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <Select
-            value={status || "all_status"}
-            onValueChange={(v) => {
-              setStatus(v === "all_status" ? "" : (v as "active" | "blocked"))
-              setPage(1)
-            }}
-          >
+          <Select value={status || "all_status"} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -232,13 +379,7 @@ export default function CustomersPage() {
             </SelectContent>
           </Select>
 
-          <Select
-            value={segment || "all_segment"}
-            onValueChange={(v) => {
-              setSegment(v === "all_segment" ? "" : (v as "vip" | "churned"))
-              setPage(1)
-            }}
-          >
+          <Select value={segment || "all_segment"} onValueChange={handleSegmentChange}>
             <SelectTrigger className="w-[140px] h-9">
               <SelectValue placeholder="All Segments" />
             </SelectTrigger>
@@ -253,7 +394,7 @@ export default function CustomersPage() {
             </SelectContent>
           </Select>
 
-          <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1) }}>
+          <Select value={sort} onValueChange={handleSortChange}>
             <SelectTrigger className="w-[150px] h-9">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -290,14 +431,14 @@ export default function CustomersPage() {
               <Input
                 type="date"
                 value={joinedFrom}
-                onChange={(e) => { setJoinedFrom(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("joinedFrom", e.target.value, setJoinedFrom)}
                 className="h-8 w-[130px] text-xs"
               />
               <span className="text-xs text-muted-foreground">–</span>
               <Input
                 type="date"
                 value={joinedTo}
-                onChange={(e) => { setJoinedTo(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("joinedTo", e.target.value, setJoinedTo)}
                 className="h-8 w-[130px] text-xs"
               />
             </div>
@@ -307,7 +448,7 @@ export default function CustomersPage() {
                 type="number"
                 placeholder="Min"
                 value={minOrders}
-                onChange={(e) => { setMinOrders(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("minOrders", e.target.value, setMinOrders)}
                 className="h-8 w-[70px] text-xs"
               />
               <span className="text-xs text-muted-foreground">–</span>
@@ -315,7 +456,7 @@ export default function CustomersPage() {
                 type="number"
                 placeholder="Max"
                 value={maxOrders}
-                onChange={(e) => { setMaxOrders(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("maxOrders", e.target.value, setMaxOrders)}
                 className="h-8 w-[70px] text-xs"
               />
             </div>
@@ -325,7 +466,7 @@ export default function CustomersPage() {
                 type="number"
                 placeholder="Min"
                 value={minSpent}
-                onChange={(e) => { setMinSpent(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("minSpent", e.target.value, setMinSpent)}
                 className="h-8 w-[80px] text-xs"
               />
               <span className="text-xs text-muted-foreground">–</span>
@@ -333,7 +474,7 @@ export default function CustomersPage() {
                 type="number"
                 placeholder="Max"
                 value={maxSpent}
-                onChange={(e) => { setMaxSpent(e.target.value); setPage(1) }}
+                onChange={(e) => handleAdvancedChange("maxSpent", e.target.value, setMaxSpent)}
                 className="h-8 w-[80px] text-xs"
               />
             </div>
@@ -375,7 +516,7 @@ export default function CustomersPage() {
                   <TableRow
                     key={c.id}
                     className="cursor-pointer"
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={() => openCustomer(c.id)}
                   >
                     <TableCell>
                       <CopyableId id={c.id} />
@@ -479,13 +620,7 @@ export default function CustomersPage() {
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
               {pagination.total} customers
             </p>
-            <Select
-              value={String(limit)}
-              onValueChange={(v) => {
-                setLimit(Number(v))
-                setPage(1)
-              }}
-            >
+            <Select value={String(limit)} onValueChange={handleLimitChange}>
               <SelectTrigger className="h-7 w-[110px] text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -548,7 +683,7 @@ export default function CustomersPage() {
       <CustomerProfileDrawer
         customerId={selectedId}
         open={!!selectedId}
-        onClose={() => setSelectedId(null)}
+        onClose={closeCustomer}
       />
     </div>
   )

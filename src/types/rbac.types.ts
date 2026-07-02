@@ -20,6 +20,8 @@ export type PermissionKey =
   | "reviews.moderate"
   | "wallet.view"
   | "wallet.manage"
+  | "wallet-settings.view"
+  | "wallet-settings.manage"
   | "settings.view"
   | "settings.manage"
   | "team.view"
@@ -152,6 +154,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { key: "wallet.view", label: "View wallet data" },
       { key: "wallet.manage", label: "Credit / debit wallets" },
+      { key: "wallet-settings.view", label: "View wallet limits" },
+      { key: "wallet-settings.manage", label: "Change wallet balance / transfer limits" },
     ],
   },
   {

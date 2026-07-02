@@ -34,10 +34,12 @@ import {
   ShieldCheck,
   Loader2,
   Crown,
+  Navigation,
 } from "lucide-react"
 import {
   useCustomerDetail,
   useCustomerOrders,
+  useCustomerAddresses,
   useToggleBlockCustomer,
   useCreditWallet,
   useNotifyCustomer,
@@ -45,6 +47,7 @@ import {
 import { useShopContextStore } from "@/store/shop-context.store"
 import { formatINR, formatDate, formatRelativeTime } from "@/lib/utils"
 import { STATUS_CONFIG, type OrderStatus } from "@/lib/constants"
+import type { CustomerAddress } from "@/types"
 
 interface CustomerProfileDrawerProps {
   customerId: string | null
@@ -55,6 +58,9 @@ interface CustomerProfileDrawerProps {
 export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerProfileDrawerProps) {
   const { data: customer, isLoading } = useCustomerDetail(customerId)
   const { data: ordersData } = useCustomerOrders(customerId)
+  const { data: addresses, isLoading: addressesLoading } = useCustomerAddresses(customerId)
+  const activeAddresses = addresses?.filter((a) => !a.deletedAt) ?? []
+  const removedAddresses = addresses?.filter((a) => a.deletedAt) ?? []
   const toggleBlock = useToggleBlockCustomer()
   const creditWallet = useCreditWallet()
   const notifyCustomer = useNotifyCustomer()
@@ -231,39 +237,40 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                   <Separator />
 
                   {/* Addresses */}
-                  {customer.addresses && customer.addresses.length > 0 && (
-                    <>
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          Addresses ({customer.addresses.length})
-                        </h4>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      Addresses {activeAddresses.length > 0 && `(${activeAddresses.length})`}
+                    </h4>
+                    {addressesLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-16 rounded-lg" />
+                        <Skeleton className="h-16 rounded-lg" />
+                      </div>
+                    ) : activeAddresses.length === 0 && removedAddresses.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No saved addresses</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeAddresses.map((addr) => (
+                          <AddressCard key={addr.id} address={addr} />
+                        ))}
+                      </div>
+                    )}
+
+                    {removedAddresses.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
+                          Removed — kept for security review
+                        </p>
                         <div className="space-y-2">
-                          {customer.addresses.map((addr) => (
-                            <div
-                              key={addr.id}
-                              className="p-2.5 rounded-lg border text-xs space-y-0.5"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{addr.label}</span>
-                                {addr.is_default && (
-                                  <Badge variant="outline" className="text-[9px] h-4">Default</Badge>
-                                )}
-                              </div>
-                              <p className="text-muted-foreground">
-                                {addr.line1}
-                                {addr.line2 && `, ${addr.line2}`}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {addr.city}, {addr.state} – {addr.pincode}
-                              </p>
-                            </div>
+                          {removedAddresses.map((addr) => (
+                            <AddressCard key={addr.id} address={addr} removed />
                           ))}
                         </div>
                       </div>
-                      <Separator />
-                    </>
-                  )}
+                    )}
+                  </div>
+                  <Separator />
 
                   {/* Recent Orders */}
                   <div>
@@ -447,6 +454,73 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/**
+ * One saved address — active or removed. Removed cards are greyed out and
+ * show the retention countdown instead of nothing, so an admin reviewing a
+ * delivery dispute can still see exactly where an order shipped even after
+ * the customer deleted the address (see `ADDRESS_RETENTION_DAYS` on the
+ * backend). The map button links straight to Google Maps at the address's
+ * exact lat/lng — the same "exact location" verification the order-detail
+ * drawer offers for a delivered order.
+ */
+function AddressCard({ address, removed }: { address: CustomerAddress; removed?: boolean }) {
+  const hasCoords = typeof address.lat === "number" && typeof address.lng === "number"
+  const mapsUrl = hasCoords
+    ? `https://www.google.com/maps/search/?api=1&query=${address.lat},${address.lng}`
+    : null
+
+  return (
+    <div
+      className={`p-2.5 rounded-lg border text-xs space-y-0.5 ${
+        removed ? "opacity-60 bg-muted/30" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium truncate">{address.label}</span>
+          {address.isDefault && !removed && (
+            <Badge variant="outline" className="text-[9px] h-4">Default</Badge>
+          )}
+        </div>
+        {mapsUrl && (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] font-medium text-brand-600 hover:underline flex-shrink-0"
+          >
+            <Navigation className="h-3 w-3" />
+            View on Map
+          </a>
+        )}
+      </div>
+      <p className="text-muted-foreground">
+        {address.addressLine1}
+        {address.addressLine2 && `, ${address.addressLine2}`}
+      </p>
+      {address.landmark && (
+        <p className="text-muted-foreground">Landmark: {address.landmark}</p>
+      )}
+      <p className="text-muted-foreground">
+        {address.city}
+        {address.state && `, ${address.state}`} – {address.pincode}
+      </p>
+      {hasCoords && (
+        <p className="text-muted-foreground font-mono text-[10px]">
+          {address.lat!.toFixed(6)}, {address.lng!.toFixed(6)}
+        </p>
+      )}
+      {removed && (
+        <p className="text-[10px] text-amber-600 font-medium pt-0.5">
+          Removed {formatRelativeTime(address.deletedAt!)}
+          {address.daysUntilPurge != null &&
+            ` · purges in ${address.daysUntilPurge}d`}
+        </p>
+      )}
+    </div>
   )
 }
 

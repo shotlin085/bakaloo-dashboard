@@ -55,12 +55,14 @@ if (
 
 const useCustomerDetailMock = vi.fn()
 const useCustomerOrdersMock = vi.fn()
+const useCustomerAddressesMock = vi.fn()
 
 vi.mock("@/hooks/useCustomers", () => {
   const stub = () => ({ mutate: vi.fn(), isPending: false })
   return {
     useCustomerDetail: (...args: unknown[]) => useCustomerDetailMock(...args),
     useCustomerOrders: (...args: unknown[]) => useCustomerOrdersMock(...args),
+    useCustomerAddresses: (...args: unknown[]) => useCustomerAddressesMock(...args),
     useToggleBlockCustomer: stub,
     useCreditWallet: stub,
     useNotifyCustomer: stub,
@@ -100,7 +102,6 @@ function makeCustomer(overrides: Partial<CustomerDetail> = {}): CustomerDetail {
     loyalty_points: 0,
     last_order_at: null,
     created_at: "2024-01-01T00:00:00Z",
-    addresses: [],
     recent_orders: [],
     avg_rating_given: null,
     app_version: null,
@@ -121,6 +122,10 @@ function primeCustomerDetail(
   })
   useCustomerOrdersMock.mockReturnValue({
     data: { orders: [] },
+    isLoading: false,
+  })
+  useCustomerAddressesMock.mockReturnValue({
+    data: [],
     isLoading: false,
   })
 }
@@ -146,6 +151,7 @@ function setShopContext(patch: { assignedShopIds?: string[] }) {
 beforeEach(() => {
   useCustomerDetailMock.mockReset()
   useCustomerOrdersMock.mockReset()
+  useCustomerAddressesMock.mockReset()
 })
 
 afterEach(() => {

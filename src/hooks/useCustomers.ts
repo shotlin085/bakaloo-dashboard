@@ -39,6 +39,7 @@ import {
   getCustomers,
   getCustomerDetail,
   getCustomerOrders,
+  getCustomerAddresses,
   toggleBlockCustomer,
   creditCustomerWallet,
   notifyCustomer,
@@ -100,6 +101,15 @@ export function useCustomerDetail(customerId: string | null) {
   return useQuery({
     queryKey: ["customers", "detail", customerId],
     queryFn: () => getCustomerDetail(customerId!),
+    enabled: !!customerId,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useCustomerAddresses(customerId: string | null) {
+  return useQuery({
+    queryKey: ["customers", "addresses", customerId],
+    queryFn: () => getCustomerAddresses(customerId!),
     enabled: !!customerId,
     staleTime: 30 * 1000,
   })

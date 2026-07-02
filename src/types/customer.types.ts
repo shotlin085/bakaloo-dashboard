@@ -27,7 +27,6 @@ export interface Customer {
 
 /** Customer detail with expanded info */
 export interface CustomerDetail extends Customer {
-  addresses: CustomerAddress[]
   recent_orders: CustomerOrder[]
   avg_rating_given: number | null
   app_version: string | null
@@ -35,18 +34,35 @@ export interface CustomerDetail extends Customer {
   membership_tier: string | null
 }
 
-/** Customer address */
+/**
+ * Customer's saved delivery address, as returned by
+ * `GET /admin/customers/:id/addresses`. Mirrors the addresses repository's
+ * camelCase format (`addressLine1` etc — same convention documented on
+ * `DeliveryAddress` in order.types.ts).
+ *
+ * The endpoint returns both active and recently-removed addresses:
+ * `deletedAt` is null for an active address. A removed address is kept for
+ * a retention window (see backend `ADDRESS_RETENTION_DAYS`) for
+ * delivery-dispute/security review — `purgeAt`/`daysUntilPurge` describe
+ * when it will be hard-deleted for good.
+ */
 export interface CustomerAddress {
   id: string
   label: string
-  line1: string
-  line2?: string
+  addressLine1: string
+  addressLine2: string | null
+  landmark: string | null
   city: string
-  state: string
+  state: string | null
   pincode: string
-  lat?: number
-  lng?: number
-  is_default: boolean
+  lat: number | null
+  lng: number | null
+  isDefault: boolean
+  createdAt: string
+  updatedAt?: string
+  deletedAt: string | null
+  purgeAt: string | null
+  daysUntilPurge: number | null
 }
 
 /** Lightweight order for customer profile */

@@ -1,5 +1,5 @@
 import api from "@/lib/api"
-import type { ApiResponse, Customer, CustomerDetail, CustomerFilters } from "@/types"
+import type { ApiResponse, Customer, CustomerAddress, CustomerDetail, CustomerFilters } from "@/types"
 
 /** List customers with filters + pagination */
 export async function getCustomers(filters: CustomerFilters = {}) {
@@ -52,6 +52,15 @@ export async function getCustomerOrders(id: string, page = 1, limit = 10) {
       pagination: { page: number; limit: number; total: number; totalPages: number }
     }>
   >(`/admin/customers/${id}/orders`, { params: { page, limit } })
+  return data.data
+}
+
+/** Get a customer's saved addresses — active ones plus any still inside
+ * their post-removal retention window (see `CustomerAddress.deletedAt`). */
+export async function getCustomerAddresses(id: string) {
+  const { data } = await api.get<ApiResponse<CustomerAddress[]>>(
+    `/admin/customers/${id}/addresses`
+  )
   return data.data
 }
 

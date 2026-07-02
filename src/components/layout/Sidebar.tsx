@@ -115,6 +115,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
             icon: "Gift",
           },
           { label: "Payments", href: "/settings/payments", icon: "CreditCard" },
+          { label: "Wallet Settings", href: "/settings/wallet", icon: "Wallet" },
         ],
       },
       {

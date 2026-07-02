@@ -72,6 +72,7 @@ export type {
 export type {
   Customer,
   CustomerDetail,
+  CustomerAddress,
   CustomerFilters,
 } from "./customer.types"
 export type {
