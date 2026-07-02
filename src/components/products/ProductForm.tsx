@@ -431,9 +431,13 @@ export function ProductForm({
       images: form.images.length > 0 ? form.images : undefined,
       lowStockThreshold: form.lowStockThreshold ? parseInt(form.lowStockThreshold, 10) : undefined,
       maxOrderQty: form.maxOrderQty ? parseInt(form.maxOrderQty, 10) : undefined,
-      tags: form.tags
-        ? form.tags.split(",").map((t) => t.trim()).filter(Boolean)
-        : undefined,
+      // Always send a real array (never `undefined`) here: `undefined` is
+      // dropped by JSON serialization, and the backend's update endpoint
+      // only touches the `tags` column when the key is present in the
+      // request body. Previously an emptied tags field became `undefined`,
+      // so removing the last/only tag and saving silently left the old
+      // tags untouched in the database.
+      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       isFeatured: form.isFeatured,
       isActive: form.isActive,
       // Variants

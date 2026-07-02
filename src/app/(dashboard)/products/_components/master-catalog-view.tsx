@@ -20,6 +20,7 @@
 import { useState, useMemo, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -85,12 +86,54 @@ import { usePermissions } from "@/hooks/usePermissions"
 type ViewMode = "table" | "grid"
 
 export function MasterCatalogView() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("all_categories")
   const [status, setStatus] = useState<ProductFilters["status"]>("")
-  const [page, setPage] = useState(1)
+  // Pagination is seeded from the URL (`?page=`) so a saved product's
+  // post-edit redirect and a plain page refresh both land back on the same
+  // page instead of always resetting to page 1.
+  const [page, setPageState] = useState(() => {
+    const fromUrl = Number(searchParams.get("page"))
+    return Number.isFinite(fromUrl) && fromUrl > 0 ? fromUrl : 1
+  })
   const [limit, setLimit] = useState(20)
   const [viewMode, setViewMode] = useState<ViewMode>("table")
+
+  // Wraps setPage so every page change is mirrored into the URL query
+  // string (via a shallow `router.replace`, no scroll/refetch of the rest
+  // of the app). Accepts the same argument shapes the old `setPage` calls
+  // already use (a plain number or a `(prev) => next` updater).
+  const setPage = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      setPageState((prev) => {
+        const resolved = typeof next === "function" ? next(prev) : next
+        const params = new URLSearchParams(searchParams.toString())
+        if (resolved > 1) {
+          params.set("page", String(resolved))
+        } else {
+          params.delete("page")
+        }
+        const query = params.toString()
+        router.replace(query ? `${pathname}?${query}` : pathname, {
+          scroll: false,
+        })
+        return resolved
+      })
+    },
+    [pathname, router, searchParams],
+  )
+
+  // Edit links carry the current list URL (path + query, including the
+  // page we're on) as `?returnTo=` so ProductForm can navigate back here
+  // after a save instead of always falling back to the bare `/products`.
+  const editReturnTo = useMemo(() => {
+    const query = searchParams.toString()
+    return encodeURIComponent(query ? `${pathname}?${query}` : pathname)
+  }, [pathname, searchParams])
 
   const [showImport, setShowImport] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -488,7 +531,7 @@ export function MasterCatalogView() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/products/${p.id}/edit`}>
+                            <Link href={`/products/${p.id}/edit?returnTo=${editReturnTo}`}>
                               <Pencil className="h-3.5 w-3.5 mr-2" />
                               Edit
                             </Link>
@@ -538,7 +581,7 @@ export function MasterCatalogView() {
                 {/* Hover actions */}
                 {canManage && (
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Link href={`/products/${p.id}/edit`}>
+                    <Link href={`/products/${p.id}/edit?returnTo=${editReturnTo}`}>
                       <Button
                         size="icon"
                         variant="secondary"
