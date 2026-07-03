@@ -336,22 +336,44 @@ export function LinkPicker({
   value: string
   onChange: (value: string) => void
 }) {
-  const { type, id } = pathToTypeAndId(value)
-  const label = useResolvedLabel(type, id)
+  const parsed = pathToTypeAndId(value)
+
+  // BUG THIS FIXES: the persisted `value` is a plain string, and an empty
+  // string always parses back to type "none" (pathToTypeAndId has no way
+  // to represent "type is category, but nothing picked yet" — there's no
+  // path for that). Switching the dropdown to "Open product"/"Open
+  // category"/"Open URL" has nothing to persist until a search result (or
+  // URL) is actually chosen, so writing "" immediately on type-switch made
+  // the very next render re-derive type "none" from that empty value and
+  // snap the dropdown straight back to "No link" — every click looked like
+  // it silently failed. `pendingType` holds the just-picked type locally
+  // until there's real content to persist.
+  const [pendingType, setPendingType] = useState<LinkTargetType | null>(null)
+  useEffect(() => {
+    if (parsed.type !== "none") setPendingType(null)
+  }, [value, parsed.type])
+
+  const effectiveType = value ? parsed.type : (pendingType ?? "none")
+  const effectiveId = parsed.type === effectiveType ? parsed.id : ""
+  const label = useResolvedLabel(effectiveType, effectiveId)
 
   const setType = (nextType: LinkTargetType) => {
     if (nextType === "none") {
+      setPendingType(null)
       onChange("")
-    } else if (nextType === "url") {
-      onChange(type === "url" ? value : "")
-    } else {
+      return
+    }
+    setPendingType(nextType)
+    if (nextType === "url" && parsed.type !== "url") {
+      // Nothing to persist yet — wait for the admin to type a URL. Clear
+      // any stale product/category value from a previous type.
       onChange("")
     }
   }
 
   return (
     <div className="space-y-2">
-      <Select value={type} onValueChange={(v) => setType(v as LinkTargetType)}>
+      <Select value={effectiveType} onValueChange={(v) => setType(v as LinkTargetType)}>
         <SelectTrigger className="h-9">
           <SelectValue />
         </SelectTrigger>
@@ -363,25 +385,31 @@ export function LinkPicker({
         </SelectContent>
       </Select>
 
-      {type === "url" && (
+      {effectiveType === "url" && (
         <Input
-          value={id}
+          value={effectiveId}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://example.com"
         />
       )}
 
-      {(type === "product" || type === "category") && (
+      {(effectiveType === "product" || effectiveType === "category") && (
         <SearchPickerPopover
-          type={type}
-          selectedId={id}
-          selectedLabel={label}
-          onSelect={(pickedId) => onChange(typeAndIdToPath(type, pickedId))}
-          onClear={() => onChange("")}
+          type={effectiveType}
+          selectedId={effectiveId}
+          selectedLabel={effectiveId ? label : null}
+          onSelect={(pickedId) => {
+            onChange(typeAndIdToPath(effectiveType, pickedId))
+            setPendingType(null)
+          }}
+          onClear={() => {
+            onChange("")
+            setPendingType(null)
+          }}
         />
       )}
 
-      {type !== "none" && id && (
+      {effectiveType !== "none" && effectiveId && (
         <Badge variant="outline" className="text-[10px] font-mono truncate max-w-full">
           {value}
         </Badge>
