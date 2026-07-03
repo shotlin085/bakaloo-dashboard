@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ThemeColorPicker } from "@/components/themes/ThemeColorPicker"
 import { ThemeImageUploader } from "@/components/themes/ThemeImageUploader"
+import { LinkPicker } from "../LinkPicker"
 import AnimationPicker from "./AnimationPicker"
 
 interface BannerEditorProps {
@@ -127,6 +128,14 @@ export default function BannerEditor({ config, onChange }: BannerEditorProps) {
         value={typeof config.animation === "string" ? config.animation : "none"}
         onChange={(value) => patchConfig({ animation: value })}
       />
+
+      <div className="space-y-2">
+        <Label>On tap</Label>
+        <LinkPicker
+          value={typeof config.link_url === "string" ? config.link_url : ""}
+          onChange={(value) => patchConfig({ link_url: value || null })}
+        />
+      </div>
     </div>
   )
 }

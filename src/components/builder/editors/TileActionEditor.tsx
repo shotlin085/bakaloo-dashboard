@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { LinkValuePicker } from "../LinkPicker"
 import {
   APP_PAGE_OPTIONS,
   TAB_PAGE_OPTIONS,
@@ -58,18 +59,18 @@ export default function TileActionEditor({ value, onChange }: TileActionEditorPr
       </Select>
 
       {value.type === "product" && (
-        <Input
-          value={value.value ?? ""}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Product ID (UUID)"
+        <LinkValuePicker
+          type="product"
+          value={value.value}
+          onChange={(next) => onChange({ ...value, value: next })}
         />
       )}
 
       {value.type === "category" && (
-        <Input
-          value={value.value ?? ""}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="Category ID (UUID)"
+        <LinkValuePicker
+          type="category"
+          value={value.value}
+          onChange={(next) => onChange({ ...value, value: next })}
         />
       )}
 

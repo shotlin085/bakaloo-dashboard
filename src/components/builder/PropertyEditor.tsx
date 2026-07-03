@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import CategoryBinder from "./CategoryBinder"
+import { LinkPicker } from "./LinkPicker"
 import { getSectionTypeMeta } from "./sectionTypesMeta"
 import StylePresetPicker from "./StylePresetPicker"
 import BannerEditor from "./editors/BannerEditor"
@@ -710,10 +711,19 @@ function PromoCarouselEditor({
           </p>
         </div>
       ) : (
-        <PromoCustomImagesEditor
-          images={rawCustomImages}
-          onChange={(images) => patch({ images, banner_source: "custom" })}
-        />
+        <>
+          <PromoCustomImagesEditor
+            images={rawCustomImages}
+            onChange={(images) => patch({ images, banner_source: "custom" })}
+          />
+          <div className="space-y-2">
+            <Label>On tap (applies to every custom image in this carousel)</Label>
+            <LinkPicker
+              value={typeof config.link_url === "string" ? config.link_url : ""}
+              onChange={(value) => patch({ link_url: value || null })}
+            />
+          </div>
+        </>
       )}
 
       {/* ── Appearance settings (shared) ── */}
@@ -1019,6 +1029,14 @@ function CustomBannerEditor({
         value={typeof config.animation === "string" ? config.animation : "none"}
         onChange={(value) => patch({ animation: value })}
       />
+
+      <div className="space-y-2">
+        <Label>On tap</Label>
+        <LinkPicker
+          value={typeof config.link_url === "string" ? config.link_url : ""}
+          onChange={(value) => patch({ link_url: value || null })}
+        />
+      </div>
     </div>
   )
 }
