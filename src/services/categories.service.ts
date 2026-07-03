@@ -7,11 +7,7 @@ export async function getCategories() {
   return data.data
 }
 
-/**
- * List all bundle (promo-only) categories [ADMIN]. Pass a productId to also
- * get `is_member` on each bundle — powers the product edit form's "also
- * show in bundles" multi-select.
- */
+/** List all bundle (promo-only) categories [ADMIN] — powers the Bundles tab. */
 export async function getBundles(productId?: string) {
   const { data } = await api.get<ApiResponse<Array<Category & { is_member?: boolean }>>>(
     "/categories/bundles",
@@ -20,9 +16,23 @@ export async function getBundles(productId?: string) {
   return data.data
 }
 
-/** Add/remove a single product from a bundle [ADMIN] */
-export async function toggleBundleMembership(bundleId: string, productId: string, isMember: boolean) {
-  await api.put<ApiResponse<null>>(`/categories/${bundleId}/membership`, { productId, isMember })
+/**
+ * Every category a product can be cross-listed into (its own primary
+ * category excluded), each flagged `is_member` [ADMIN] — powers the
+ * product edit form's "also show in other categories" multi-select. This
+ * is the multi-category feature: a product keeps its one real category and
+ * can additionally appear under any number of other categories/bundles.
+ */
+export async function getCategoriesForProduct(productId: string) {
+  const { data } = await api.get<ApiResponse<Array<Category & { is_member?: boolean }>>>(
+    `/categories/for-product/${productId}`
+  )
+  return data.data
+}
+
+/** Add/remove a single product from a category or bundle [ADMIN] */
+export async function toggleCategoryMembership(categoryId: string, productId: string, isMember: boolean) {
+  await api.put<ApiResponse<null>>(`/categories/${categoryId}/membership`, { productId, isMember })
 }
 
 /** Get category by ID */
@@ -68,11 +78,12 @@ export async function deleteCategory(id: string) {
 }
 
 /**
- * Products currently in a category (or a bundle's current members), already
- * in the effective display order — rank-aware default when unsorted,
- * membership-and-rank for bundles. Seeds the product-ranking panel: since
- * this reflects exactly what the customer app would show, dragging this
- * list IS setting the new order.
+ * Products currently in a category, already in the effective display order.
+ * For a STANDARD category this is the union of products whose real
+ * category is this one AND any cross-listed extras (multi-category); for a
+ * BUNDLE it's exactly the bundle's members. Seeds the product-ranking
+ * panel: since this reflects exactly what the customer app would show,
+ * dragging this list IS setting the new order.
  */
 export async function getCategoryProducts(categoryId: string, limit = 100) {
   const { data } = await api.get<{ success: boolean; message: string; data: Product[] }>(

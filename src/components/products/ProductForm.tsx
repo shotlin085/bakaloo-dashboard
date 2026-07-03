@@ -27,7 +27,7 @@ import {
   Hash, Scale, FileText, ToggleLeft, AlertTriangle, Gift,
 } from "lucide-react"
 import { useProductDetail, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts"
-import { useCategories, useBundles, useToggleBundleMembership } from "@/hooks/useCategories"
+import { useCategories, useCategoriesForProduct, useToggleCategoryMembership } from "@/hooks/useCategories"
 import { ImageUpload } from "@/components/products/ImageUpload"
 import { ProductGalleryUpload } from "@/components/products/ProductGalleryUpload"
 import { AttributesEditor } from "@/components/products/attributes-editor"
@@ -622,10 +622,10 @@ export function ProductForm({
             {productId && (
               <SectionCard
                 icon={<Gift className="h-4 w-4" />}
-                title="Bundles"
-                description="Also show this product in one or more promo bundles, without changing its real category above."
+                title="Also show in other categories"
+                description="Cross-list this product into other categories or bundles (e.g. Baby Potato under both Fresh Vegetables and Exotic Vegetables) without changing its real category above."
               >
-                <BundleMembershipFields productId={productId} />
+                <CategoryMembershipFields productId={productId} />
               </SectionCard>
             )}
 
@@ -1361,47 +1361,50 @@ function FieldHint({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * "Also show in bundles" — a checkbox per existing bundle. Each toggle is
- * its own request (useToggleBundleMembership), independent of the rest of
- * the product form's save flow, since bundle membership is unrelated data
- * (category_products) rather than a field on the product row itself.
+ * "Also show in other categories" — a checkbox per cross-listable category
+ * (every category except this product's own real one) and bundle. Each
+ * toggle is its own request (useToggleCategoryMembership), independent of
+ * the rest of the product form's save flow, since this is unrelated data
+ * (category_products) rather than a field on the product row itself. This
+ * is the multi-category feature: e.g. Baby Potato's real category stays
+ * "Fresh Vegetables" (set above), and it can also be checked into "Exotic
+ * Vegetables" here without duplicating the product.
  */
-function BundleMembershipFields({ productId }: { productId: string }) {
-  const { data: bundles, isLoading } = useBundles(productId)
-  const toggleMembership = useToggleBundleMembership()
+function CategoryMembershipFields({ productId }: { productId: string }) {
+  const { data: categories, isLoading } = useCategoriesForProduct(productId)
+  const toggleMembership = useToggleCategoryMembership()
 
   if (isLoading) {
-    return <FieldHint>Loading bundles…</FieldHint>
+    return <FieldHint>Loading categories…</FieldHint>
   }
 
-  if (!bundles || bundles.length === 0) {
-    return (
-      <FieldHint>
-        No bundles created yet — create one from Categories → Bundles first.
-      </FieldHint>
-    )
+  if (!categories || categories.length === 0) {
+    return <FieldHint>No other categories to cross-list into yet.</FieldHint>
   }
 
   return (
     <div className="space-y-2">
-      {bundles.map((bundle) => (
+      {categories.map((category) => (
         <label
-          key={bundle.id}
+          key={category.id}
           className="flex items-center gap-2.5 text-sm cursor-pointer"
         >
           <Checkbox
-            checked={!!bundle.is_member}
+            checked={!!category.is_member}
             disabled={toggleMembership.isPending}
             onCheckedChange={(checked) =>
               toggleMembership.mutate({
-                bundleId: bundle.id,
+                categoryId: category.id,
                 productId,
                 isMember: checked === true,
               })
             }
           />
-          <span>{bundle.name}</span>
-          {!bundle.is_active && (
+          <span>
+            {category.category_type === "BUNDLE" ? "🎁 " : ""}
+            {category.name}
+          </span>
+          {!category.is_active && (
             <span className="text-xs text-muted-foreground">(inactive)</span>
           )}
         </label>

@@ -1,12 +1,16 @@
 "use client"
 
 /**
- * Shared drag-and-drop product ranking panel — used for both:
- *   - a BUNDLE's member products (search-and-add, then drag to order)
- *   - a STANDARD category's explicit display order (drag to reorder the
- *     products already in that category; nothing can be added here since
- *     category membership itself still comes from the product's own
- *     categoryId field, set on the product edit form)
+ * Shared drag-and-drop product ranking + multi-category panel — used for
+ * both a BUNDLE's member products and a STANDARD category's product list.
+ * Both types now support search-and-add (cross-listing a product into this
+ * category without changing its real category) and drag-to-reorder.
+ *
+ * A product whose real category IS this one (`product.category_id ===
+ * category.id`) is its "primary" listing here — that membership lives on
+ * the product's own categoryId field (set on the product edit form), not
+ * in this panel, so it can't be removed from here (only cross-listed
+ * extras can). It CAN still be dragged to set an explicit rank.
  *
  * The seed list comes from GET /categories/:id/products (via
  * getCategoryProducts), which already reflects the exact order customers
@@ -59,11 +63,12 @@ interface ProductRankingPanelProps {
 export function ProductRankingPanel({ category, onClose }: ProductRankingPanelProps) {
   const open = !!category
   const isBundle = category?.category_type === "BUNDLE"
+  const isPrimary = (product: Product) => !isBundle && product.category_id === category?.id
 
   const [items, setItems] = useState<Product[]>([])
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebounce(search, 250)
-  const shouldSearch = isBundle && debouncedSearch.trim().length >= 2
+  const shouldSearch = debouncedSearch.trim().length >= 2
 
   const { data: seedProducts, isLoading } = useQuery({
     queryKey: ["categories", "products", "seed", category?.id],
@@ -82,7 +87,7 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
   }, [open])
 
   const { data: searchResults, isFetching: isSearching } = useQuery({
-    queryKey: ["categories", "bundle-product-search", debouncedSearch],
+    queryKey: ["categories", "product-search", debouncedSearch],
     queryFn: () => getProducts({ page: 1, limit: 8, search: debouncedSearch, status: "active" }),
     enabled: shouldSearch,
     staleTime: 30_000,
@@ -131,13 +136,12 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
           <SheetDescription>
             {isBundle
               ? "Search to add products to this bundle, then drag to set the order customers see."
-              : "Drag to set the display order for this category. Removing a product here only clears its explicit rank — it stays in the category with the default order."}
+              : "Search to cross-list a product into this category (its real category stays unchanged), or drag to set an explicit order. Products with a \"Primary\" badge belong here by their real category and can only be removed from the product's own edit page."}
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 py-4">
-          {isBundle && (
-            <div className="space-y-2">
+          <div className="space-y-2">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -178,8 +182,7 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
                   )}
                 </div>
               )}
-            </div>
-          )}
+          </div>
 
           {isLoading ? (
             <div className="space-y-2">
@@ -190,7 +193,7 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
           ) : items.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              {isBundle ? "No products in this bundle yet — search above to add some." : "No products in this category yet."}
+              No products here yet — search above to add some.
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -201,6 +204,7 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
                       key={product.id}
                       product={product}
                       rank={index + 1}
+                      isPrimary={isPrimary(product)}
                       onRemove={() => removeProduct(product.id)}
                     />
                   ))}
@@ -231,10 +235,12 @@ export function ProductRankingPanel({ category, onClose }: ProductRankingPanelPr
 function RankableRow({
   product,
   rank,
+  isPrimary,
   onRemove,
 }: {
   product: Product
   rank: number
+  isPrimary: boolean
   onRemove: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -268,14 +274,20 @@ function RankableRow({
         <p className="text-sm font-medium truncate">{product.name}</p>
         <p className="text-xs text-muted-foreground">₹{product.price}</p>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-        aria-label={`Remove ${product.name}`}
-      >
-        <X className="h-4 w-4" />
-      </button>
+      {isPrimary ? (
+        <Badge variant="secondary" className="text-[10px] shrink-0" title="Belongs here via its real category — remove from the product's edit page instead">
+          Primary
+        </Badge>
+      ) : (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label={`Remove ${product.name}`}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }

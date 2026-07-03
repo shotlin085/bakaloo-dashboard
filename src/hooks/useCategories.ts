@@ -28,12 +28,13 @@ import { toast } from "sonner"
 import {
   getCategories,
   getBundles,
+  getCategoriesForProduct,
   createCategory,
   updateCategory,
   deleteCategory,
   getCategoryProductRanks,
   setCategoryProducts,
-  toggleBundleMembership,
+  toggleCategoryMembership,
 } from "@/services/categories.service"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
@@ -153,9 +154,7 @@ export function useDeleteCategory() {
 }
 
 /**
- * List bundle (promo-only) categories — the dashboard's "Bundles" tab, and
- * (with a productId) the product edit form's "also show in bundles"
- * multi-select, where each bundle also carries `is_member`.
+ * List bundle (promo-only) categories — the dashboard's "Bundles" tab.
  */
 export function useBundles(productId?: string) {
   const shopKey = useShopKey()
@@ -167,23 +166,39 @@ export function useBundles(productId?: string) {
   })
 }
 
-/** Add/remove a single product from a bundle (product edit form toggle). */
-export function useToggleBundleMembership() {
+/**
+ * Every category a product can be cross-listed into (its own primary
+ * category excluded), each flagged `is_member` — the product edit form's
+ * "also show in other categories" multi-select. This is the multi-category
+ * feature: a product keeps its one real category (set on the product
+ * itself) and can additionally appear under any number of other categories
+ * or bundles.
+ */
+export function useCategoriesForProduct(productId?: string) {
+  return useQuery({
+    queryKey: ["categories", "for-product", productId ?? null] as const,
+    queryFn: () => getCategoriesForProduct(productId as string),
+    enabled: !!productId,
+  })
+}
+
+/** Add/remove a single product from a category or bundle (product edit form toggle). */
+export function useToggleCategoryMembership() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({
-      bundleId,
+      categoryId,
       productId,
       isMember,
     }: {
-      bundleId: string
+      categoryId: string
       productId: string
       isMember: boolean
-    }) => toggleBundleMembership(bundleId, productId, isMember),
+    }) => toggleCategoryMembership(categoryId, productId, isMember),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] })
     },
-    onError: (e: Error) => toast.error(e.message || "Failed to update bundle"),
+    onError: (e: Error) => toast.error(e.message || "Failed to update category"),
   })
 }
 
