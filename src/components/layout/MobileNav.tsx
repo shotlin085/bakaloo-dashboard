@@ -21,6 +21,7 @@ import {
   Store,
   Tags,
   Ticket,
+  Timer,
   Users,
   Wallet,
   type LucideIcon,
@@ -65,6 +66,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Store,
   Tags,
   Ticket,
+  Timer,
   Users,
   Wallet,
 }
@@ -87,6 +89,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
             href: "/settings/payment-offers",
             icon: "Gift",
           },
+          { label: "Delivery Timer", href: "/settings/delivery-timer", icon: "Timer" },
         ],
       },
       { label: "Products", href: "/products", icon: "Package" },
