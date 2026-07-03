@@ -579,7 +579,7 @@ export function ProductForm({
             </div>
           </SectionCard>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <SectionCard
               icon={<ToggleLeft className="h-4 w-4" />}
               title="Status"
@@ -619,16 +619,6 @@ export function ProductForm({
               <FieldHint>Decides which category page and filters the product appears under.</FieldHint>
             </SectionCard>
 
-            {productId && (
-              <SectionCard
-                icon={<Gift className="h-4 w-4" />}
-                title="Also show in other categories"
-                description="Cross-list this product into other categories or bundles (e.g. Baby Potato under both Fresh Vegetables and Exotic Vegetables) without changing its real category above."
-              >
-                <CategoryMembershipFields productId={productId} />
-              </SectionCard>
-            )}
-
             <SectionCard
               icon={<Tag className="h-4 w-4" />}
               title="Tags"
@@ -638,6 +628,19 @@ export function ProductForm({
               <FieldHint>Separate each tag with a comma. These boost search matches — e.g. &ldquo;organic, dairy, milk&rdquo;.</FieldHint>
             </SectionCard>
           </div>
+
+          {/* Full-width on its own row — this list can get long, so it no
+              longer shares a 3-column grid with the compact cards above
+              (that made every card in the row stretch to match its height). */}
+          {productId && (
+            <SectionCard
+              icon={<Gift className="h-4 w-4" />}
+              title="Also show in other categories"
+              description="Cross-list this product into other categories or bundles (e.g. Baby Potato under both Fresh Vegetables and Exotic Vegetables) without changing its real category above."
+            >
+              <CategoryMembershipFields productId={productId} />
+            </SectionCard>
+          )}
         </TabsContent>
 
         {/* ────── Step 2: Pricing & Inventory ────── */}
@@ -1383,11 +1386,11 @@ function CategoryMembershipFields({ productId }: { productId: string }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
       {categories.map((category) => (
         <label
           key={category.id}
-          className="flex items-center gap-2.5 text-sm cursor-pointer"
+          className="flex items-center gap-2.5 text-sm cursor-pointer min-w-0"
         >
           <Checkbox
             checked={!!category.is_member}
@@ -1400,12 +1403,12 @@ function CategoryMembershipFields({ productId }: { productId: string }) {
               })
             }
           />
-          <span>
+          <span className="truncate">
             {category.category_type === "BUNDLE" ? "🎁 " : ""}
             {category.name}
           </span>
           {!category.is_active && (
-            <span className="text-xs text-muted-foreground">(inactive)</span>
+            <span className="text-xs text-muted-foreground shrink-0">(inactive)</span>
           )}
         </label>
       ))}
