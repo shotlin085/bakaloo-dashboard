@@ -20,6 +20,9 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { ImageUpload } from "@/components/products/ImageUpload"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { BundlesTab } from "@/components/categories/BundlesTab"
+import { ProductRankingPanel } from "@/components/categories/ProductRankingPanel"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,6 +61,7 @@ import {
   ChevronRight,
   FolderOpen,
   GripVertical,
+  ListOrdered,
 } from "lucide-react"
 import {
   useCategories,
@@ -97,6 +101,7 @@ export default function CategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CategoryFormData>(INITIAL_FORM)
+  const [rankingFor, setRankingFor] = useState<Category | null>(null)
 
   const isPending = createCategory.isPending || updateCategory.isPending
   const { can } = usePermissions()
@@ -204,58 +209,77 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <PageHeader title="Categories" subtitle="Organize products into categories" />
-        {canManage && (
-          <Button size="sm" onClick={() => openCreate()}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Category
-          </Button>
-        )}
+        <PageHeader title="Categories" subtitle="Organize products into categories, and group promo bundles" />
       </div>
 
-      {/* Category Tree */}
-      {isLoading ? (
-        <CategoriesSkeleton />
-      ) : !tree || tree.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Tags className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground mb-3">No categories yet</p>
-          {canManage && (
-            <Button size="sm" onClick={() => openCreate()}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create your first category
-            </Button>
+      <Tabs defaultValue="categories">
+        <TabsList>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="bundles">Bundles</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="categories" className="space-y-4 pt-4">
+          <div className="flex justify-end">
+            {canManage && (
+              <Button size="sm" onClick={() => openCreate()}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Category
+              </Button>
+            )}
+          </div>
+
+          {/* Category Tree */}
+          {isLoading ? (
+            <CategoriesSkeleton />
+          ) : !tree || tree.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Tags className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">No categories yet</p>
+              {canManage && (
+                <Button size="sm" onClick={() => openCreate()}>
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Create your first category
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <Card className="divide-y">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={tree.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {tree.map((cat) => (
+                    <CategoryRow
+                      key={cat.id}
+                      category={cat}
+                      depth={0}
+                      onEdit={canManage ? (cat) => setTimeout(() => openEdit(cat), 0) : undefined}
+                      onDelete={canManage ? (id) => deleteCategory.mutate(id) : undefined}
+                      onAddChild={
+                        canManage
+                          ? (parentId) => setTimeout(() => openCreate(parentId), 0)
+                          : undefined
+                      }
+                      onRank={canManage ? (cat) => setRankingFor(cat) : undefined}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </Card>
           )}
-        </Card>
-      ) : (
-        <Card className="divide-y">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={tree.map((c) => c.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {tree.map((cat) => (
-                <CategoryRow
-                  key={cat.id}
-                  category={cat}
-                  depth={0}
-                  onEdit={canManage ? (cat) => setTimeout(() => openEdit(cat), 0) : undefined}
-                  onDelete={canManage ? (id) => deleteCategory.mutate(id) : undefined}
-                  onAddChild={
-                    canManage
-                      ? (parentId) => setTimeout(() => openCreate(parentId), 0)
-                      : undefined
-                  }
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </Card>
-      )}
+        </TabsContent>
+
+        <TabsContent value="bundles" className="pt-4">
+          <BundlesTab canManage={canManage} />
+        </TabsContent>
+      </Tabs>
+
+      <ProductRankingPanel category={rankingFor} onClose={() => setRankingFor(null)} />
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -366,12 +390,14 @@ function CategoryRow({
   onEdit,
   onDelete,
   onAddChild,
+  onRank,
 }: {
   category: CategoryTree
   depth: number
   onEdit?: (cat: Category) => void
   onDelete?: (id: string) => void
   onAddChild?: (parentId: string) => void
+  onRank?: (cat: Category) => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const hasChildren = category.children.length > 0
@@ -479,6 +505,12 @@ function CategoryRow({
               <Pencil className="h-3.5 w-3.5 mr-2" />
               Edit
             </DropdownMenuItem>
+            {onRank && (
+              <DropdownMenuItem onClick={() => onRank(category)}>
+                <ListOrdered className="h-3.5 w-3.5 mr-2" />
+                Rank products
+              </DropdownMenuItem>
+            )}
             {/* Categories are limited to two levels — a subcategory
                 (depth > 0) can't have its own subcategory. */}
             {depth === 0 && (
@@ -514,6 +546,7 @@ function CategoryRow({
               onEdit={onEdit}
               onDelete={onDelete}
               onAddChild={onAddChild}
+              onRank={onRank}
             />
           ))}
         </SortableContext>

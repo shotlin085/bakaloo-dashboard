@@ -61,6 +61,8 @@ export type {
   OriginTag,
   Category,
   CategoryTree,
+  CategoryType,
+  CategoryProductRank,
 } from "./product.types"
 export { FOOD_TYPES, ORIGIN_TAGS } from "./product.types"
 export type {

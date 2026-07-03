@@ -27,9 +27,13 @@ import { toast } from "sonner"
 
 import {
   getCategories,
+  getBundles,
   createCategory,
   updateCategory,
   deleteCategory,
+  getCategoryProductRanks,
+  setCategoryProducts,
+  toggleBundleMembership,
 } from "@/services/categories.service"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
@@ -145,5 +149,85 @@ export function useDeleteCategory() {
       qc.invalidateQueries({ queryKey: ["categories"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to delete category"),
+  })
+}
+
+/**
+ * List bundle (promo-only) categories — the dashboard's "Bundles" tab, and
+ * (with a productId) the product edit form's "also show in bundles"
+ * multi-select, where each bundle also carries `is_member`.
+ */
+export function useBundles(productId?: string) {
+  const shopKey = useShopKey()
+  return useQuery({
+    queryKey: [...qk.categories(shopKey, {}), "bundles", productId ?? null] as const,
+    queryFn: () => getBundles(productId),
+    enabled: shopKey !== NONE_SHOP_KEY,
+    staleTime: 60 * 1000,
+  })
+}
+
+/** Add/remove a single product from a bundle (product edit form toggle). */
+export function useToggleBundleMembership() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      bundleId,
+      productId,
+      isMember,
+    }: {
+      bundleId: string
+      productId: string
+      isMember: boolean
+    }) => toggleBundleMembership(bundleId, productId, isMember),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to update bundle"),
+  })
+}
+
+export function useCreateBundle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: Omit<Parameters<typeof createCategory>[0], "category_type">) =>
+      createCategory({ ...payload, category_type: "BUNDLE" }),
+    onSuccess: () => {
+      toast.success("Bundle created")
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to create bundle"),
+  })
+}
+
+/**
+ * Current product ranking/membership for a category or bundle. Not
+ * shop-scoped (this is admin ranking data, not a per-shop dataset), so it
+ * uses a plain key rather than `qk.categories` — still invalidated by the
+ * broad `["categories"]` prefix used everywhere else in this file.
+ */
+export function useCategoryProductRanks(categoryId: string | null) {
+  return useQuery({
+    queryKey: ["categories", "products", categoryId] as const,
+    queryFn: () => getCategoryProductRanks(categoryId as string),
+    enabled: !!categoryId,
+  })
+}
+
+/**
+ * Replace a category's product membership/order — sets bundle members, or
+ * pins/reorders a standard category's ranking. Used by the drag-and-drop
+ * product-ranking panel.
+ */
+export function useSetCategoryProducts() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, productIds }: { categoryId: string; productIds: string[] }) =>
+      setCategoryProducts(categoryId, productIds),
+    onSuccess: () => {
+      toast.success("Product order saved")
+      qc.invalidateQueries({ queryKey: ["categories"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to save product order"),
   })
 }

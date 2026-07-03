@@ -211,6 +211,13 @@ export interface ProductOptionsResponse {
   >
 }
 
+/**
+ * A BUNDLE category is a promo-only product grouping (e.g. "Milkshake
+ * offer") — excluded from the public category list/menu but reachable by
+ * id, so a banner can deep-link to it. STANDARD is every ordinary category.
+ */
+export type CategoryType = "STANDARD" | "BUNDLE"
+
 /** Category */
 export interface Category {
   id: string
@@ -221,9 +228,19 @@ export interface Category {
   image_url: string | null
   sort_order: number
   is_active: boolean
+  category_type: CategoryType
   product_count?: number
   created_at: string
   updated_at: string
+}
+
+/** A single product's position within a category/bundle's admin-set ranking */
+export interface CategoryProductRank {
+  product_id: string
+  rank: number
+  name: string
+  thumbnail_url: string | null
+  price: number
 }
 
 /** Category with children (tree structure) */

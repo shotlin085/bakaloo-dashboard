@@ -24,10 +24,10 @@ import {
   ChevronDown, ChevronUp, Sparkles, ShieldCheck, Store, Star,
   Tag, Package, IndianRupee, Boxes, Ruler, Info,
   Megaphone, ListChecks, Layers, ShoppingCart, ScanBarcode,
-  Hash, Scale, FileText, ToggleLeft, AlertTriangle,
+  Hash, Scale, FileText, ToggleLeft, AlertTriangle, Gift,
 } from "lucide-react"
 import { useProductDetail, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts"
-import { useCategories } from "@/hooks/useCategories"
+import { useCategories, useBundles, useToggleBundleMembership } from "@/hooks/useCategories"
 import { ImageUpload } from "@/components/products/ImageUpload"
 import { ProductGalleryUpload } from "@/components/products/ProductGalleryUpload"
 import { AttributesEditor } from "@/components/products/attributes-editor"
@@ -618,6 +618,16 @@ export function ProductForm({
               </select>
               <FieldHint>Decides which category page and filters the product appears under.</FieldHint>
             </SectionCard>
+
+            {productId && (
+              <SectionCard
+                icon={<Gift className="h-4 w-4" />}
+                title="Bundles"
+                description="Also show this product in one or more promo bundles, without changing its real category above."
+              >
+                <BundleMembershipFields productId={productId} />
+              </SectionCard>
+            )}
 
             <SectionCard
               icon={<Tag className="h-4 w-4" />}
@@ -1348,6 +1358,56 @@ function FieldLabel({
 /** FieldHint — consistent small helper text shown under a field. */
 function FieldHint({ children }: { children: React.ReactNode }) {
   return <p className="text-xs leading-relaxed text-muted-foreground">{children}</p>
+}
+
+/**
+ * "Also show in bundles" — a checkbox per existing bundle. Each toggle is
+ * its own request (useToggleBundleMembership), independent of the rest of
+ * the product form's save flow, since bundle membership is unrelated data
+ * (category_products) rather than a field on the product row itself.
+ */
+function BundleMembershipFields({ productId }: { productId: string }) {
+  const { data: bundles, isLoading } = useBundles(productId)
+  const toggleMembership = useToggleBundleMembership()
+
+  if (isLoading) {
+    return <FieldHint>Loading bundles…</FieldHint>
+  }
+
+  if (!bundles || bundles.length === 0) {
+    return (
+      <FieldHint>
+        No bundles created yet — create one from Categories → Bundles first.
+      </FieldHint>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {bundles.map((bundle) => (
+        <label
+          key={bundle.id}
+          className="flex items-center gap-2.5 text-sm cursor-pointer"
+        >
+          <Checkbox
+            checked={!!bundle.is_member}
+            disabled={toggleMembership.isPending}
+            onCheckedChange={(checked) =>
+              toggleMembership.mutate({
+                bundleId: bundle.id,
+                productId,
+                isMember: checked === true,
+              })
+            }
+          />
+          <span>{bundle.name}</span>
+          {!bundle.is_active && (
+            <span className="text-xs text-muted-foreground">(inactive)</span>
+          )}
+        </label>
+      ))}
+    </div>
+  )
 }
 
 function CollapsibleCard({

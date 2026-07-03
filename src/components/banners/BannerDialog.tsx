@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { ImageUpload } from "@/components/products/ImageUpload"
 import { useCreateBanner, useUpdateBanner } from "@/hooks/useBanners"
+import { useCategories, useBundles } from "@/hooks/useCategories"
 import type { Banner, CreateBannerPayload } from "@/types/banner.types"
 
 interface BannerDialogProps {
@@ -62,6 +63,8 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
   const createMutation = useCreateBanner()
   const updateMutation = useUpdateBanner()
   const isEdit = !!banner
+  const { data: categories } = useCategories()
+  const { data: bundles } = useBundles()
 
   useEffect(() => {
     if (banner) {
@@ -200,18 +203,39 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            {form.linkType !== "none" && (
+            {form.linkType === "category" && (
+              <div className="space-y-1.5">
+                <Label>Category / Bundle</Label>
+                <Select
+                  value={form.linkValue || undefined}
+                  onValueChange={(v) => setForm({ ...form, linkValue: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category or bundle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bundles?.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        🎁 {b.name}
+                      </SelectItem>
+                    ))}
+                    {categories?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {(form.linkType === "product" || form.linkType === "url") && (
               <div className="space-y-1.5">
                 <Label htmlFor="linkValue">
-                  {form.linkType === "url" ? "URL" : `${form.linkType} ID`}
+                  {form.linkType === "url" ? "URL" : "Product ID"}
                 </Label>
                 <Input
                   id="linkValue"
-                  placeholder={
-                    form.linkType === "url"
-                      ? "https://..."
-                      : `Enter ${form.linkType} ID`
-                  }
+                  placeholder={form.linkType === "url" ? "https://..." : "Enter product ID"}
                   value={form.linkValue ?? ""}
                   onChange={(e) => setForm({ ...form, linkValue: e.target.value })}
                 />
