@@ -82,7 +82,15 @@ export type {
   CouponFilters,
   CreateCouponPayload,
   UpdateCouponPayload,
+  CouponTargetType,
 } from "./coupon.types"
+export type {
+  CustomerSegment,
+  CreateSegmentPayload,
+  UpdateSegmentPayload,
+  SegmentMember,
+  SegmentCandidate,
+} from "./customer-segment.types"
 export type {
   Banner,
   CreateBannerPayload,

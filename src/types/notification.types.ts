@@ -27,6 +27,7 @@ export type CampaignSegment =
   | "new"
   | "inactive"
   | "high_value"
+  | "custom_segment"
 
 export interface NotificationTemplate {
   id: string

@@ -55,3 +55,13 @@ export async function getCouponAnalytics(couponId: string): Promise<CouponAnalyt
   const { data } = await api.get<ApiResponse<CouponAnalytics>>(`/admin/coupons/${couponId}/analytics`)
   return data.data
 }
+
+/** Individually-targeted customers for a coupon (edit-dialog prefill when targetType === "INDIVIDUAL"). */
+export async function getCouponTargetUsers(
+  couponId: string
+): Promise<{ id: string; name: string | null; phone: string; email: string | null }[]> {
+  const { data } = await api.get<
+    ApiResponse<{ id: string; name: string | null; phone: string; email: string | null }[]>
+  >(`/coupons/${couponId}/target-users`)
+  return data.data
+}

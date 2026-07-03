@@ -30,6 +30,7 @@ import {
   Ticket,
   Timer,
   Users,
+  Users2,
   Wallet,
   type LucideIcon,
 } from "lucide-react"
@@ -90,6 +91,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Ticket,
   Timer,
   Users,
+  Users2,
   Wallet,
 }
 
@@ -168,6 +170,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     section: "COMMERCE",
     items: [
       { label: "Coupons", href: "/coupons", icon: "Ticket" },
+      { label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
       { label: "Wallet & Refunds", href: "/wallet", icon: "Wallet" },
       { label: "Notifications", href: "/notifications", icon: "Bell" },
       { label: "Reviews", href: "/reviews", icon: "Star" },

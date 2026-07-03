@@ -1,3 +1,6 @@
+/** Who is allowed to redeem a coupon. */
+export type CouponTargetType = "ALL" | "SEGMENT" | "INDIVIDUAL" | "FIRST_TIME"
+
 /** Coupon entity — camelCase (backend formats via _format()) */
 export interface Coupon {
   id: string
@@ -17,6 +20,8 @@ export interface Coupon {
   isActive: boolean
   createdAt: string
   updatedAt?: string
+  targetType: CouponTargetType
+  targetSegmentId: string | null
 }
 
 /** Coupon list filters */
@@ -41,6 +46,9 @@ export interface CreateCouponPayload {
   perUserLimit?: number
   validFrom?: string
   validUntil?: string
+  targetType?: CouponTargetType
+  targetSegmentId?: string
+  targetUserIds?: string[]
 }
 
 /** Update coupon payload — all optional + isActive toggle */

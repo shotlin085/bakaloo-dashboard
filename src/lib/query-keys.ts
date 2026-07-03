@@ -67,6 +67,12 @@ export const qk = {
   // ── Per-user (NOT shop-scoped) ───────────────────────────────────────────
   myShops: () => ["my-shops"] as const,
 
+  // ── Customer Segments (platform-wide, NOT shop-scoped — segments span
+  //    the whole customer base regardless of which shop is active) ────────
+  customerSegments: () => ["customer-segments", "list"] as const,
+  customerSegmentMembers: (id: string, params: ListParams) =>
+    ["customer-segments", id, "members", params] as const,
+
   // ── Shops_Management_UI ──────────────────────────────────────────────────
   shops: (params: ListParams) => ["shops", "list", params] as const,
   shop: (id: string) => ["shops", "detail", id] as const,

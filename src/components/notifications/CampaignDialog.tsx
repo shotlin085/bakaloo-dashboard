@@ -22,10 +22,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Users, AlertCircle } from "lucide-react"
 import { useSendBulk, useScheduleCampaign, useSegmentCount, useTemplates } from "@/hooks/useNotifications"
+import { useCustomerSegments } from "@/hooks/useCustomerSegments"
 import type { CampaignSegment, NotificationTemplate } from "@/types/notification.types"
 
 const SEGMENTS: { value: CampaignSegment; label: string; description: string; needsValue?: boolean; valuePlaceholder?: string; comingSoon?: boolean }[] = [
   { value: "all_customers", label: "All Customers", description: "Every active customer with FCM token" },
+  { value: "custom_segment", label: "Customer Segment", description: "An admin-defined segment (see Customer Segments)", needsValue: true },
   { value: "inactive_customers", label: "Inactive Customers", description: "No orders in 30 days" },
   { value: "high_value", label: "High Value", description: "₹5,000+ total orders" },
   { value: "specific_user", label: "Specific User", description: "Target by phone or user ID", needsValue: true, valuePlaceholder: "Phone number or User ID" },
@@ -64,6 +66,7 @@ export function CampaignDialog({ open, onOpenChange, mode }: Props) {
   const [expiresAt, setExpiresAt] = useState("")
 
   const { data: templates } = useTemplates()
+  const { data: customerSegments } = useCustomerSegments()
   const { data: segmentData } = useSegmentCount(segment, segmentValue || undefined)
   const sendMutation = useSendBulk()
   const scheduleMutation = useScheduleCampaign()
@@ -180,8 +183,27 @@ export function CampaignDialog({ open, onOpenChange, mode }: Props) {
             )}
           </div>
 
-          {/* Segment value (for specific_user, store_customers) */}
-          {selectedSeg?.needsValue && (
+          {/* Segment value: a picker for custom_segment, free text for specific_user/store_customers */}
+          {segment === "custom_segment" ? (
+            <div className="space-y-1.5">
+              <Label>Choose Segment *</Label>
+              <Select value={segmentValue} onValueChange={setSegmentValue}>
+                <SelectTrigger><SelectValue placeholder="Select a segment…" /></SelectTrigger>
+                <SelectContent>
+                  {(customerSegments ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.member_count})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {customerSegments?.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No segments yet — create one under Customer Segments first.
+                </p>
+              )}
+            </div>
+          ) : selectedSeg?.needsValue ? (
             <div className="space-y-1.5">
               <Label>Segment Value *</Label>
               <Input
@@ -191,7 +213,7 @@ export function CampaignDialog({ open, onOpenChange, mode }: Props) {
                 required={selectedSeg.needsValue}
               />
             </div>
-          )}
+          ) : null}
 
           {/* Schedule */}
           {mode === "schedule" && (
