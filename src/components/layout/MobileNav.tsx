@@ -130,6 +130,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { label: "Coupons", href: "/coupons", icon: "Ticket" },
       { label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
+      { label: "First-Time Offers", href: "/first-time-offers", icon: "Gift" },
       { label: "Wallet & Refunds", href: "/wallet", icon: "Wallet" },
       { label: "Notifications", href: "/notifications", icon: "Bell" },
       { label: "Reviews", href: "/reviews", icon: "Star" },

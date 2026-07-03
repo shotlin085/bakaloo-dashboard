@@ -73,6 +73,9 @@ export const qk = {
   customerSegmentMembers: (id: string, params: ListParams) =>
     ["customer-segments", id, "members", params] as const,
 
+  // ── First-Time Offers (platform-wide, NOT shop-scoped) ──────────────────
+  firstTimeOffers: () => ["first-time-offers", "list"] as const,
+
   // ── Shops_Management_UI ──────────────────────────────────────────────────
   shops: (params: ListParams) => ["shops", "list", params] as const,
   shop: (id: string) => ["shops", "detail", id] as const,

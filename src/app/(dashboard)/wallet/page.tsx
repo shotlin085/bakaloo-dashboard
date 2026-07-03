@@ -16,6 +16,7 @@ import {
   TrendingUp,
   TrendingDown,
   Copy,
+  Coins,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
@@ -247,6 +248,13 @@ function WalletContent() {
                         className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                       >
                         <Sparkles className="h-3 w-3 mr-1" /> Scratch
+                      </Badge>
+                    ) : txn.subType === "CASHBACK" ? (
+                      <Badge
+                        variant="default"
+                        className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      >
+                        <Coins className="h-3 w-3 mr-1" /> Cashback
                       </Badge>
                     ) : txn.type === "CREDIT" ? (
                       <Badge

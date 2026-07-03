@@ -51,6 +51,13 @@ const INITIAL: CreateCouponPayload & { isActive: boolean } = {
   targetType: "ALL",
   targetSegmentId: undefined,
   targetUserIds: [],
+  cashbackCreditTrigger: "ORDER_DELIVERED",
+}
+
+const CASHBACK_TRIGGER_LABELS: Record<"PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED", string> = {
+  PAYMENT_SUCCESS: "After payment success",
+  ORDER_CONFIRMED: "After order confirmed",
+  ORDER_DELIVERED: "After order delivered (safest)",
 }
 
 const TARGET_TYPE_LABELS: Record<CouponTargetType, string> = {
@@ -164,6 +171,7 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
         targetType: coupon.targetType ?? "ALL",
         targetSegmentId: coupon.targetSegmentId ?? undefined,
         targetUserIds: [],
+        cashbackCreditTrigger: coupon.cashbackCreditTrigger ?? "ORDER_DELIVERED",
       })
       setTargetCustomers([])
       if (coupon.targetType === "INDIVIDUAL") {
@@ -261,23 +269,53 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="value">
-                {form.discountType === "CASHBACK" ? "Cashback %" : form.discountType === "FREE_DELIVERY" ? "Max Delivery ₹" : "Discount Value"} *
-              </Label>
-              <Input
-                id="value"
-                type="number"
-                min={0.01}
-                step={0.01}
-                value={form.discountValue || ""}
-                onChange={(e) =>
-                  setForm({ ...form, discountValue: parseFloat(e.target.value) || 0 })
-                }
-                required
-              />
-            </div>
+            {form.discountType !== "FREE_DELIVERY" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="value">
+                  {form.discountType === "CASHBACK" ? "Cashback Amount (₹)" : "Discount Value"} *
+                </Label>
+                <Input
+                  id="value"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={form.discountValue || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, discountValue: parseFloat(e.target.value) || 0 })
+                  }
+                  required
+                />
+                {form.discountType === "CASHBACK" && (
+                  <p className="text-xs text-muted-foreground">
+                    Credited to the customer&apos;s wallet — capped at the order total, never reduces it.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
+
+          {form.discountType === "CASHBACK" && (
+            <div className="space-y-1.5">
+              <Label>Cashback Credit Timing</Label>
+              <Select
+                value={form.cashbackCreditTrigger}
+                onValueChange={(v) =>
+                  setForm({ ...form, cashbackCreditTrigger: v as "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED" })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CASHBACK_TRIGGER_LABELS) as Array<"PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED">).map((trigger) => (
+                    <SelectItem key={trigger} value={trigger}>
+                      {CASHBACK_TRIGGER_LABELS[trigger]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Min Order + Max Discount */}
           <div className="grid grid-cols-2 gap-3">

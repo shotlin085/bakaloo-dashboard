@@ -22,6 +22,7 @@ export interface Coupon {
   updatedAt?: string
   targetType: CouponTargetType
   targetSegmentId: string | null
+  cashbackCreditTrigger: "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED"
 }
 
 /** Coupon list filters */
@@ -49,6 +50,7 @@ export interface CreateCouponPayload {
   targetType?: CouponTargetType
   targetSegmentId?: string
   targetUserIds?: string[]
+  cashbackCreditTrigger?: "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED"
 }
 
 /** Update coupon payload — all optional + isActive toggle */
