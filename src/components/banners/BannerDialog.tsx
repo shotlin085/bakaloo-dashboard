@@ -39,6 +39,7 @@ const INITIAL: CreateBannerPayload & { isActive: boolean } = {
   isActive: true,
   startDate: "",
   endDate: "",
+  triggerType: "ALWAYS",
 }
 
 function sanitizeBannerImageUrl(value: string | null | undefined) {
@@ -77,6 +78,7 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
         isActive: banner.is_active,
         startDate: banner.start_date ? banner.start_date.slice(0, 16) : "",
         endDate: banner.end_date ? banner.end_date.slice(0, 16) : "",
+        triggerType: banner.trigger_type ?? "ALWAYS",
       })
     } else {
       setForm(INITIAL)
@@ -94,6 +96,7 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
       isActive: form.isActive,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
+      triggerType: form.triggerType,
     }
 
     if (isEdit && banner) {
@@ -145,6 +148,25 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
                 <SelectItem value="carousel">Carousel</SelectItem>
                 <SelectItem value="popup">Pop-up</SelectItem>
                 <SelectItem value="announcement">Announcement Bar</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Show */}
+          <div className="space-y-1.5">
+            <Label>Show</Label>
+            <Select
+              value={form.triggerType ?? "ALWAYS"}
+              onValueChange={(v) =>
+                setForm({ ...form, triggerType: v as CreateBannerPayload["triggerType"] })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALWAYS">Always</SelectItem>
+                <SelectItem value="STORE_CLOSED">Only when store is closed</SelectItem>
               </SelectContent>
             </Select>
           </div>

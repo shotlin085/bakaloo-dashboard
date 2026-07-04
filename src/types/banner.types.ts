@@ -10,6 +10,8 @@ export interface Banner {
   sort_order: number
   start_date: string | null
   end_date: string | null
+  /** 'ALWAYS' (default) shows regardless of store status; 'STORE_CLOSED' shows only while the store is closed. */
+  trigger_type: "ALWAYS" | "STORE_CLOSED"
   created_at: string
   updated_at: string
 }
@@ -24,6 +26,7 @@ export interface CreateBannerPayload {
   isActive?: boolean
   startDate?: string
   endDate?: string
+  triggerType?: "ALWAYS" | "STORE_CLOSED"
 }
 
 /** Update banner payload */
