@@ -45,6 +45,7 @@ import {
   Ban,
   Printer,
   Navigation,
+  CalendarClock,
 } from "lucide-react"
 import {
   useOrderDetail,
@@ -52,6 +53,7 @@ import {
   useDownloadInvoice,
   useRefundOrder,
   useCancelOrder,
+  useRescheduleOrder,
   useDownloadPackingSlip,
 } from "@/hooks/useOrders"
 import { useShopContextStore } from "@/store/shop-context.store"
@@ -86,6 +88,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
   const cancelOrder = useCancelOrder()
+  const rescheduleOrder = useRescheduleOrder()
   const downloadPacking = useDownloadPackingSlip()
 
   // Vendor scope enforcement (Req 10.10): a vendor (`assignedShopIds.length > 0`)
@@ -108,8 +111,10 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
   const [refundOpen, setRefundOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [refundForm, setRefundForm] = useState({ reason: "", refundTo: "wallet" })
   const [cancelForm, setCancelForm] = useState({ reason: "", refundTo: "wallet" })
+  const [rescheduleForm, setRescheduleForm] = useState({ date: "", startTime: "", endTime: "", reason: "" })
 
   const allowedTransitions = order
     ? STATUS_TRANSITIONS[order.status] ?? []
@@ -519,6 +524,29 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                         <p className="text-xs font-medium text-green-700">ASAP delivery</p>
                       </div>
                     )}
+                    {!["OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "REFUNDED"].includes(order.status) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs mb-2"
+                        onClick={() => {
+                          setRescheduleForm({
+                            date: order.scheduled_slot_start ? order.scheduled_slot_start.slice(0, 10) : "",
+                            startTime: order.scheduled_slot_start
+                              ? new Date(order.scheduled_slot_start).toTimeString().slice(0, 5)
+                              : "",
+                            endTime: order.scheduled_slot_end
+                              ? new Date(order.scheduled_slot_end).toTimeString().slice(0, 5)
+                              : "",
+                            reason: "",
+                          })
+                          setRescheduleOpen(true)
+                        }}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5 mr-1" />
+                        Change delivery slot
+                      </Button>
+                    )}
 
                     <p>{streetAddress || "Address not available"}</p>
                     {deliveryAddr?.addressLine2 && <p>{deliveryAddr.addressLine2}</p>}
@@ -732,6 +760,86 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
             }}
           >
             {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Reschedule Delivery Dialog */}
+    <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change Delivery Slot</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label>Delivery date</Label>
+            <input
+              type="date"
+              className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+              value={rescheduleForm.date}
+              onChange={(e) => setRescheduleForm((f) => ({ ...f, date: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Label>Start time</Label>
+              <input
+                type="time"
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                value={rescheduleForm.startTime}
+                onChange={(e) => setRescheduleForm((f) => ({ ...f, startTime: e.target.value }))}
+              />
+            </div>
+            <div className="flex-1">
+              <Label>End time</Label>
+              <input
+                type="time"
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                value={rescheduleForm.endTime}
+                onChange={(e) => setRescheduleForm((f) => ({ ...f, endTime: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Reason (internal note)</Label>
+            <Textarea
+              className="mt-1"
+              placeholder="e.g. Store closed unexpectedly"
+              value={rescheduleForm.reason}
+              onChange={(e) => setRescheduleForm((f) => ({ ...f, reason: e.target.value }))}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRescheduleOpen(false)}>Back</Button>
+          <Button
+            disabled={
+              !rescheduleForm.date ||
+              !rescheduleForm.startTime ||
+              !rescheduleForm.endTime ||
+              rescheduleOrder.isPending
+            }
+            onClick={() => {
+              if (!order) return
+              const start = new Date(`${rescheduleForm.date}T${rescheduleForm.startTime}:00`)
+              const end = new Date(`${rescheduleForm.date}T${rescheduleForm.endTime}:00`)
+              const label = `${start.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}, ${start.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`
+              rescheduleOrder.mutate(
+                {
+                  orderId: order.id,
+                  payload: {
+                    scheduledSlotStart: start.toISOString(),
+                    scheduledSlotEnd: end.toISOString(),
+                    scheduledSlotLabel: label,
+                    reason: rescheduleForm.reason || undefined,
+                  },
+                },
+                { onSuccess: () => setRescheduleOpen(false) },
+              )
+            }}
+          >
+            {rescheduleOrder.isPending ? "Saving..." : "Save new slot"}
           </Button>
         </DialogFooter>
       </DialogContent>

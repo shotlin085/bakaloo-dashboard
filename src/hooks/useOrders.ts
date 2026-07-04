@@ -10,10 +10,11 @@ import {
   downloadInvoice,
   refundOrder,
   cancelOrder,
+  rescheduleOrder,
   bulkUpdateStatus,
   downloadPackingSlip,
 } from "@/services/orders.service"
-import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, BulkStatusPayload } from "@/types"
+import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload } from "@/types"
 import { toast } from "sonner"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
@@ -194,6 +195,19 @@ export function useCancelOrder() {
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Cancel failed"),
+  })
+}
+
+export function useRescheduleOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, payload }: { orderId: string; payload: RescheduleOrderPayload }) =>
+      rescheduleOrder(orderId, payload),
+    onSuccess: () => {
+      toast.success("Delivery rescheduled")
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Reschedule failed"),
   })
 }
 

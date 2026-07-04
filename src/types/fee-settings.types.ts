@@ -56,6 +56,12 @@ export interface FeeSettings {
 
   // ETA (display only)
   delivery_eta_minutes: number
+
+  // Quick Delivery surcharge — flat, only charged when the customer
+  // explicitly opts into "Quick Delivery" at checkout.
+  quick_delivery_surcharge_enabled: boolean
+  quick_delivery_surcharge_amount: number
+  quick_delivery_surcharge_label: string
 }
 
 /** Partial update payload (every field optional). */

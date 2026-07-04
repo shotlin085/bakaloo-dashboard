@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Save, Timer } from "lucide-react"
+import { Loader2, Save, Timer, Zap } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -30,11 +30,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { feeSettingsService } from "@/services/fee-settings.service"
 import { usePermissions } from "@/hooks/usePermissions"
 
 const MIN_MINUTES = 1
 const MAX_MINUTES = 180
+const MAX_SURCHARGE = 10000
 
 function getErrorMessage(error: unknown): string {
   if (
@@ -61,6 +63,9 @@ export default function DeliveryTimerPage() {
   const canManage = can("settings.manage")
 
   const [minutes, setMinutes] = useState<number | null>(null)
+  const [surchargeEnabled, setSurchargeEnabled] = useState(false)
+  const [surchargeAmount, setSurchargeAmount] = useState<number>(0)
+  const [surchargeLabel, setSurchargeLabel] = useState("Quick delivery fee")
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["admin", "fee-settings"],
@@ -69,13 +74,22 @@ export default function DeliveryTimerPage() {
   })
 
   useEffect(() => {
-    if (config) setMinutes(config.delivery_eta_minutes)
+    if (!config) return
+    setMinutes(config.delivery_eta_minutes)
+    setSurchargeEnabled(config.quick_delivery_surcharge_enabled)
+    setSurchargeAmount(config.quick_delivery_surcharge_amount)
+    setSurchargeLabel(config.quick_delivery_surcharge_label)
   }, [config])
 
   const updateMutation = useMutation({
-    mutationFn: (value: number) => feeSettingsService.update({ delivery_eta_minutes: value }),
+    mutationFn: (payload: {
+      delivery_eta_minutes: number
+      quick_delivery_surcharge_enabled: boolean
+      quick_delivery_surcharge_amount: number
+      quick_delivery_surcharge_label: string
+    }) => feeSettingsService.update(payload),
     onSuccess: () => {
-      toast.success("Delivery timer saved")
+      toast.success("Delivery settings saved")
       queryClient.invalidateQueries({ queryKey: ["admin", "fee-settings"] })
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -86,8 +100,14 @@ export default function DeliveryTimerPage() {
     if (minutes < MIN_MINUTES || minutes > MAX_MINUTES) {
       return `Delivery time must be between ${MIN_MINUTES} and ${MAX_MINUTES} minutes`
     }
+    if (surchargeAmount < 0 || surchargeAmount > MAX_SURCHARGE) {
+      return `Quick delivery surcharge must be between ₹0 and ₹${MAX_SURCHARGE}`
+    }
+    if (surchargeEnabled && surchargeLabel.trim().length === 0) {
+      return "Quick delivery surcharge label cannot be empty"
+    }
     return null
-  }, [minutes])
+  }, [minutes, surchargeAmount, surchargeEnabled, surchargeLabel])
 
   function handleSave() {
     if (minutes === null) return
@@ -95,15 +115,20 @@ export default function DeliveryTimerPage() {
       toast.error(validationError)
       return
     }
-    updateMutation.mutate(minutes)
+    updateMutation.mutate({
+      delivery_eta_minutes: minutes,
+      quick_delivery_surcharge_enabled: surchargeEnabled,
+      quick_delivery_surcharge_amount: surchargeAmount,
+      quick_delivery_surcharge_label: surchargeLabel.trim(),
+    })
   }
 
   if (isLoading || minutes === null) {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Delivery Timer"
-          subtitle="Set the delivery time shown on the app's home screen."
+          title="Delivery Timer & Quick Delivery"
+          subtitle="Set the delivery time shown on the app's home screen, and an optional surcharge for priority orders."
         />
         <Card className="max-w-xl">
           <CardHeader>
@@ -178,6 +203,71 @@ export default function DeliveryTimerPage() {
           <p className="text-xs text-muted-foreground">
             Shown to every customer on every store front, immediately after saving.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Quick Delivery Surcharge</CardTitle>
+              <CardDescription>
+                An optional flat fee charged only when a customer explicitly chooses
+                &ldquo;Quick Delivery&rdquo; at checkout — never added to a normal order.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="quick-delivery-enabled">Enable Quick Delivery surcharge</Label>
+              <p className="text-xs text-muted-foreground">
+                When off, customers never see or pay this fee.
+              </p>
+            </div>
+            <Switch
+              id="quick-delivery-enabled"
+              checked={surchargeEnabled}
+              disabled={!canManage}
+              onCheckedChange={setSurchargeEnabled}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-delivery-amount">Surcharge amount</Label>
+            <div className="relative max-w-[200px]">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                ₹
+              </span>
+              <Input
+                id="quick-delivery-amount"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_SURCHARGE}
+                step={1}
+                disabled={!canManage || !surchargeEnabled}
+                value={String(surchargeAmount)}
+                onChange={(e) => setSurchargeAmount(numOrZero(e.target.value))}
+                className="pl-7"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="quick-delivery-label">Fee label shown on the bill</Label>
+            <Input
+              id="quick-delivery-label"
+              type="text"
+              maxLength={60}
+              disabled={!canManage || !surchargeEnabled}
+              value={surchargeLabel}
+              onChange={(e) => setSurchargeLabel(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

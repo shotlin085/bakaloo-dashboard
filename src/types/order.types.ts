@@ -186,6 +186,14 @@ export interface CancelOrderPayload {
   refundTo?: "wallet" | "original" | "none"
 }
 
+/** Reschedule delivery payload (admin mistake-correction action) */
+export interface RescheduleOrderPayload {
+  scheduledSlotStart: string
+  scheduledSlotEnd: string
+  scheduledSlotLabel: string
+  reason?: string
+}
+
 /** Bulk status update payload */
 export interface BulkStatusPayload {
   orderIds: string[]

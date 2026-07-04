@@ -9,6 +9,7 @@ import type {
   AssignRiderPayload,
   RefundOrderPayload,
   CancelOrderPayload,
+  RescheduleOrderPayload,
   BulkStatusPayload,
 } from "@/types"
 
@@ -118,6 +119,18 @@ export async function cancelOrder(
 ) {
   const { data } = await api.post<ApiResponse<{ orderId: string; status: string }>>(
     `/admin/orders/${orderId}/cancel`,
+    payload
+  )
+  return data.data
+}
+
+/** Reschedule an order's delivery slot (admin mistake-correction action) */
+export async function rescheduleOrder(
+  orderId: string,
+  payload: RescheduleOrderPayload
+) {
+  const { data } = await api.put<ApiResponse<Order>>(
+    `/admin/orders/${orderId}/reschedule`,
     payload
   )
   return data.data

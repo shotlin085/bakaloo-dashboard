@@ -46,6 +46,7 @@ export type {
   AssignRiderPayload,
   RefundOrderPayload,
   CancelOrderPayload,
+  RescheduleOrderPayload,
   BulkStatusPayload,
 } from "./order.types"
 export type {
