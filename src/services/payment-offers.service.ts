@@ -1,6 +1,8 @@
 import api from "@/lib/api"
 import type { ApiResponse } from "@/types"
 
+export type PaymentOfferCreditTrigger = "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED"
+
 export interface PaymentOfferAdmin {
   id: string
   title: string
@@ -15,6 +17,8 @@ export interface PaymentOfferAdmin {
   is_active: boolean
   valid_from: string
   valid_until: string | null
+  cashback_credit_trigger: PaymentOfferCreditTrigger
+  usage_limit_per_user: number | null
   created_at: string
   updated_at: string
 }
@@ -32,6 +36,8 @@ export interface PaymentOfferPayload {
   isActive?: boolean
   validFrom?: string | null
   validUntil?: string | null
+  cashbackCreditTrigger?: PaymentOfferCreditTrigger
+  usageLimitPerUser?: number | null
 }
 
 function toNumber(value: number | string | null | undefined) {

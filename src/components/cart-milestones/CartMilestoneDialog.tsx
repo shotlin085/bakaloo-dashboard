@@ -69,6 +69,7 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
   stackableWithCoupon: true,
   priority: 0,
   cashbackCreditTrigger: "ORDER_DELIVERED",
+  usageLimitPerUser: undefined,
   isActive: true,
 }
 
@@ -97,6 +98,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         stackableWithCoupon: milestone.stackableWithCoupon,
         priority: milestone.priority,
         cashbackCreditTrigger: milestone.cashbackCreditTrigger,
+        usageLimitPerUser: milestone.usageLimitPerUser ?? undefined,
         isActive: milestone.isActive,
       })
     } else {
@@ -321,6 +323,26 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
               value={form.priority ?? 0}
               onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cm-usage-limit">Per-User Redemption Limit</Label>
+            <Input
+              id="cm-usage-limit"
+              type="number"
+              min={1}
+              placeholder="Unlimited"
+              value={form.usageLimitPerUser ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  usageLimitPerUser: e.target.value ? parseInt(e.target.value) : undefined,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              How many times the same customer can earn this milestone&apos;s reward. Leave blank for unlimited (every qualifying order).
+            </p>
           </div>
 
           <div className="flex items-center gap-3">

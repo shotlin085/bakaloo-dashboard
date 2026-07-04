@@ -34,6 +34,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import {
   Table,
@@ -48,8 +55,15 @@ import { cn, formatINR } from "@/lib/utils"
 import {
   paymentOffersService,
   type PaymentOfferAdmin,
+  type PaymentOfferCreditTrigger,
   type PaymentOfferPayload,
 } from "@/services/payment-offers.service"
+
+const CREDIT_TRIGGER_LABELS: Record<PaymentOfferCreditTrigger, string> = {
+  PAYMENT_SUCCESS: "After payment success",
+  ORDER_CONFIRMED: "After order confirmed",
+  ORDER_DELIVERED: "After order delivered (safest)",
+}
 
 type OfferForm = {
   provider: string
@@ -63,6 +77,8 @@ type OfferForm = {
   lockThreshold: string
   isActive: boolean
   validUntil: Date | null
+  cashbackCreditTrigger: PaymentOfferCreditTrigger
+  usageLimitPerUser: string
 }
 
 function getErrorMessage(error: unknown) {
@@ -113,6 +129,11 @@ function createInitialForm(offer?: PaymentOfferAdmin | null): OfferForm {
         : String(offer.lock_threshold),
     isActive: offer?.is_active ?? true,
     validUntil: offer?.valid_until ? new Date(offer.valid_until) : null,
+    cashbackCreditTrigger: offer?.cashback_credit_trigger ?? "ORDER_DELIVERED",
+    usageLimitPerUser:
+      offer?.usage_limit_per_user === null || offer?.usage_limit_per_user === undefined
+        ? ""
+        : String(offer.usage_limit_per_user),
   }
 }
 
@@ -225,6 +246,8 @@ export default function PaymentOffersPage() {
       lockThreshold: parseOptionalNumber(form.lockThreshold),
       isActive: form.isActive,
       validUntil: form.validUntil ? form.validUntil.toISOString() : null,
+      cashbackCreditTrigger: form.cashbackCreditTrigger,
+      usageLimitPerUser: parseOptionalNumber(form.usageLimitPerUser),
     }
   }
 
@@ -534,6 +557,50 @@ export default function PaymentOffersPage() {
                   }))
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="offer-usage-limit">Per-User Redemption Limit</Label>
+              <Input
+                id="offer-usage-limit"
+                type="number"
+                min={1}
+                placeholder="Unlimited"
+                value={form.usageLimitPerUser}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    usageLimitPerUser: event.target.value,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                How many times the same customer can redeem this offer. Leave blank for unlimited.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cashback Credit Timing</Label>
+              <Select
+                value={form.cashbackCreditTrigger}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    cashbackCreditTrigger: value as PaymentOfferCreditTrigger,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CREDIT_TRIGGER_LABELS) as PaymentOfferCreditTrigger[]).map((trigger) => (
+                    <SelectItem key={trigger} value={trigger}>
+                      {CREDIT_TRIGGER_LABELS[trigger]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
