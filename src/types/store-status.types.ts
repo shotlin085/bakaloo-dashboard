@@ -26,6 +26,8 @@ export interface StoreStatus {
 /** Full admin detail — status plus the configured weekly schedule. */
 export interface StoreStatusDetail extends StoreStatus {
   weeklyHours: WeeklyHours
+  /** Admin-uploaded "we are closed" banner shown at the top of the mobile home screen while closed. */
+  closedBannerImageUrl: string | null
 }
 
 export interface SetOverridePayload {

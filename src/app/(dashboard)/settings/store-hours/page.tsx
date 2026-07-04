@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
-import { CircleDot, Clock, Save } from "lucide-react"
+import { CircleDot, Clock, ImageIcon, Save } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { ImageUpload } from "@/components/products/ImageUpload"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -35,6 +36,7 @@ import { usePermissions } from "@/hooks/usePermissions"
 import {
   useSetStoreOverride,
   useStoreStatus,
+  useUpdateClosedBannerImage,
   useUpdateWeeklyHours,
 } from "@/hooks/useStoreStatus"
 import type { Weekday } from "@/types/common.types"
@@ -79,10 +81,12 @@ export default function StoreHoursPage() {
   const { data: status, isLoading } = useStoreStatus()
   const setOverride = useSetStoreOverride()
   const updateWeeklyHours = useUpdateWeeklyHours()
+  const updateClosedBannerImage = useUpdateClosedBannerImage()
 
   const [overrideChoice, setOverrideChoice] = useState<OverrideChoice>("AUTO")
   const [overrideNote, setOverrideNote] = useState("")
   const [weeklyHours, setWeeklyHours] = useState<Record<Weekday, WeekdayHours> | null>(null)
+  const [closedBannerImage, setClosedBannerImage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!status) return
@@ -91,6 +95,7 @@ export default function StoreHoursPage() {
     )
     setOverrideNote(status.reason ?? "")
     setWeeklyHours(fillDefaults(status.weeklyHours))
+    setClosedBannerImage(status.closedBannerImageUrl)
   }, [status])
 
   const overrideDirty =
@@ -118,6 +123,12 @@ export default function StoreHoursPage() {
   function handleSaveWeeklyHours() {
     if (!weeklyHours) return
     updateWeeklyHours.mutate(weeklyHours)
+  }
+
+  const closedBannerDirty = status !== undefined && status !== null && closedBannerImage !== status.closedBannerImageUrl
+
+  function handleSaveClosedBanner() {
+    updateClosedBannerImage.mutate(closedBannerImage)
   }
 
   const statusBadge = useMemo(() => {
@@ -334,6 +345,48 @@ export default function StoreHoursPage() {
               )
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle className="text-lg">&ldquo;We Are Closed&rdquo; Banner</CardTitle>
+                <CardDescription>
+                  Shown automatically at the top of the mobile home screen whenever the store
+                  is closed (weekly schedule or the override above) — no app release needed to
+                  change the image.
+                </CardDescription>
+              </div>
+            </div>
+            {canManage && (
+              <Button
+                size="sm"
+                onClick={handleSaveClosedBanner}
+                disabled={updateClosedBannerImage.isPending || !closedBannerDirty}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Save banner
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ImageUpload
+            value={closedBannerImage}
+            onChange={canManage ? setClosedBannerImage : () => {}}
+            label="Upload Closed Banner"
+            helperText={
+              <div className="flex flex-col gap-0.5">
+                <span>• <strong>Size:</strong> Max 5MB</span>
+                <span>• <strong>Format:</strong> JPG, PNG, WEBP</span>
+                <span>• <strong>Recommended:</strong> Wide banner image, same shape as the promo banners on the home screen</span>
+              </div>
+            }
+          />
         </CardContent>
       </Card>
     </div>

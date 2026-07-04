@@ -34,4 +34,13 @@ export const storeStatusService = {
     )
     return data.data
   },
+
+  /** Set (imageUrl) or clear (null) the "we are closed" banner image. */
+  async updateClosedBannerImage(imageUrl: string | null): Promise<StoreStatusDetail> {
+    const { data } = await api.put<ApiResponse<StoreStatusDetail>>(
+      "/admin/store-status/closed-banner",
+      { imageUrl },
+    )
+    return data.data
+  },
 }

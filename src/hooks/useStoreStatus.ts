@@ -59,3 +59,15 @@ export function useUpdateWeeklyHours() {
     onError: (error) => toast.error(getErrorMessage(error)),
   })
 }
+
+export function useUpdateClosedBannerImage() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (imageUrl: string | null) => storeStatusService.updateClosedBannerImage(imageUrl),
+    onSuccess: () => {
+      toast.success("Closed banner saved")
+      queryClient.invalidateQueries({ queryKey: STORE_STATUS_QUERY_KEY })
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  })
+}
