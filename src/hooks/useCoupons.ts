@@ -37,6 +37,20 @@ import type { CouponFilters, CreateCouponPayload, UpdateCouponPayload } from "@/
 /** Sentinel used while the Shop_Context_Store is hydrating. */
 const NONE_SHOP_KEY = "NONE"
 
+function getErrorMessage(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as { response?: unknown }).response === "object"
+  ) {
+    const resp = (error as { response?: { data?: { message?: string } } }).response
+    if (resp?.data?.message) return resp.data.message
+  }
+  if (error instanceof Error) return error.message
+  return "Something went wrong"
+}
+
 export function useCoupons(filters: CouponFilters = {}) {
   const { mode, activeShopId } = useShopContext()
   const shopKey =
@@ -63,8 +77,8 @@ export function useCreateCoupon() {
       // scopes.
       qc.invalidateQueries({ queryKey: ["coupons"] })
     },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to create coupon")
+    onError: (err) => {
+      toast.error(getErrorMessage(err))
     },
   })
 }
@@ -78,8 +92,8 @@ export function useUpdateCoupon() {
       toast.success("Coupon updated successfully")
       qc.invalidateQueries({ queryKey: ["coupons"] })
     },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to update coupon")
+    onError: (err) => {
+      toast.error(getErrorMessage(err))
     },
   })
 }
@@ -92,8 +106,8 @@ export function useDeleteCoupon() {
       toast.success("Coupon deleted")
       qc.invalidateQueries({ queryKey: ["coupons"] })
     },
-    onError: (err: Error) => {
-      toast.error(err.message || "Failed to delete coupon")
+    onError: (err) => {
+      toast.error(getErrorMessage(err))
     },
   })
 }
