@@ -66,6 +66,7 @@ export default function DeliveryTimerPage() {
   const [surchargeEnabled, setSurchargeEnabled] = useState(false)
   const [surchargeAmount, setSurchargeAmount] = useState<number>(0)
   const [surchargeLabel, setSurchargeLabel] = useState("Quick delivery fee")
+  const [quickEtaMinutes, setQuickEtaMinutes] = useState<number>(15)
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["admin", "fee-settings"],
@@ -79,6 +80,7 @@ export default function DeliveryTimerPage() {
     setSurchargeEnabled(config.quick_delivery_surcharge_enabled)
     setSurchargeAmount(config.quick_delivery_surcharge_amount)
     setSurchargeLabel(config.quick_delivery_surcharge_label)
+    setQuickEtaMinutes(config.quick_delivery_eta_minutes)
   }, [config])
 
   const updateMutation = useMutation({
@@ -87,6 +89,7 @@ export default function DeliveryTimerPage() {
       quick_delivery_surcharge_enabled: boolean
       quick_delivery_surcharge_amount: number
       quick_delivery_surcharge_label: string
+      quick_delivery_eta_minutes: number
     }) => feeSettingsService.update(payload),
     onSuccess: () => {
       toast.success("Delivery settings saved")
@@ -106,8 +109,11 @@ export default function DeliveryTimerPage() {
     if (surchargeEnabled && surchargeLabel.trim().length === 0) {
       return "Quick delivery surcharge label cannot be empty"
     }
+    if (surchargeEnabled && (quickEtaMinutes < 1 || quickEtaMinutes > MAX_MINUTES)) {
+      return `Quick delivery time must be between 1 and ${MAX_MINUTES} minutes`
+    }
     return null
-  }, [minutes, surchargeAmount, surchargeEnabled, surchargeLabel])
+  }, [minutes, surchargeAmount, surchargeEnabled, surchargeLabel, quickEtaMinutes])
 
   function handleSave() {
     if (minutes === null) return
@@ -120,6 +126,7 @@ export default function DeliveryTimerPage() {
       quick_delivery_surcharge_enabled: surchargeEnabled,
       quick_delivery_surcharge_amount: surchargeAmount,
       quick_delivery_surcharge_label: surchargeLabel.trim(),
+      quick_delivery_eta_minutes: quickEtaMinutes,
     })
   }
 
@@ -235,26 +242,52 @@ export default function DeliveryTimerPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="quick-delivery-amount">Surcharge amount</Label>
-            <div className="relative max-w-[200px]">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                ₹
-              </span>
-              <Input
-                id="quick-delivery-amount"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={MAX_SURCHARGE}
-                step={1}
-                disabled={!canManage || !surchargeEnabled}
-                value={String(surchargeAmount)}
-                onChange={(e) => setSurchargeAmount(numOrZero(e.target.value))}
-                className="pl-7"
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-delivery-amount">Surcharge amount</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  ₹
+                </span>
+                <Input
+                  id="quick-delivery-amount"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_SURCHARGE}
+                  step={1}
+                  disabled={!canManage || !surchargeEnabled}
+                  value={String(surchargeAmount)}
+                  onChange={(e) => setSurchargeAmount(numOrZero(e.target.value))}
+                  className="pl-7"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="quick-delivery-eta">Delivery time when chosen</Label>
+              <div className="relative">
+                <Input
+                  id="quick-delivery-eta"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAX_MINUTES}
+                  step={1}
+                  disabled={!canManage || !surchargeEnabled}
+                  value={String(quickEtaMinutes)}
+                  onChange={(e) => setQuickEtaMinutes(numOrZero(e.target.value))}
+                  className="pr-14"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  mins
+                </span>
+              </div>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Shown to the customer as the promised delivery time once they pay for Quick Delivery — should be faster than the {minutes}-min normal estimate above.
+          </p>
 
           <div className="space-y-1.5">
             <Label htmlFor="quick-delivery-label">Fee label shown on the bill</Label>

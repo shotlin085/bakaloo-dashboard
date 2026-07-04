@@ -62,6 +62,8 @@ export interface FeeSettings {
   quick_delivery_surcharge_enabled: boolean
   quick_delivery_surcharge_amount: number
   quick_delivery_surcharge_label: string
+  /** How fast delivery is promised once the customer opts in — distinct from delivery_eta_minutes. */
+  quick_delivery_eta_minutes: number
 }
 
 /** Partial update payload (every field optional). */
