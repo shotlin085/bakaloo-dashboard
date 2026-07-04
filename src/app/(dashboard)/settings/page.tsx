@@ -75,6 +75,7 @@ const GROUPS: SettingsGroup[] = [
     keys: [
       { key: "store_name", label: "Store Name", type: "text" },
       { key: "store_gstin", label: "GSTIN", type: "text" },
+      { key: "gst_rate", label: "GST Rate (Analytics report)", type: "number", suffix: "%" },
       { key: "support_phone", label: "Support Phone", type: "text" },
       { key: "support_email", label: "Support Email", type: "text" },
     ],

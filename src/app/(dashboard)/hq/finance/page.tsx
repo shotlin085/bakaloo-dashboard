@@ -12,6 +12,7 @@ import {
   Download,
   CheckCircle,
   Loader2,
+  PlayCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -33,7 +34,12 @@ import { ErrorBlock } from "@/components/shared/error-block"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { PermissionGate } from "@/components/shared/PermissionGate"
 
-import { useHQTransactions, useHQFinancials, useMarkPaid } from "@/hooks/useHQ"
+import {
+  useHQTransactions,
+  useHQFinancials,
+  useMarkPaid,
+  useRunSettlementNow,
+} from "@/hooks/useHQ"
 import { useActiveShopsForSwitcher } from "@/hooks/useShops"
 import { hqService } from "@/services/hq.service"
 import type { HQTransaction, HQFinancial, HQFinanceFilters } from "@/services/hq.service"
@@ -177,7 +183,7 @@ function TransactionsTab() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            emptyMessage="No transactions found"
+            emptyMessage="No transactions yet — entries post once an order is delivered and settlement runs (nightly, or via 'Run Settlement Now' on the Financials tab)"
           />
           {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between border-t px-4 py-3">
@@ -209,6 +215,7 @@ function FinancialsTab() {
   const { data: shopsData } = useActiveShopsForSwitcher()
   const shops = shopsData?.items ?? []
   const markPaid = useMarkPaid()
+  const runSettlement = useRunSettlementNow()
 
   const filters: HQFinanceFilters = useMemo(
     () => ({
@@ -223,6 +230,10 @@ function FinancialsTab() {
   const { data, isLoading, isError, error, refetch } = useHQFinancials(filters)
   const rows = data?.items ?? []
   const pagination = data?.pagination
+
+  function handleRunSettlement() {
+    runSettlement.mutate({ shopId: shopId || undefined })
+  }
 
   async function handleExportCSV() {
     setExporting(true)
@@ -330,10 +341,22 @@ function FinancialsTab() {
             <SelectItem value="OVERDUE">Overdue</SelectItem>
           </SelectContent>
         </Select>
+        <PermissionGate require="finance.manage">
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={handleRunSettlement}
+            disabled={runSettlement.isPending}
+            title={shopId ? "Settle today for the selected shop" : "Settle today for every active shop"}
+          >
+            {runSettlement.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <PlayCircle className="h-4 w-4 mr-1" />}
+            Run Settlement Now
+          </Button>
+        </PermissionGate>
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto"
           onClick={handleExportCSV}
           disabled={exporting}
         >
@@ -354,7 +377,7 @@ function FinancialsTab() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            emptyMessage="No financial records found"
+            emptyMessage="No financial records yet — a shop's first row appears the day after its first delivered order settles (nightly, or run it now above)"
           />
           {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between border-t px-4 py-3">

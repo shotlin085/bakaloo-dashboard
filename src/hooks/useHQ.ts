@@ -19,6 +19,7 @@ import {
   type HQAuditLogFilters,
   type HQRiderFilters,
   type HQReportFilters,
+  type RunSettlementPayload,
 } from "@/services/hq.service"
 
 const STALE_TIME = 60_000
@@ -90,6 +91,29 @@ export function useMarkPaid() {
     },
     onError: () => {
       toast.error("Failed to mark as paid")
+    },
+  })
+}
+
+export function useRunSettlementNow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: RunSettlementPayload = {}) =>
+      hqService.runSettlementNow(payload),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["hq", "financials"] })
+      queryClient.invalidateQueries({ queryKey: ["hq", "transactions"] })
+      if (result.mode === "ALL_SHOPS" && result.summary) {
+        const { settled, skipped, failed } = result.summary
+        toast.success(
+          `Settlement run complete — ${settled} settled${skipped ? `, ${skipped} skipped` : ""}${failed ? `, ${failed} failed` : ""}`,
+        )
+      } else {
+        toast.success("Settlement run complete for the selected shop")
+      }
+    },
+    onError: () => {
+      toast.error("Failed to run settlement")
     },
   })
 }

@@ -91,6 +91,20 @@ export interface HQFinanceFilters {
   payout_status?: string
 }
 
+export interface RunSettlementPayload {
+  /** Settle only this shop; omit to settle every active shop. */
+  shopId?: string
+  /** UTC day to settle, 'YYYY-MM-DD'; defaults to today server-side. */
+  periodDate?: string
+}
+
+export interface RunSettlementResult {
+  mode: "SINGLE_SHOP" | "ALL_SHOPS"
+  periodStart: string
+  shopId?: string
+  summary?: { settled: number; skipped: number; failed: number; periodStart: string }
+}
+
 export interface HQReportType {
   id: string
   name: string
@@ -280,6 +294,16 @@ export const hqService = {
 
   async markPaid(financialId: string): Promise<void> {
     await api.post(`/admin/finance/financials/${financialId}/mark-paid`)
+  },
+
+  async runSettlementNow(
+    payload: RunSettlementPayload = {},
+  ): Promise<RunSettlementResult> {
+    const { data } = await api.post<ApiResponse<RunSettlementResult>>(
+      "/admin/finance/settlement/run",
+      payload,
+    )
+    return data.data
   },
 
   async exportPayoutReport(filters: HQFinanceFilters = {}): Promise<Blob> {
