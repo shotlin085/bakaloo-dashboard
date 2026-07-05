@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { walletSettingsService } from "@/services/wallet-settings.service"
 import type { WalletSettings } from "@/types/wallet-settings.types"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -186,6 +187,42 @@ export default function WalletSettingsPage() {
           {validationError}
         </div>
       ) : null}
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Wallet-to-Wallet Transfers</CardTitle>
+              <CardDescription>
+                Lets a customer send wallet balance to another customer by phone
+                number. Keep this off unless send-to-another-user has been
+                cleared with a payments/regulatory advisor — it&apos;s a
+                different obligation than wallet top-up and spend, which are
+                unaffected by this switch.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Transfers enabled</p>
+              <p className="text-xs text-muted-foreground">
+                When off, sending money to another customer is blocked
+                everywhere (app and API) — top-up and paying for orders from
+                the wallet still work normally.
+              </p>
+            </div>
+            <Switch
+              id="transfersEnabled"
+              checked={draft.transfersEnabled}
+              disabled={!canManage}
+              onCheckedChange={(v) => set("transfersEnabled", v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="max-w-2xl">
         <CardHeader>
