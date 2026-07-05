@@ -64,6 +64,12 @@ export interface FeeSettings {
   quick_delivery_surcharge_label: string
   /** How fast delivery is promised once the customer opts in — distinct from delivery_eta_minutes. */
   quick_delivery_eta_minutes: number
+
+  // GST — exclusive, charged on top of (subtotal - coupon + other fees).
+  // Off by default; enabling it is an explicit admin action.
+  gst_enabled: boolean
+  gst_rate: number
+  gst_label: string
 }
 
 /** Partial update payload (every field optional). */

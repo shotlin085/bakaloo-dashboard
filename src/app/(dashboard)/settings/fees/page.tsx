@@ -131,6 +131,9 @@ export default function FeesAndDeliveryPage() {
     if (draft.platform_fee_type === "PERCENT" && draft.platform_fee_value > 100) {
       return "Platform fee percentage cannot exceed 100"
     }
+    if (draft.gst_rate < 0 || draft.gst_rate > 100) {
+      return "GST rate must be between 0 and 100"
+    }
     return null
   }, [draft])
 
@@ -251,6 +254,14 @@ export default function FeesAndDeliveryPage() {
           onLabelChange={(v) => set("packaging_fee_label", v)}
           descriptionText={draft.packaging_fee_description ?? ""}
           onDescriptionChange={(v) => set("packaging_fee_description", v)}
+        />
+        <GstFeeSection
+          enabled={draft.gst_enabled}
+          onEnabledChange={(v) => set("gst_enabled", v)}
+          rate={draft.gst_rate}
+          onRateChange={(v) => set("gst_rate", v ?? 0)}
+          label={draft.gst_label}
+          onLabelChange={(v) => set("gst_label", v)}
         />
       </div>
     </div>
@@ -612,6 +623,53 @@ function SimpleFeeSection({
             value={descriptionText}
             onChange={(e) => onDescriptionChange(e.target.value)}
           />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function GstFeeSection({
+  enabled,
+  onEnabledChange,
+  rate,
+  onRateChange,
+  label,
+  onLabelChange,
+}: {
+  enabled: boolean
+  onEnabledChange: (v: boolean) => void
+  rate: number
+  onRateChange: (v: number | null) => void
+  label: string
+  onLabelChange: (v: string) => void
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">GST / Tax</CardTitle>
+            <CardDescription>
+              Charged on top of the subtotal, delivery, and every other fee — off
+              by default. New orders only; past orders are unaffected.
+            </CardDescription>
+          </div>
+          <Switch checked={enabled} onCheckedChange={onEnabledChange} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <NumberField
+          id="gst-rate"
+          label="Tax rate"
+          suffix="%"
+          value={rate}
+          onChange={onRateChange}
+          step="0.01"
+        />
+        <div className="space-y-1.5">
+          <Label>Customer-facing label</Label>
+          <Input value={label} maxLength={60} onChange={(e) => onLabelChange(e.target.value)} />
         </div>
       </CardContent>
     </Card>
