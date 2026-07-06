@@ -528,10 +528,10 @@ function AnalyticsContent() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                              {r.name.charAt(0)}
+                              {r.name ? r.name.charAt(0) : "?"}
                             </div>
                             <div>
-                              <p className="font-medium text-sm">{r.name}</p>
+                              <p className="font-medium text-sm">{r.name || "Unnamed rider"}</p>
                               <p className="text-xs text-muted-foreground">{r.vehicle_type}</p>
                             </div>
                           </div>
