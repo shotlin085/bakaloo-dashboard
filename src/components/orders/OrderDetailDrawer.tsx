@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
   Sheet,
@@ -67,7 +68,6 @@ import {
   useDownloadPackingSlip,
 } from "@/hooks/useOrders"
 import { useCustomerDetail } from "@/hooks/useCustomers"
-import { CustomerProfileDrawer } from "@/components/customers/CustomerProfileDrawer"
 import { useShopContextStore } from "@/store/shop-context.store"
 import {
   STATUS_CONFIG,
@@ -95,9 +95,9 @@ const TIMELINE_ICONS: Record<string, React.ReactNode> = {
 }
 
 export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerProps) {
+  const router = useRouter()
   const { data: order, isLoading } = useOrderDetail(orderId)
   const { data: customer } = useCustomerDetail(order?.user_id ?? null)
-  const [customerProfileOpen, setCustomerProfileOpen] = useState(false)
   const updateStatus = useUpdateOrderStatus()
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
@@ -367,7 +367,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                   <div className="text-sm">
                     <button
                       type="button"
-                      onClick={() => setCustomerProfileOpen(true)}
+                      onClick={() => router.push(`/customers?customer=${order.user_id}`)}
                       className="font-medium text-brand-600 hover:underline text-left"
                     >
                       {order.customer_name}
@@ -668,12 +668,6 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
         </ScrollArea>
       </SheetContent>
     </Sheet>
-
-    <CustomerProfileDrawer
-      customerId={order?.user_id ?? null}
-      open={customerProfileOpen}
-      onClose={() => setCustomerProfileOpen(false)}
-    />
 
     {/* Refund Dialog */}
     <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
