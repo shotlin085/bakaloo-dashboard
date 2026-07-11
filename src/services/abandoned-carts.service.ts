@@ -21,14 +21,15 @@ export async function getAbandonedCarts(filters: AbandonedCartFilters = {}) {
   if (filters.sortOrder) params.sortOrder = filters.sortOrder
 
   const { data } = await api.get<
-    ApiResponse<AbandonedCart[]> & {
-      pagination?: { page: number; limit: number; total: number; totalPages: number }
-    }
+    ApiResponse<{
+      carts: AbandonedCart[]
+      pagination: { page: number; limit: number; total: number; totalPages: number }
+    }>
   >("/admin/abandoned-carts", { params })
 
   return {
-    carts: Array.isArray(data.data) ? data.data : [],
-    pagination: data.pagination ?? {
+    carts: Array.isArray(data.data?.carts) ? data.data.carts : [],
+    pagination: data.data?.pagination ?? {
       page: filters.page ?? 1,
       limit: filters.limit ?? 20,
       total: 0,

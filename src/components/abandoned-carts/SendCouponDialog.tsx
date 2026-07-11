@@ -63,7 +63,7 @@ export function SendCouponDialog({ open, onOpenChange, cartIds }: SendCouponDial
   const [form, setForm] = useState(CREATE_INITIAL)
   const [couponId, setCouponId] = useState("")
   const [sending, setSending] = useState(false)
-  const { data: couponsData } = useCoupons({ limit: 200 })
+  const { data: couponsData } = useCoupons({ limit: 50 })
   const qc = useQueryClient()
 
   const activeCoupons = (couponsData?.data ?? []).filter((c) => c.isActive)
