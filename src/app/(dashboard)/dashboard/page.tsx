@@ -165,7 +165,7 @@ export default function DashboardPage() {
 
       {/* Abandoned Carts summary widget */}
       {abandonedSummary && (
-        <Link href="/products/abandoned-carts" className="block">
+        <Link href="/abandoned-carts" className="block">
           <div className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md hover:border-brand-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">

@@ -141,7 +141,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         icon: "Package",
         badgeKey: "lowStockProducts",
       },
-      { label: "Abandoned Carts", href: "/products/abandoned-carts", icon: "Clock" },
+      { label: "Abandoned Carts", href: "/abandoned-carts", icon: "Clock" },
       { label: "Categories", href: "/categories", icon: "Tags" },
       { label: "Customers", href: "/customers", icon: "Users" },
       {
