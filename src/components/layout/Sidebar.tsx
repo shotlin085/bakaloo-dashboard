@@ -136,16 +136,12 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         ],
       },
       {
-        id: "products",
         label: "Products",
         href: "/products",
         icon: "Package",
         badgeKey: "lowStockProducts",
-        children: [
-          { label: "Master Catalog", href: "/products", icon: "Package" },
-          { label: "Abandoned Carts", href: "/products/abandoned-carts", icon: "Clock" },
-        ],
       },
+      { label: "Abandoned Carts", href: "/products/abandoned-carts", icon: "Clock" },
       { label: "Categories", href: "/categories", icon: "Tags" },
       { label: "Customers", href: "/customers", icon: "Users" },
       {
