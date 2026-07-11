@@ -32,6 +32,11 @@ export interface CustomerDetail extends Customer {
   app_version: string | null
   platform: string | null
   membership_tier: string | null
+  /** Reliability signal — how many of this customer's orders actually
+   * completed vs. were cancelled or refunded ("returned"). */
+  completed_orders: number
+  cancelled_orders: number
+  returned_orders: number
 }
 
 /**

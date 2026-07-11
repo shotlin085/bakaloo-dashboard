@@ -66,6 +66,8 @@ import {
   useRescheduleOrder,
   useDownloadPackingSlip,
 } from "@/hooks/useOrders"
+import { useCustomerDetail } from "@/hooks/useCustomers"
+import { CustomerProfileDrawer } from "@/components/customers/CustomerProfileDrawer"
 import { useShopContextStore } from "@/store/shop-context.store"
 import {
   STATUS_CONFIG,
@@ -94,6 +96,8 @@ const TIMELINE_ICONS: Record<string, React.ReactNode> = {
 
 export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerProps) {
   const { data: order, isLoading } = useOrderDetail(orderId)
+  const { data: customer } = useCustomerDetail(order?.user_id ?? null)
+  const [customerProfileOpen, setCustomerProfileOpen] = useState(false)
   const updateStatus = useUpdateOrderStatus()
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
@@ -152,13 +156,6 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const paidAmount = order?.payment?.amount ?? order?.total_amount ?? 0
   const hasGatewayPayment = !!(
     order?.payment?.status === "PAID" && order?.payment?.razorpay_payment_id
-  )
-  const hasCartEnhancementDetails = !!order && (
-    Number(order.handling_fee || 0) > 0 ||
-    Number(order.late_night_fee || 0) > 0 ||
-    Number(order.tip_amount || 0) > 0 ||
-    Number(order.savings_total || 0) > 0 ||
-    Boolean(order.delivery_instructions?.trim())
   )
 
   // Checkout stores the address snapshot with camelCase keys
@@ -368,11 +365,46 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     Customer
                   </h4>
                   <div className="text-sm">
-                    <p className="font-medium">{order.customer_name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerProfileOpen(true)}
+                      className="font-medium text-brand-600 hover:underline text-left"
+                    >
+                      {order.customer_name}
+                    </button>
                     <p className="text-muted-foreground text-xs mt-0.5">
                       {order.customer_phone}
                       {order.customer_email && ` · ${order.customer_email}`}
                     </p>
+                    {/* Reliability signal — how many of this customer's past
+                        orders actually completed vs. were cancelled/returned,
+                        so an admin can gauge trustworthiness without leaving
+                        this drawer. */}
+                    {customer && (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
+                          style={{ backgroundColor: "#ECFDF5", color: "#10B981" }}
+                        >
+                          {customer.completed_orders} Completed
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
+                          style={{ backgroundColor: "#F5F3FF", color: "#8B5CF6" }}
+                        >
+                          {customer.returned_orders} Returned
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
+                          style={{ backgroundColor: "#FEF2F2", color: "#EF4444" }}
+                        >
+                          {customer.cancelled_orders} Cancelled
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -416,7 +448,15 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
                 <Separator />
 
-                {/* Price Breakdown */}
+                {/* Payment — every line item that actually adds up to Total
+                    lives in one place now. Previously "Cart Enhancement
+                    Details" (Handling Fee, Late Night Fee, Tip) was a
+                    separate section below this one, so Subtotal + Delivery
+                    Fee visibly didn't reach Total and looked like a
+                    calculation error. Savings Total is informational only
+                    (it doesn't subtract again from Total — the coupon
+                    portion is already reflected in Discount), so it's shown
+                    as a callout rather than a line in the running sum. */}
                 <div>
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -428,6 +468,15 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     {order.platform_fee > 0 && (
                       <Row label="Platform Fee" value={formatINR(order.platform_fee)} />
                     )}
+                    {order.handling_fee > 0 && (
+                      <Row label="Handling Fee" value={formatINR(order.handling_fee)} />
+                    )}
+                    {order.late_night_fee > 0 && (
+                      <Row label="Late Night Fee" value={formatINR(order.late_night_fee)} />
+                    )}
+                    {order.tip_amount > 0 && (
+                      <Row label="Tip Amount" value={formatINR(order.tip_amount)} />
+                    )}
                     {order.tax_amount > 0 && (
                       <Row label="Tax" value={formatINR(order.tax_amount)} />
                     )}
@@ -435,72 +484,42 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       <Row
                         label={`Discount${order.coupon_code ? ` (${order.coupon_code})` : ""}`}
                         value={`-${formatINR(order.discount_amount)}`}
-                        className="text-success"
+                        className="text-success font-semibold"
                       />
                     )}
                     <Separator />
                     <Row
                       label="Total"
                       value={formatINR(order.total_amount)}
-                      className="font-bold"
+                      className="font-bold text-base text-foreground"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method}
+                      <span className="font-medium text-foreground">
+                        {PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method}
+                      </span>
                       {order.payment?.status && ` · ${order.payment.status}`}
                       {order.payment?.razorpay_payment_id &&
                         ` · ${order.payment.razorpay_payment_id}`}
                     </p>
+                    {order.savings_total > 0 && (
+                      <p className="text-xs text-success font-semibold mt-1">
+                        Customer saved {formatINR(order.savings_total)} on this order
+                      </p>
+                    )}
+                    {order.delivery_instructions?.trim() && (
+                      <div className="flex flex-col gap-1 rounded-lg bg-muted/40 p-3 mt-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Delivery Instructions
+                        </span>
+                        <p className="text-sm leading-5 text-foreground">
+                          {order.delivery_instructions}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <Separator />
-
-                {hasCartEnhancementDetails && (
-                  <>
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        Cart Enhancement Details
-                      </h4>
-                      <div className="space-y-1.5 text-sm">
-                        {order.handling_fee > 0 && (
-                          <Row
-                            label="Handling Fee"
-                            value={formatINR(order.handling_fee)}
-                          />
-                        )}
-                        {order.late_night_fee > 0 && (
-                          <Row
-                            label="Late Night Fee"
-                            value={formatINR(order.late_night_fee)}
-                          />
-                        )}
-                        {order.tip_amount > 0 && (
-                          <Row label="Tip Amount" value={formatINR(order.tip_amount)} />
-                        )}
-                        {order.savings_total > 0 && (
-                          <Row
-                            label="Savings Total"
-                            value={formatINR(order.savings_total)}
-                            className="text-success"
-                          />
-                        )}
-                        {order.delivery_instructions?.trim() && (
-                          <div className="flex flex-col gap-1 rounded-lg bg-muted/40 p-3">
-                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Delivery Instructions
-                            </span>
-                            <p className="text-sm leading-5 text-foreground">
-                              {order.delivery_instructions}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <Separator />
-                  </>
-                )}
 
                 {/* Delivery */}
                 <div>
@@ -649,6 +668,12 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    <CustomerProfileDrawer
+      customerId={order?.user_id ?? null}
+      open={customerProfileOpen}
+      onClose={() => setCustomerProfileOpen(false)}
+    />
 
     {/* Refund Dialog */}
     <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
