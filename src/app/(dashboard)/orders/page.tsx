@@ -48,6 +48,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { useDebounce } from "@/hooks/useDebounce"
 import {
@@ -121,6 +131,7 @@ function OrdersContent() {
   const [deliveryType, setDeliveryType] = useState(() => searchParams.get("deliveryType") ?? "")
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
   const [bulkStatusValue, setBulkStatusValue] = useState<OrderStatus | "">("")
+  const [confirmBulkCancel, setConfirmBulkCancel] = useState(false)
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false)
   const [bulkRiderId, setBulkRiderId] = useState("")
   const [riderFilter, setRiderFilter] = useState(() => searchParams.get("rider") ?? "")
@@ -833,6 +844,10 @@ function OrdersContent() {
             <Button
               disabled={!bulkStatusValue || bulkUpdateStatus.isPending}
               onClick={() => {
+                if (bulkStatusValue === "CANCELLED") {
+                  setConfirmBulkCancel(true)
+                  return
+                }
                 bulkUpdateStatus.mutate({
                   orderIds: Array.from(selectedIds),
                   status: bulkStatusValue as OrderStatus,
@@ -850,6 +865,40 @@ function OrdersContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk cancel confirmation — a misclick here cancels many orders at once */}
+      <AlertDialog open={confirmBulkCancel} onOpenChange={setConfirmBulkCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel {selectedIds.size} orders?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This marks all {selectedIds.size} selected orders as cancelled with no refund and no
+              reason recorded. This cannot be undone from here.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, go back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                bulkUpdateStatus.mutate({
+                  orderIds: Array.from(selectedIds),
+                  status: "CANCELLED" as OrderStatus,
+                }, {
+                  onSuccess: () => {
+                    setBulkStatusOpen(false)
+                    setBulkStatusValue("")
+                    setSelectedIds(new Set())
+                  },
+                })
+                setConfirmBulkCancel(false)
+              }}
+            >
+              Yes, cancel {selectedIds.size} orders
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bulk Assign Rider Dialog */}
       <Dialog open={bulkAssignOpen} onOpenChange={setBulkAssignOpen}>

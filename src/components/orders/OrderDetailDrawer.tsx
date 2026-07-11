@@ -23,6 +23,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -115,6 +125,17 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const [refundForm, setRefundForm] = useState({ reason: "", refundTo: "wallet" })
   const [cancelForm, setCancelForm] = useState({ reason: "", refundTo: "wallet" })
   const [rescheduleForm, setRescheduleForm] = useState({ date: "", startTime: "", endTime: "", reason: "" })
+  // A wrong click on the "Update Status" dropdown or either destructive
+  // dialog's submit button used to fire the mutation immediately — one
+  // misclick silently cancelled/refunded a real order. Each of these gates
+  // a second, explicit "are you sure?" step in front of the actual mutation.
+  const [pendingStatusCancel, setPendingStatusCancel] = useState(false)
+  const [confirmCancelSubmit, setConfirmCancelSubmit] = useState(false)
+  const [confirmRefundSubmit, setConfirmRefundSubmit] = useState(false)
+  // The status Select is uncontrolled (no `value` prop) so it visually
+  // "sticks" on whatever was last picked — bumping this key remounts it
+  // back to the placeholder when a pending cancel is declined.
+  const [statusSelectResetKey, setStatusSelectResetKey] = useState(0)
 
   const allowedTransitions = order
     ? STATUS_TRANSITIONS[order.status] ?? []
@@ -160,6 +181,10 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
   const handleStatusChange = (newStatus: string) => {
     if (!order) return
+    if (newStatus === "CANCELLED") {
+      setPendingStatusCancel(true)
+      return
+    }
     updateStatus.mutate({
       orderId: order.id,
       payload: { status: newStatus as OrderStatus },
@@ -211,6 +236,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
                   {allowedTransitions.length > 0 && (
                     <Select
+                      key={statusSelectResetKey}
                       onValueChange={handleStatusChange}
                       disabled={updateStatus.isPending}
                     >
@@ -662,7 +688,6 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                   <SelectItem value="original">Original Payment Method</SelectItem>
                 )}
                 <SelectItem value="wallet">Wallet Balance</SelectItem>
-                <SelectItem value="none">No Refund</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -672,22 +697,44 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
           <Button
             variant="destructive"
             disabled={!refundForm.reason || refundOrder.isPending}
-            onClick={() => {
-              if (!order) return
-              refundOrder.mutate({
-                orderId: order.id,
-                payload: {
-                  reason: refundForm.reason,
-                  refundTo: refundForm.refundTo as "wallet" | "original" | "none",
-                },
-              }, { onSuccess: () => setRefundOpen(false) })
-            }}
+            onClick={() => setConfirmRefundSubmit(true)}
           >
             {refundOrder.isPending ? "Processing..." : "Process Refund"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Refund confirmation */}
+    <AlertDialog open={confirmRefundSubmit} onOpenChange={setConfirmRefundSubmit}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Refund {formatINR(paidAmount)} to the customer?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This immediately moves money to order #{order?.order_number}&apos;s customer via{" "}
+            {refundForm.refundTo === "original" ? "their original payment method" : "wallet credit"}. This cannot be undone from here.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>No, go back</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              if (!order) return
+              refundOrder.mutate({
+                orderId: order.id,
+                payload: {
+                  reason: refundForm.reason,
+                  refundTo: refundForm.refundTo as "wallet" | "original",
+                },
+              }, { onSuccess: () => { setRefundOpen(false); setConfirmRefundSubmit(false) } })
+            }}
+          >
+            Yes, process refund
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Cancel Dialog */}
     <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
@@ -748,6 +795,31 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
           <Button
             variant="destructive"
             disabled={!cancelForm.reason || cancelOrder.isPending}
+            onClick={() => setConfirmCancelSubmit(true)}
+          >
+            {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Cancel-order confirmation */}
+    <AlertDialog open={confirmCancelSubmit} onOpenChange={setConfirmCancelSubmit}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure you want to cancel this order?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Order #{order?.order_number} will be cancelled
+            {cancelForm.refundTo !== "none"
+              ? ` and ${formatINR(paidAmount)} will be refunded to the customer's ${cancelForm.refundTo === "original" ? "original payment method" : "wallet"}.`
+              : " with no refund."}{" "}
+            This cannot be undone from here.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>No, go back</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={() => {
               if (!order) return
               cancelOrder.mutate({
@@ -756,14 +828,51 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                   reason: cancelForm.reason,
                   refundTo: cancelForm.refundTo as "wallet" | "original" | "none",
                 },
-              }, { onSuccess: () => setCancelOpen(false) })
+              }, { onSuccess: () => { setCancelOpen(false); setConfirmCancelSubmit(false) } })
             }}
           >
-            {cancelOrder.isPending ? "Cancelling..." : "Cancel Order"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            Yes, cancel order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Cancel-via-status-dropdown confirmation */}
+    <AlertDialog
+      open={pendingStatusCancel}
+      onOpenChange={(v) => {
+        setPendingStatusCancel(v)
+        if (!v) setStatusSelectResetKey((k) => k + 1)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This marks order #{order?.order_number} as cancelled with no refund and no reason
+            recorded. To issue a refund or record a cancellation reason, use the dedicated
+            &quot;Cancel Order&quot; button instead.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>No, go back</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              if (!order) return
+              updateStatus.mutate({
+                orderId: order.id,
+                payload: { status: "CANCELLED" as OrderStatus },
+              })
+              setPendingStatusCancel(false)
+              setStatusSelectResetKey((k) => k + 1)
+            }}
+          >
+            Yes, cancel order
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Reschedule Delivery Dialog */}
     <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
