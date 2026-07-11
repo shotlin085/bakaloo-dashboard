@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useState } from "react"
+import Link from "next/link"
 import {
   IndianRupee,
   ShoppingCart,
@@ -13,6 +14,8 @@ import {
   Bike,
   TrendingUp,
   Banknote,
+  RotateCcw,
+  ArrowRight,
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -32,6 +35,7 @@ import {
   useRecentOrders,
   useCategoryRevenue,
 } from "@/hooks/useDashboard"
+import { useAbandonedCartsSummary } from "@/hooks/useAbandonedCarts"
 import { formatShort, formatNumberShort } from "@/lib/utils"
 
 // Dynamic import for map — heavy, no SSR
@@ -55,6 +59,7 @@ export default function DashboardPage() {
   const { data: liveStats } = useLiveStats()
   const { data: recentOrders, isLoading: ordersLoading } = useRecentOrders(10)
   const { data: categoryData, isLoading: categoryLoading } = useCategoryRevenue()
+  const { data: abandonedSummary } = useAbandonedCartsSummary()
 
   return (
     <div className="space-y-6">
@@ -157,6 +162,45 @@ export default function DashboardPage() {
           />
         </div>
       ) : null}
+
+      {/* Abandoned Carts summary widget */}
+      {abandonedSummary && (
+        <Link href="/products/abandoned-carts" className="block">
+          <div className="rounded-xl border bg-card shadow-sm p-4 transition-all hover:shadow-md hover:border-brand-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <ShoppingCart className="h-4 w-4 text-brand-500" />
+                Abandoned Carts
+              </h3>
+              <span className="inline-flex items-center h-7 text-xs font-medium text-brand-500">
+                View All <ArrowRight className="h-3 w-3 ml-1" />
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <StatCard
+                label="Open Carts"
+                value={formatNumberShort(abandonedSummary.openCount)}
+                icon={<ShoppingCart className="h-4 w-4 text-brand-500" />}
+              />
+              <StatCard
+                label="Value at Risk"
+                value={formatShort(abandonedSummary.openValue)}
+                icon={<IndianRupee className="h-4 w-4 text-amber-500" />}
+              />
+              <StatCard
+                label="Recovered Today"
+                value={formatNumberShort(abandonedSummary.recoveredToday)}
+                icon={<RotateCcw className="h-4 w-4 text-green-500" />}
+              />
+              <StatCard
+                label="7-Day Recovery Rate"
+                value={`${(abandonedSummary.recoveryRate7d * 100).toFixed(0)}%`}
+                icon={<TrendingUp className="h-4 w-4 text-purple-500" />}
+              />
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Charts Row: Revenue (60%) + Category Donut (40%) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

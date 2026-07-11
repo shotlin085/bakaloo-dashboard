@@ -115,6 +115,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         badgeKey: "pendingOrders",
       },
       {
+        id: "settings",
         label: "Settings",
         href: "/settings/fees",
         icon: "Settings",
@@ -135,10 +136,15 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         ],
       },
       {
+        id: "products",
         label: "Products",
         href: "/products",
         icon: "Package",
         badgeKey: "lowStockProducts",
+        children: [
+          { label: "Master Catalog", href: "/products", icon: "Package" },
+          { label: "Abandoned Carts", href: "/products/abandoned-carts", icon: "Clock" },
+        ],
       },
       { label: "Categories", href: "/categories", icon: "Tags" },
       { label: "Customers", href: "/customers", icon: "Users" },
@@ -214,8 +220,8 @@ interface NavItemProps {
   pathname: string
   isCollapsed: boolean
   badgeCount: number
-  settingsOpen: boolean
-  onToggleSettings: () => void
+  openGroups: Set<string>
+  onToggleGroup: (id: string) => void
 }
 
 /**
@@ -229,12 +235,14 @@ function NavSectionItem({
   pathname,
   isCollapsed,
   badgeCount,
-  settingsOpen,
-  onToggleSettings,
+  openGroups,
+  onToggleGroup,
 }: NavItemProps) {
   const Icon = ICON_MAP[item.icon]
 
   if (item.children && !isCollapsed) {
+    const groupId = item.id ?? item.href
+    const isOpen = openGroups.has(groupId)
     const isGroupActive = item.children.some((child) =>
       isPathActive(pathname, child.href),
     )
@@ -245,8 +253,8 @@ function NavSectionItem({
           type="button"
           role="menuitem"
           aria-haspopup="menu"
-          aria-expanded={settingsOpen}
-          onClick={onToggleSettings}
+          aria-expanded={isOpen}
+          onClick={() => onToggleGroup(groupId)}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg border-l-[3px] px-3 py-2.5 text-sm transition-all duration-150",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -262,15 +270,20 @@ function NavSectionItem({
             )}
           />
           <span className="flex-1 truncate text-left">{item.label}</span>
+          {badgeCount > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          )}
           <ChevronDown
             className={cn(
               "h-4 w-4 transition-transform",
-              settingsOpen && "rotate-180",
+              isOpen && "rotate-180",
             )}
           />
         </button>
 
-        {settingsOpen && (
+        {isOpen && (
           <div className="ml-6 space-y-1 border-l border-border/80 pl-3" role="menu">
             {item.children.map((child) => {
               const ChildIcon = ICON_MAP[child.icon]
@@ -350,8 +363,8 @@ interface SidebarSectionProps {
   pathname: string
   isCollapsed: boolean
   badgeCounts: Record<string, number>
-  settingsOpen: boolean
-  onToggleSettings: () => void
+  openGroups: Set<string>
+  onToggleGroup: (id: string) => void
 }
 
 /**
@@ -368,8 +381,8 @@ function SidebarSection({
   pathname,
   isCollapsed,
   badgeCounts,
-  settingsOpen,
-  onToggleSettings,
+  openGroups,
+  onToggleGroup,
 }: SidebarSectionProps) {
   // Stable id list: items without an id get the empty string, which
   // `isMenuItemAllowed` resolves to "always allowed" (legacy item).
@@ -397,8 +410,8 @@ function SidebarSection({
               pathname={pathname}
               isCollapsed={isCollapsed}
               badgeCount={badgeCount}
-              settingsOpen={settingsOpen}
-              onToggleSettings={onToggleSettings}
+              openGroups={openGroups}
+              onToggleGroup={onToggleGroup}
             />
           )
         })}
@@ -413,15 +426,40 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout)
   const { isCollapsed, setCollapsed } = useSidebarStore()
   const { data: pendingActions } = usePendingActions()
-  const [settingsOpen, setSettingsOpen] = useState(
-    pathname.startsWith("/settings")
-  )
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
+    if (pathname.startsWith("/settings")) initial.add("settings")
+    if (pathname.startsWith("/products")) initial.add("products")
+    return initial
+  })
 
   useEffect(() => {
-    if (pathname.startsWith("/settings")) {
-      setSettingsOpen(true)
-    }
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      if (pathname.startsWith("/settings") && !next.has("settings")) {
+        next.add("settings")
+        changed = true
+      }
+      if (pathname.startsWith("/products") && !next.has("products")) {
+        next.add("products")
+        changed = true
+      }
+      return changed ? next : prev
+    })
   }, [pathname])
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   const badgeCounts: Record<string, number> = {
     pendingOrders: pendingActions?.pendingOrders ?? 0,
@@ -478,8 +516,8 @@ export function Sidebar() {
                 pathname={pathname}
                 isCollapsed={isCollapsed}
                 badgeCounts={badgeCounts}
-                settingsOpen={settingsOpen}
-                onToggleSettings={() => setSettingsOpen((prev) => !prev)}
+                openGroups={openGroups}
+                onToggleGroup={toggleGroup}
               />
             ))}
           </nav>

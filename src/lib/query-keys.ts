@@ -79,6 +79,12 @@ export const qk = {
   // ── Cart Milestones (platform-wide, NOT shop-scoped) ────────────────────
   cartMilestones: () => ["cart-milestones", "list"] as const,
 
+  // ── Abandoned Carts (platform-wide, NOT shop-scoped — a cart can span
+  //    multiple shops, so there is no single owning shop to key by) ───────
+  abandonedCarts: (params: ListParams) => ["abandoned-carts", "list", params] as const,
+  abandonedCart: (id: string) => ["abandoned-carts", "detail", id] as const,
+  abandonedCartsSummary: () => ["abandoned-carts", "summary"] as const,
+
   // ── Shops_Management_UI ──────────────────────────────────────────────────
   shops: (params: ListParams) => ["shops", "list", params] as const,
   shop: (id: string) => ["shops", "detail", id] as const,

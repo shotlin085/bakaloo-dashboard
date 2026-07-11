@@ -135,6 +135,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: ["wallet-transactions"] })
     })
 
+    // ── Abandoned cart status transitions (recovered/converted) ─────────
+    // The live "00h 12m 05s" timer itself is pure client-side setInterval
+    // math (see `AbandonedTimer`) — this socket event only fires on
+    // discrete status changes so an open admin tab reflects them without a
+    // manual refresh.
+    s.on("abandoned_cart:update", () => {
+      const qc = getQueryClient()
+      qc.invalidateQueries({ queryKey: ["abandoned-carts"] })
+    })
+
     // Notification for any push
     s.on("notification", (n) => {
       useNotificationStore.getState().addNotification({
