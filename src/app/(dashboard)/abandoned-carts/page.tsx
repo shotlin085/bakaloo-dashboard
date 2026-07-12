@@ -79,7 +79,10 @@ function AbandonedCartsContent() {
   const [maxValue, setMaxValue] = useState(() => searchParams.get("maxValue") ?? "")
   const [sortBy, setSortBy] = useState<AbandonedCartFilters["sortBy"]>(() => {
     const v = searchParams.get("sortBy")
-    return (SORT_OPTIONS.find((s) => s.value === v)?.value ?? "priority_score")
+    // Default to most-recently-abandoned-first — an admin watching this
+    // page wants to see who JUST abandoned their cart at the top, not
+    // whoever happens to have the highest cart-value/LTV priority score.
+    return (SORT_OPTIONS.find((s) => s.value === v)?.value ?? "abandoned_at")
   })
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">(() => {
     return searchParams.get("sortOrder") === "ASC" ? "ASC" : "DESC"
@@ -207,7 +210,7 @@ function AbandonedCartsContent() {
     setStatusFilter("OPEN")
     setMinValue("")
     setMaxValue("")
-    setSortBy("priority_score")
+    setSortBy("abandoned_at")
     setSortOrder("DESC")
     setPageState(1)
     setSelectedIds(new Set())
