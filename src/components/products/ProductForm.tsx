@@ -452,25 +452,34 @@ export function ProductForm({
         }))
         : [],
       // SEO
-      metaTitle: form.metaTitle || undefined,
-      metaDescription: form.metaDescription || undefined,
+      // These optional fields all used `|| undefined` for a blank value,
+      // which drops the key from the JSON payload entirely. The backend's
+      // update query only touches a column when its key is present in the
+      // body, so blanking a field out on edit silently never reached the
+      // database — the old value stayed forever and there was no way to
+      // clear/disable it from the dashboard (vendor details, nutrition,
+      // certifications). Sending '' / [] / {} instead keeps the key
+      // present so the backend actually clears it; the repository already
+      // converts an empty string to NULL for plain text columns.
+      metaTitle: form.metaTitle || "",
+      metaDescription: form.metaDescription || "",
       // Nutrition & Details
-      ingredients: form.ingredients || undefined,
-      allergenInfo: form.allergenInfo || undefined,
-      shelfLife: form.shelfLife || undefined,
-      storageInstructions: form.storageInstructions || undefined,
-      certifications: form.certifications.length > 0 ? form.certifications : undefined,
-      nutritionInfo: form.nutritionRows.some((r) => r.key && r.value)
-        ? Object.fromEntries(form.nutritionRows.filter((r) => r.key && r.value).map((r) => [r.key, r.value]))
-        : undefined,
-      brand: form.brand || undefined,
-      brandLogoUrl: form.brandLogoUrl || undefined,
-      netQuantity: form.netQuantity || undefined,
+      ingredients: form.ingredients || "",
+      allergenInfo: form.allergenInfo || "",
+      shelfLife: form.shelfLife || "",
+      storageInstructions: form.storageInstructions || "",
+      certifications: form.certifications,
+      nutritionInfo: Object.fromEntries(
+        form.nutritionRows.filter((r) => r.key && r.value).map((r) => [r.key, r.value])
+      ),
+      brand: form.brand || "",
+      brandLogoUrl: form.brandLogoUrl || "",
+      netQuantity: form.netQuantity || "",
       highlights: Object.keys(cleanedHighlights).length > 0 ? cleanedHighlights : undefined,
       attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
-      vendorName: form.vendorName || undefined,
-      vendorAddress: form.vendorAddress || undefined,
-      vendorFssai: form.vendorFssai || undefined,
+      vendorName: form.vendorName || "",
+      vendorAddress: form.vendorAddress || "",
+      vendorFssai: form.vendorFssai || "",
       returnPolicy: form.returnPolicy,
       avgRating: form.avgRating ? parseFloat(form.avgRating) : undefined,
       ratingCount: form.ratingCount ? parseInt(form.ratingCount, 10) : undefined,
@@ -879,6 +888,22 @@ export function ProductForm({
                 rows={3}
               />
             </div>
+            {(form.vendorName || form.vendorAddress || form.vendorFssai) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => {
+                  set("vendorName", "")
+                  set("vendorAddress", "")
+                  set("vendorFssai", "")
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Clear vendor details
+              </Button>
+            )}
           </CollapsibleCard>
 
           <Card className="p-6 space-y-5">
