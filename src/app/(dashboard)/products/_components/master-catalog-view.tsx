@@ -545,8 +545,8 @@ export function MasterCatalogView() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {p.sku && `SKU: ${p.sku}`}
-                          {p.sku && p.unit && " · "}
-                          {p.unit}
+                          {p.sku && (p.net_quantity || p.netQuantity || p.unit) && " · "}
+                          {p.net_quantity || p.netQuantity || p.unit}
                         </p>
                       </div>
                     </div>
