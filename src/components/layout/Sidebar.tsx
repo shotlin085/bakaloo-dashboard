@@ -36,6 +36,7 @@ import {
   Users,
   Users2,
   Wallet,
+  Youtube,
   type LucideIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -101,6 +102,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Users,
   Users2,
   Wallet,
+  Youtube,
 }
 
 const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
@@ -199,6 +201,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     section: "SYSTEM",
     items: [
       { label: "Banners", href: "/banners", icon: "Image" },
+      { label: "Tutorials", href: "/tutorials", icon: "Youtube" },
       { label: "Activity Log", href: "/activity-log", icon: "Activity" },
       { label: "Team & Roles", href: "/team", icon: "Shield" },
       { label: "Themes", href: "/themes", icon: "Palette" },

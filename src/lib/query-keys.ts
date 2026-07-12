@@ -76,6 +76,10 @@ export const qk = {
   // ── First-Time Offers (platform-wide, NOT shop-scoped) ──────────────────
   firstTimeOffers: () => ["first-time-offers", "list"] as const,
 
+  // ── Tutorial Videos (platform-wide, NOT shop-scoped — the same in-app
+  //    tutorial section shows regardless of which shop is active) ─────────
+  tutorials: () => ["tutorials", "list"] as const,
+
   // ── Cart Milestones (platform-wide, NOT shop-scoped) ────────────────────
   cartMilestones: () => ["cart-milestones", "list"] as const,
 
