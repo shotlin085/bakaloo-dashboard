@@ -16,7 +16,8 @@ export interface WalletTransaction {
   amount: number
   description: string
   referenceId: string | null
-  balanceAfter: number
+  balanceAfter: number | null
+  status?: "PENDING" | "COMPLETED" | "FAILED"
   createdAt: string
   /** Admin view fields — present when fetching via /admin/transactions */
   userId?: string

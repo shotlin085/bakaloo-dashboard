@@ -17,6 +17,8 @@ import {
   TrendingDown,
   Copy,
   Coins,
+  Clock,
+  XCircle,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
@@ -228,7 +230,23 @@ function WalletContent() {
               transactions.map((txn) => (
                 <TableRow key={txn.id} className="group">
                   <TableCell>
-                    {txn.subType === "REFUND" ? (
+                    {txn.status === "PENDING" ? (
+                      <Badge
+                        variant="default"
+                        className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                        title="Razorpay order created but payment not yet confirmed — no money has moved on our side"
+                      >
+                        <Clock className="h-3 w-3 mr-1" /> Pending
+                      </Badge>
+                    ) : txn.status === "FAILED" ? (
+                      <Badge
+                        variant="default"
+                        className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                        title="Payment was never completed — customer was not charged"
+                      >
+                        <XCircle className="h-3 w-3 mr-1" /> Failed
+                      </Badge>
+                    ) : txn.subType === "REFUND" ? (
                       <Badge
                         variant="default"
                         className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
@@ -297,7 +315,12 @@ function WalletContent() {
                   </TableCell>
                   <TableCell>
                     <span
-                      className={`font-semibold ${txn.type === "CREDIT" ? "text-green-600" : "text-red-600"
+                      className={`font-semibold ${
+                        txn.status && txn.status !== "COMPLETED"
+                          ? "text-muted-foreground"
+                          : txn.type === "CREDIT"
+                            ? "text-green-600"
+                            : "text-red-600"
                         }`}
                     >
                       {txn.type === "CREDIT" ? "+" : "-"}
@@ -317,7 +340,7 @@ function WalletContent() {
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {formatINR(txn.balanceAfter)}
+                    {txn.balanceAfter == null ? "—" : formatINR(txn.balanceAfter)}
                   </TableCell>
                   <TableCell className="text-sm">
                     {new Date(txn.createdAt).toLocaleDateString()}
