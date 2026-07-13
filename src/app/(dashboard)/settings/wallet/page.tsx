@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Save, Wallet } from "lucide-react"
+import { Loader2, Save, Wallet, PowerOff } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -187,6 +187,41 @@ export default function WalletSettingsPage() {
           {validationError}
         </div>
       ) : null}
+
+      <Card className="max-w-2xl border-amber-200 dark:border-amber-900">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <PowerOff className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <div>
+              <CardTitle className="text-lg">Wallet Top-up</CardTitle>
+              <CardDescription>
+                Emergency kill-switch — turn this off during a Razorpay outage
+                or any other payment issue to stop new top-up attempts before
+                they hit a broken payment flow. Existing wallet balance and
+                paying for orders from the wallet are unaffected.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Top-up enabled</p>
+              <p className="text-xs text-muted-foreground">
+                When off, tapping &quot;Add money&quot; in the app shows
+                &quot;Wallet top-up is currently unavailable&quot; instead of
+                opening Razorpay — no payment attempt is ever started.
+              </p>
+            </div>
+            <Switch
+              id="topupEnabled"
+              checked={draft.topupEnabled}
+              disabled={!canManage}
+              onCheckedChange={(v) => set("topupEnabled", v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="max-w-2xl">
         <CardHeader>
