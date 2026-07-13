@@ -113,7 +113,7 @@ export type IssueCouponPayload =
   | {
       code: string
       description?: string
-      discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "BOGO" | "CASHBACK"
+      discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "CASHBACK"
       discountValue: number
       minOrderAmount?: number
       maxDiscount?: number

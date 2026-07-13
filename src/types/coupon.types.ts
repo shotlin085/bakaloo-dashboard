@@ -6,7 +6,7 @@ export interface Coupon {
   id: string
   code: string
   description: string | null
-  discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "BOGO" | "CASHBACK"
+  discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "CASHBACK"
   discountValue: number
   minOrderAmount: number
   maxDiscount: number | null
@@ -37,7 +37,7 @@ export interface CouponFilters {
 export interface CreateCouponPayload {
   code: string
   description?: string
-  discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "BOGO" | "CASHBACK"
+  discountType: "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "CASHBACK"
   discountValue: number
   minOrderAmount?: number
   maxDiscount?: number

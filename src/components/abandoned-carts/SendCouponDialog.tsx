@@ -35,7 +35,7 @@ interface SendCouponDialogProps {
 const CREATE_INITIAL = {
   code: "",
   description: "",
-  discountType: "PERCENTAGE" as "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "BOGO" | "CASHBACK",
+  discountType: "PERCENTAGE" as "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "CASHBACK",
   discountValue: 0,
   minOrderAmount: 0,
   maxDiscount: undefined as number | undefined,
@@ -91,8 +91,11 @@ export function SendCouponDialog({ open, onOpenChange, cartIds }: SendCouponDial
         ...(form.maxDiscount ? { maxDiscount: form.maxDiscount } : {}),
         ...(form.usageLimit ? { usageLimit: form.usageLimit } : {}),
         ...(form.perUserLimit ? { perUserLimit: form.perUserLimit } : {}),
-        ...(form.validFrom ? { validFrom: form.validFrom } : {}),
-        ...(form.validUntil ? { validUntil: form.validUntil } : {}),
+        // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
+        // stored as-is this lands in Postgres under the server's local
+        // session timezone instead of the admin's intended moment.
+        ...(form.validFrom ? { validFrom: new Date(form.validFrom).toISOString() } : {}),
+        ...(form.validUntil ? { validUntil: new Date(form.validUntil).toISOString() } : {}),
       }
     }
 

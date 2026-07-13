@@ -52,7 +52,7 @@ export async function deleteCoupon(id: string): Promise<void> {
 }
 
 export async function getCouponAnalytics(couponId: string): Promise<CouponAnalytics> {
-  const { data } = await api.get<ApiResponse<CouponAnalytics>>(`/admin/coupons/${couponId}/analytics`)
+  const { data } = await api.get<ApiResponse<CouponAnalytics>>(`/coupons/${couponId}/analytics`)
   return data.data
 }
 

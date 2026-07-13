@@ -96,8 +96,11 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
     const { isActive, ...rest } = form
     const payload = {
       ...rest,
-      startAt: rest.startAt || undefined,
-      endAt: rest.endAt || undefined,
+      // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
+      // the backend requires a full RFC3339 date-time, which rejects that
+      // with "must match format \"date-time\"".
+      startAt: rest.startAt ? new Date(rest.startAt).toISOString() : undefined,
+      endAt: rest.endAt ? new Date(rest.endAt).toISOString() : undefined,
     }
 
     if (isEdit && offer) {

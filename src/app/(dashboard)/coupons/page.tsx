@@ -218,8 +218,6 @@ function CouponsContent() {
                           </>
                         ) : coupon.discountType === "FREE_DELIVERY" ? (
                           <Badge variant="secondary" className="text-[10px]">Free Delivery</Badge>
-                        ) : coupon.discountType === "BOGO" ? (
-                          <Badge className="text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">BOGO</Badge>
                         ) : coupon.discountType === "CASHBACK" ? (
                           <Badge className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                             {formatINR(coupon.discountValue)} Cashback

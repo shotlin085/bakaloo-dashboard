@@ -94,8 +94,11 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
       linkType: form.linkType,
       linkValue: form.linkType !== "none" ? form.linkValue?.trim() : undefined,
       isActive: form.isActive,
-      startDate: form.startDate || undefined,
-      endDate: form.endDate || undefined,
+      // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
+      // the backend requires a full RFC3339 date-time, which rejects that
+      // with "must match format \"date-time\"".
+      startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
+      endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
       triggerType: form.triggerType,
     }
 

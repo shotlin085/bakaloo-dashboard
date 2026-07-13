@@ -192,8 +192,11 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
     const payload = {
       ...rest,
       code: rest.code.toUpperCase().trim(),
-      validFrom: rest.validFrom || undefined,
-      validUntil: rest.validUntil || undefined,
+      // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
+      // the backend requires a full RFC3339 date-time, which rejects that
+      // with "must match format \"date-time\"".
+      validFrom: rest.validFrom ? new Date(rest.validFrom).toISOString() : undefined,
+      validUntil: rest.validUntil ? new Date(rest.validUntil).toISOString() : undefined,
       maxDiscount: rest.maxDiscount || undefined,
       usageLimit: rest.usageLimit || undefined,
       targetSegmentId: rest.targetType === "SEGMENT" ? rest.targetSegmentId : undefined,
@@ -254,7 +257,7 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
               <Select
                 value={form.discountType}
                 onValueChange={(v) =>
-                  setForm({ ...form, discountType: v as "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "BOGO" | "CASHBACK" })
+                  setForm({ ...form, discountType: v as "PERCENTAGE" | "FLAT" | "FREE_DELIVERY" | "CASHBACK" })
                 }
               >
                 <SelectTrigger>
@@ -264,7 +267,6 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
                   <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
                   <SelectItem value="FLAT">Flat (₹)</SelectItem>
                   <SelectItem value="FREE_DELIVERY">Free Delivery</SelectItem>
-                  <SelectItem value="BOGO">Buy One Get One</SelectItem>
                   <SelectItem value="CASHBACK">Cashback</SelectItem>
                 </SelectContent>
               </Select>
