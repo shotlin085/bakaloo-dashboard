@@ -13,11 +13,18 @@ import {
   ChevronRight,
   FileText,
   Megaphone,
+  AlertTriangle,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -41,7 +48,7 @@ import {
   useDeleteTemplate,
   useCampaigns,
 } from "@/hooks/useNotifications"
-import type { NotificationTemplate } from "@/types/notification.types"
+import type { NotificationCampaign, NotificationTemplate } from "@/types/notification.types"
 import { usePermissions } from "@/hooks/usePermissions"
 
 type ActiveTab = "templates" | "campaigns"
@@ -60,6 +67,27 @@ const TYPE_COLOR: Record<string, string> = {
   SMS: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300",
   EMAIL: "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
   IN_APP: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+}
+
+/**
+ * Surfaces the one thing the campaign list previously couldn't show at
+ * all: why a send didn't reach anyone by push. `failure_summary` was
+ * always written by the backend but never rendered anywhere in the
+ * dashboard, so a "SENT" campaign with 0 recipients (e.g. a "Specific
+ * User" target whose device has no active push token) looked identical
+ * to a fully successful send — the notification is still delivered to
+ * that user's in-app Notification tab, but the admin had no way to know
+ * push itself didn't go out.
+ */
+function describeFailure(c: NotificationCampaign): string | null {
+  const summary = c.failure_summary
+  if (summary && typeof summary.reason === "string") {
+    return summary.reason
+  }
+  if (c.status === "FAILED") {
+    return "Push delivery failed. See campaign details for more."
+  }
+  return null
 }
 
 function NotificationsContent() {
@@ -287,12 +315,26 @@ function NotificationsContent() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={STATUS_COLOR[c.status] ?? ""}
-                        >
-                          {c.status}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant="secondary"
+                            className={STATUS_COLOR[c.status] ?? ""}
+                          >
+                            {c.status}
+                          </Badge>
+                          {describeFailure(c) && (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[280px]">
+                                  {describeFailure(c)}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-right font-mono text-sm">
                         {(c.sent_count ?? 0).toLocaleString()}
