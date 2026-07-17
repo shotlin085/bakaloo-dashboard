@@ -94,6 +94,11 @@ export function useCustomers(filters: CustomerFilters) {
     queryFn: () => getCustomers(mergedFilters),
     enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30 * 1000,
+    // Wallet balances and the Active Today count are live figures that can
+    // change from outside the dashboard entirely (customer app top-ups,
+    // debits, logins) — always refetch on mount so opening/revisiting this
+    // page never shows a cached snapshot from a previous visit.
+    refetchOnMount: "always",
     placeholderData: (prev) => prev,
   })
 }
@@ -104,6 +109,10 @@ export function useCustomerDetail(customerId: string | null) {
     queryFn: () => getCustomerDetail(customerId!),
     enabled: !!customerId,
     staleTime: 30 * 1000,
+    // Wallet balance shown here can change from outside the dashboard
+    // (customer app top-up/debit) — always refetch when the profile
+    // drawer opens rather than trusting a cached snapshot.
+    refetchOnMount: "always",
   })
 }
 
@@ -155,7 +164,12 @@ export function useCreditWallet() {
     }) => creditCustomerWallet(id, { amount, description }),
     onSuccess: () => {
       toast.success("Wallet credited")
+      // Also drop the standalone Wallet page's cache ("wallet") — a credit
+      // from this drawer used to only invalidate "customers", leaving the
+      // Wallet page showing a stale balance/transaction list until its own
+      // cache separately expired.
       qc.invalidateQueries({ queryKey: ["customers"] })
+      qc.invalidateQueries({ queryKey: ["wallet"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to credit wallet"),
   })
@@ -175,7 +189,9 @@ export function useDebitWallet() {
     }) => debitCustomerWallet(id, { amount, description }),
     onSuccess: () => {
       toast.success("Wallet debited")
+      // Also drop the standalone Wallet page's cache — see useCreditWallet.
       qc.invalidateQueries({ queryKey: ["customers"] })
+      qc.invalidateQueries({ queryKey: ["wallet"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to debit wallet"),
   })

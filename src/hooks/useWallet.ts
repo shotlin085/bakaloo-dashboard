@@ -55,6 +55,10 @@ export function useWalletStats() {
     queryFn: getWalletOverviewStats,
     enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 60_000,
+    // Balances can change from outside this page entirely (customer app
+    // top-up/debit, the Customer Profile drawer) — always refetch on mount
+    // rather than trusting a cached snapshot from a previous visit.
+    refetchOnMount: "always",
     placeholderData: (prev) => prev,
   })
 }
@@ -66,6 +70,7 @@ export function useWalletTransactions(filters: WalletTransactionFilters = {}) {
     queryFn: () => getWalletTransactions(filters),
     enabled: shopKey !== NONE_SHOP_KEY,
     staleTime: 30_000,
+    refetchOnMount: "always",
     placeholderData: (prev) => prev,
   })
 }
@@ -80,6 +85,10 @@ export function useAdminCredit() {
       // Prefix-based invalidate drops every shop-keyed `wallet` entry —
       // both the overview stats and the transactions list — in one pass.
       qc.invalidateQueries({ queryKey: ["wallet"] })
+      // Also drop the Customer Profile drawer's cache ("customers") — a
+      // credit from this page used to leave an already-open drawer for the
+      // same customer showing a stale wallet_balance.
+      qc.invalidateQueries({ queryKey: ["customers"] })
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to credit wallet")
@@ -95,6 +104,8 @@ export function useAdminDebit() {
     onSuccess: () => {
       toast.success("Wallet debited successfully")
       qc.invalidateQueries({ queryKey: ["wallet"] })
+      // See useAdminCredit — also drop the Customer Profile drawer's cache.
+      qc.invalidateQueries({ queryKey: ["customers"] })
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to debit wallet")
