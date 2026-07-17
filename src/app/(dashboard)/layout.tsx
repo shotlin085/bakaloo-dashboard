@@ -17,6 +17,7 @@ import { ActiveShopCookieSync } from "@/hooks/useActiveShopCookieSync"
 import { useAuthStore } from "@/store/auth.store"
 import { useSidebarStore } from "@/store/sidebar.store"
 import { validateSession } from "@/services/auth.service"
+import { unlockOrderSounds } from "@/lib/orderSound"
 
 export default function DashboardLayout({
   children,
@@ -34,6 +35,20 @@ export default function DashboardLayout({
   useEffect(() => {
     hydrate()
   }, [hydrate])
+
+  // New-order sound alerts are blocked by the browser until a real user
+  // gesture has occurred on the page — "warm up" both clips on the first
+  // click/keydown anywhere in the dashboard so the later programmatic
+  // play() triggered by a Socket.IO event isn't silently rejected.
+  useEffect(() => {
+    const unlock = () => unlockOrderSounds()
+    window.addEventListener("click", unlock, { once: true })
+    window.addEventListener("keydown", unlock, { once: true })
+    return () => {
+      window.removeEventListener("click", unlock)
+      window.removeEventListener("keydown", unlock)
+    }
+  }, [])
 
   // Step 2: After hydration, validate token against backend
   // This is the KEY fix for the stale cookie/restart bug

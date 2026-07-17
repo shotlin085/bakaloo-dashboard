@@ -16,6 +16,7 @@ import {
   registerSocketDisconnect,
   unregisterSocketDisconnect,
 } from "@/lib/socket-registry"
+import { playOrderSound } from "@/lib/orderSound"
 
 const SocketContext = createContext<Socket | null>(null)
 
@@ -72,6 +73,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     // ── Dashboard real-time events ─────────────────────
     s.on("dashboard:new_order", (order) => {
+      // Distinct loud tone per delivery mode so an admin can tell an
+      // incoming order needs immediate handling vs. can wait, by ear alone.
+      playOrderSound(order.delivery_mode)
       toast.info(`🛒 New Order: ${order.order_number}`, {
         description: `₹${order.total} via ${order.payment_method}`,
       })
