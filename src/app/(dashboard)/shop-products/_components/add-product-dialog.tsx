@@ -41,8 +41,10 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Controller, useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ChevronLeft, Loader2, Package, Plus, Search } from "lucide-react"
+import { AlertTriangle, ChevronLeft, Loader2, Package, Plus, Search } from "lucide-react"
 import Image from "next/image"
+import { toast } from "sonner"
+import { isAxiosError } from "axios"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -60,6 +62,7 @@ import { useDebounce } from "@/hooks/useDebounce"
 import {
   useAddShopProduct,
   useSearchProductCatalog,
+  useShopProduct,
 } from "@/hooks/useShopProducts"
 import { useShopContext } from "@/hooks/useShopContext"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -76,6 +79,7 @@ import {
   NumberField,
   ToggleRow,
 } from "./product-form-fields"
+import { EditProductDialog } from "./edit-product-dialog"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -394,6 +398,13 @@ export function AddProductDialog({
   const [step, setStep] = useState<Step>(1)
   const [picked, setPicked] = useState<Product | null>(null)
 
+  // Set when submit fails with SHOP_PRODUCT_DUPLICATE — renders a banner at
+  // the top of step 2 instead of leaving the operator with a dead-end
+  // failure, and lets them jump straight to editing the existing row.
+  const [duplicateExistingId, setDuplicateExistingId] = useState<string | null>(null)
+  const [editExistingOpen, setEditExistingOpen] = useState(false)
+  const { data: existingProduct } = useShopProduct(duplicateExistingId, editExistingOpen)
+
   const {
     control,
     register,
@@ -418,6 +429,8 @@ export function AddProductDialog({
     if (!open) return
     setStep(1)
     setPicked(null)
+    setDuplicateExistingId(null)
+    setEditExistingOpen(false)
     reset(buildBlankDefaults() as ShopProductInput)
   }, [open, reset])
 
@@ -425,6 +438,7 @@ export function AddProductDialog({
 
   function handlePick(product: Product) {
     setPicked(product)
+    setDuplicateExistingId(null)
     // Seed the form with the catalog defaults so step 2 lands ready to
     // submit. `reset` (not `setValue`) so the underlying RHF state — and
     // every controlled input — picks up the new product_id without a
@@ -443,6 +457,8 @@ export function AddProductDialog({
   async function onSubmit(values: ShopProductInput) {
     if (!activeShopId) return
 
+    setDuplicateExistingId(null)
+
     try {
       await addMutation.mutateAsync({
         product_id: values.product_id,
@@ -456,11 +472,26 @@ export function AddProductDialog({
         is_featured: values.is_featured,
       })
       onOpenChange(false)
-    } catch {
-      // Stay open so the operator can retry. Field-level errors on the
-      // create endpoint are not surfaced per-field by the backend, so we
-      // rely on the hook's generic error toast (the edit hook owns the
-      // destructive toast contract today).
+    } catch (err) {
+      // Duplicate add: this product is already in the shop's inventory.
+      // Show a persistent banner + a direct link to edit the existing row
+      // instead of a dead-end error — a toast alone would disappear before
+      // the operator could act on it.
+      if (
+        isAxiosError<{ code?: string; existingId?: string }>(err) &&
+        err.response?.data?.code === "SHOP_PRODUCT_DUPLICATE" &&
+        err.response.data.existingId
+      ) {
+        setDuplicateExistingId(err.response.data.existingId)
+        return
+      }
+      // Any other failure: stay open so the operator can retry. Field-level
+      // errors on the create endpoint are not surfaced per-field by the
+      // backend, so a generic toast is the best available signal.
+      toast.error(
+        (isAxiosError<{ message?: string }>(err) && err.response?.data?.message) ||
+          t("shopProducts.toast.addFailed")
+      )
     }
   }
 
@@ -468,6 +499,7 @@ export function AddProductDialog({
   const canSubmit = step === 2 && Boolean(activeShopId) && !submitting
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
@@ -502,6 +534,28 @@ export function AddProductDialog({
             noValidate
             data-testid="add-product-form"
           >
+            {/* ── Duplicate-add banner ──────────────────────────────── */}
+            {duplicateExistingId ? (
+              <div
+                className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                data-testid="add-product-duplicate-banner"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex flex-1 flex-col gap-1">
+                  <span>{t("shopProducts.toast.duplicate")}</span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto w-fit p-0 text-amber-900 underline dark:text-amber-200"
+                    onClick={() => setEditExistingOpen(true)}
+                  >
+                    {t("shopProducts.toast.duplicateEditLink")}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {/* ── Picked product summary ────────────────────────────── */}
             {picked ? (
               <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
@@ -666,6 +720,23 @@ export function AddProductDialog({
         )}
       </DialogContent>
     </Dialog>
+
+      {/* Reached from the duplicate-add banner's "Edit existing product"
+          link — reuses the same Edit_Product_Dialog the row-level "Edit"
+          action opens, fed by a one-off fetch of the existing row. Closing
+          it also closes this Add dialog since the operator has moved on to
+          editing rather than adding. */}
+      {existingProduct ? (
+        <EditProductDialog
+          open={editExistingOpen}
+          onOpenChange={(nextOpen) => {
+            setEditExistingOpen(nextOpen)
+            if (!nextOpen) onOpenChange(false)
+          }}
+          product={existingProduct}
+        />
+      ) : null}
+    </>
   )
 }
 

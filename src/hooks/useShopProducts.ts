@@ -116,6 +116,27 @@ export function useShopProductsList(filters: ShopProductsListParams) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// useShopProduct — GET /shop-products/:id (single row)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch a single shop product by id. Used by the Add_Product_Dialog's
+ * "this product already exists" banner to feed the Edit_Product_Dialog with
+ * the existing row's data — gated with `enabled` so it only fires once the
+ * operator actually clicks through, not on every duplicate detection.
+ */
+export function useShopProduct(id: string | null, enabled: boolean) {
+  const { activeShopId } = useShopContext()
+  const shopKey = activeShopId ?? NONE_SHOP_KEY
+
+  return useQuery({
+    queryKey: qk.shopProduct(shopKey, id ?? ""),
+    queryFn: () => shopProductsService.getById(id!),
+    enabled: enabled && !!id,
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // useSearchProductCatalog — typeahead over the master catalog
 // ─────────────────────────────────────────────────────────────────────────────
 

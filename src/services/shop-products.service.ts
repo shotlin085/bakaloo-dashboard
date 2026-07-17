@@ -189,6 +189,18 @@ export const shopProductsService = {
   },
 
   /**
+   * Fetch a single shop product by id — used to feed the Edit_Product_Dialog
+   * when the operator follows the "this product already exists" link from
+   * the Add_Product_Dialog's duplicate banner.
+   */
+  async getById(id: string): Promise<ShopProduct> {
+    const { data } = await api.get<ApiResponse<ShopProduct>>(
+      `/shop-products/${id}`,
+    )
+    return data.data
+  },
+
+  /**
    * Update non-stock fields on a shop product (Req 7.9).
    *
    * NOTE on HTTP verb — task 8.1 names `PUT /api/v1/shop-products/[id]`.
