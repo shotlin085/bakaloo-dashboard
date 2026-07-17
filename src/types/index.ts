@@ -36,6 +36,7 @@ export type {
   Order,
   OrderItem,
   OrderTimeline,
+  OrderNote,
   OrderDetail,
   OrderPayment,
   DeliveryAssignment,

@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentMethod } from "@/lib/constants"
+import type { OrderStatus, OrderType, PaymentMethod } from "@/lib/constants"
 
 export interface DeliveryAddress {
   line1?: string
@@ -67,6 +67,18 @@ export interface Order {
   scheduled_slot_start?: string | null
   scheduled_slot_end?: string | null
   scheduled_delivery_at?: string | null
+  /** Derived server-side from delivery_mode + quick_delivery_selected. */
+  order_type?: OrderType
+}
+
+/** An internal, staff-only note on an order — a running CRM-style thread. */
+export interface OrderNote {
+  id: string
+  order_id: string
+  author_id: string
+  author_name: string | null
+  body: string
+  created_at: string
 }
 
 export interface OrderItem {

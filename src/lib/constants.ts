@@ -27,6 +27,19 @@ export const STATUS_CONFIG: Record<
   REFUNDED: { label: "Refunded", bg: "#F5F3FF", text: "#8B5CF6", icon: "↩" },
 }
 
+/** Order type — derived from delivery_mode + quick_delivery_selected on the backend */
+export const ORDER_TYPES = ["EXPRESS", "SCHEDULED", "STANDARD"] as const
+export type OrderType = (typeof ORDER_TYPES)[number]
+
+export const ORDER_TYPE_CONFIG: Record<
+  OrderType,
+  { label: string; bg: string; text: string; icon: string }
+> = {
+  EXPRESS: { label: "Express", bg: "#FFEDD5", text: "#EA580C", icon: "●" },
+  SCHEDULED: { label: "Scheduled", bg: "#F5F3FF", text: "#7C3AED", icon: "●" },
+  STANDARD: { label: "Standard", bg: "#E0F2FE", text: "#0284C7", icon: "●" },
+}
+
 export const PAYMENT_METHODS = ["COD", "ONLINE", "WALLET", "MANUAL"] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
 

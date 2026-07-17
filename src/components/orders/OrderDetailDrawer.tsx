@@ -66,6 +66,8 @@ import {
   useCancelOrder,
   useRescheduleOrder,
   useDownloadPackingSlip,
+  useOrderNotes,
+  useAddOrderNote,
 } from "@/hooks/useOrders"
 import { useCustomerDetail } from "@/hooks/useCustomers"
 import { useShopContextStore } from "@/store/shop-context.store"
@@ -97,13 +99,16 @@ const TIMELINE_ICONS: Record<string, React.ReactNode> = {
 export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerProps) {
   const router = useRouter()
   const { data: order, isLoading } = useOrderDetail(orderId)
-  const { data: customer } = useCustomerDetail(order?.user_id ?? null)
+  const { data: customer, isLoading: customerLoading } = useCustomerDetail(order?.user_id ?? null)
   const updateStatus = useUpdateOrderStatus()
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
   const cancelOrder = useCancelOrder()
   const rescheduleOrder = useRescheduleOrder()
   const downloadPacking = useDownloadPackingSlip()
+  const { data: notes, isLoading: notesLoading } = useOrderNotes(orderId)
+  const addOrderNote = useAddOrderNote()
+  const [noteDraft, setNoteDraft] = useState("")
 
   // Vendor scope enforcement (Req 10.10): a vendor (`assignedShopIds.length > 0`)
   // who opens an order whose `shop_id` is not in their locked shop list must
@@ -358,6 +363,57 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
                 <Separator />
 
+                {/* Notes — internal, staff-only CRM-style thread on this
+                    order (e.g. "customer asked for extra veggies"),
+                    independent of status changes. Oldest first so the
+                    first note added shows first. */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">Notes</h4>
+                  <div className="space-y-2">
+                    {notesLoading ? (
+                      <>
+                        <Skeleton className="h-12 w-full rounded-lg" />
+                        <Skeleton className="h-12 w-full rounded-lg" />
+                      </>
+                    ) : notes && notes.length > 0 ? (
+                      notes.map((n) => (
+                        <div key={n.id} className="rounded-lg bg-muted/40 p-2.5">
+                          <p className="text-sm text-foreground whitespace-pre-wrap">{n.body}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {n.author_name ?? "Unknown"} · {formatDateTime(n.created_at)}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No notes yet.</p>
+                    )}
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      value={noteDraft}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      placeholder="Add an internal note..."
+                      rows={2}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      disabled={!noteDraft.trim() || addOrderNote.isPending}
+                      onClick={() => {
+                        if (!order) return
+                        addOrderNote.mutate(
+                          { orderId: order.id, body: noteDraft.trim() },
+                          { onSuccess: () => setNoteDraft("") }
+                        )
+                      }}
+                    >
+                      {addOrderNote.isPending ? "Adding..." : "Add Note"}
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
                 {/* Customer */}
                 <div>
                   <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
@@ -379,8 +435,16 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     {/* Reliability signal — how many of this customer's past
                         orders actually completed vs. were cancelled/returned,
                         so an admin can gauge trustworthiness without leaving
-                        this drawer. */}
-                    {customer && (
+                        this drawer. Explicit loading/loaded/unavailable states
+                        so a fetch failure fails loudly instead of the whole
+                        row silently disappearing. */}
+                    {customerLoading ? (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                        <Skeleton className="h-5 w-24 rounded-full" />
+                      </div>
+                    ) : customer ? (
                       <div className="flex items-center gap-1.5 mt-2">
                         <Badge
                           variant="outline"
@@ -404,6 +468,10 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                           {customer.cancelled_orders} Cancelled
                         </Badge>
                       </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Order history unavailable for this customer.
+                      </p>
                     )}
                   </div>
                 </div>

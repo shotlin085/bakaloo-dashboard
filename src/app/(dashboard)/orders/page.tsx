@@ -40,7 +40,6 @@ import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { useOrders, useOrderStatusCounts, useExportOrders, useBulkUpdateStatus, useBulkAssignRiders } from "@/hooks/useOrders"
 import { useRiders } from "@/hooks/useRiders"
-import { useShopContext } from "@/hooks/useShopContext"
 import {
   Dialog,
   DialogContent,
@@ -63,8 +62,10 @@ import { useDebounce } from "@/hooks/useDebounce"
 import {
   ORDER_STATUSES,
   STATUS_CONFIG,
+  ORDER_TYPE_CONFIG,
   PAYMENT_METHOD_LABELS,
   type OrderStatus,
+  type OrderType,
   type PaymentMethod,
 } from "@/lib/constants"
 import { formatINR, formatRelativeTime, cn } from "@/lib/utils"
@@ -215,14 +216,14 @@ function OrdersContent() {
     [updateQuery],
   )
 
-  const handleDeliveryTypeChange = useCallback(
-    (v: string) => {
-      const next = v === "all_types" ? "" : v
+  const handleOrderTypeToggle = useCallback(
+    (value: "express" | "scheduled" | "standard") => {
+      const next = deliveryType === value ? "" : value
       setDeliveryType(next)
       setPageState(1)
       updateQuery({ deliveryType: next, page: undefined })
     },
-    [updateQuery],
+    [deliveryType, updateQuery],
   )
 
   const handleMinAmountChange = useCallback(
@@ -313,15 +314,6 @@ function OrdersContent() {
   const connStatus = useConnectionStatus()
   const { can } = usePermissions()
   const canManage = can("orders.manage")
-  const { mode } = useShopContext()
-  /**
-   * In ALL_SHOPS mode (Super_Admin viewing every shop), the orders list
-   * surfaces a `Shop` column so each row's attribution is visible at a
-   * glance (Req 10.6). In SINGLE_SHOP mode the column is redundant — the
-   * `<ShopScopeBadge />` in the page header already pins the visible scope —
-   * so we hide it to keep the table dense on small viewports.
-   */
-  const showShopColumn = mode === "HQ_MODE"
 
   const orders = data?.orders ?? []
   const pagination = data?.pagination
@@ -456,6 +448,26 @@ function OrdersContent() {
           />
         </div>
 
+        {/* Quick order-type filter buttons — clicking the active one turns
+            it off; no "all types" catch-all, matching the status tabs'
+            already-selected-by-default "All" behavior via an empty filter. */}
+        <div className="flex items-center gap-1.5">
+          {(["express", "scheduled", "standard"] as const).map((value) => {
+            const config = ORDER_TYPE_CONFIG[value.toUpperCase() as OrderType]
+            return (
+              <Button
+                key={value}
+                variant={deliveryType === value ? "default" : "outline"}
+                size="sm"
+                className="h-9 text-xs"
+                onClick={() => handleOrderTypeToggle(value)}
+              >
+                {config.label}
+              </Button>
+            )
+          })}
+        </div>
+
         <Button
           variant="outline"
           size="sm"
@@ -496,18 +508,6 @@ function OrdersContent() {
             onChange={handleDateRangeChange}
             className="w-[220px]"
           />
-
-          <Select value={deliveryType || "all_types"} onValueChange={handleDeliveryTypeChange}>
-            <SelectTrigger className="h-9 w-[150px]">
-              <SelectValue placeholder="Delivery Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all_types">All Types</SelectItem>
-              <SelectItem value="express">Express</SelectItem>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="standard">Standard</SelectItem>
-            </SelectContent>
-          </Select>
 
           <div className="flex items-center gap-1.5">
             <Input
@@ -623,10 +623,11 @@ function OrdersContent() {
               </TableHead>
               <TableHead className="w-[140px]">Order ID</TableHead>
               <TableHead>Customer</TableHead>
-              {showShopColumn && <TableHead>Shop</TableHead>}
+              <TableHead>Shop</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead>Payment</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Order Type</TableHead>
               <TableHead>Rider</TableHead>
               <TableHead className="text-right">Date</TableHead>
             </TableRow>
@@ -643,19 +644,18 @@ function OrdersContent() {
                       <Skeleton className="h-3 w-20" />
                     </div>
                   </TableCell>
-                  {showShopColumn && (
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  )}
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showShopColumn ? 9 : 8} className="h-60">
+                <TableCell colSpan={10} className="h-60">
                   <EmptyState
                     title="No orders found"
                     description={
@@ -705,13 +705,11 @@ function OrdersContent() {
                         </p>
                       </div>
                     </TableCell>
-                    {showShopColumn && (
-                      <TableCell>
-                        <span className="text-sm text-foreground truncate block max-w-[160px]">
-                          {order.shop_name ?? order.shop?.name ?? "—"}
-                        </span>
-                      </TableCell>
-                    )}
+                    <TableCell>
+                      <span className="text-sm text-foreground truncate block max-w-[160px]">
+                        {order.shop_name ?? order.shop?.name ?? "—"}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right font-semibold text-sm">
                       {formatINR(order.total_amount)}
                     </TableCell>
@@ -728,6 +726,22 @@ function OrdersContent() {
                       >
                         {status.icon} {status.label}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {order.order_type ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 border-0 font-medium"
+                          style={{
+                            backgroundColor: ORDER_TYPE_CONFIG[order.order_type].bg,
+                            color: ORDER_TYPE_CONFIG[order.order_type].text,
+                          }}
+                        >
+                          {ORDER_TYPE_CONFIG[order.order_type].label}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">

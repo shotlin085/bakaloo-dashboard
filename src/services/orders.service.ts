@@ -5,6 +5,7 @@ import type {
   OrderDetail,
   OrderStatusCounts,
   OrderFilters,
+  OrderNote,
   UpdateOrderStatusPayload,
   AssignRiderPayload,
   RefundOrderPayload,
@@ -23,6 +24,7 @@ export async function getOrders(filters: OrderFilters = {}) {
   if (filters.search) params.search = filters.search
   if (filters.startDate) params.startDate = filters.startDate
   if (filters.endDate) params.endDate = filters.endDate
+  if (filters.deliveryType) params.deliveryType = filters.deliveryType
 
   const { data } = await api.get<
     ApiResponse<{
@@ -47,6 +49,18 @@ export async function getOrderDetail(orderId: string): Promise<OrderDetail> {
   const { data } = await api.get<ApiResponse<OrderDetail>>(
     `/admin/orders/${orderId}`
   )
+  return data.data
+}
+
+/** List internal staff notes for an order (chronological, oldest first) */
+export async function getOrderNotes(orderId: string): Promise<OrderNote[]> {
+  const { data } = await api.get<ApiResponse<OrderNote[]>>(`/admin/orders/${orderId}/notes`)
+  return data.data
+}
+
+/** Add an internal staff note to an order */
+export async function addOrderNote(orderId: string, body: string): Promise<OrderNote> {
+  const { data } = await api.post<ApiResponse<OrderNote>>(`/admin/orders/${orderId}/notes`, { body })
   return data.data
 }
 

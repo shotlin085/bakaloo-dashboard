@@ -3,6 +3,8 @@ import {
   getOrders,
   getOrderStatusCounts,
   getOrderDetail,
+  getOrderNotes,
+  addOrderNote,
   updateOrderStatus,
   assignRider,
   bulkAssignRiders,
@@ -42,13 +44,12 @@ const NONE_SHOP_KEY = "NONE"
  * Scope semantics:
  *   - `mode === "HQ_MODE"` (Super_Admin viewing every shop):
  *     `shopKey = "ALL"`. The axios interceptor omits `X-Shop-Id`, the
- *     backend returns aggregated orders, and the page appends a `Shop`
- *     column (Req 10.6).
+ *     backend returns aggregated orders (Req 10.6).
  *   - `mode === "STORE_MODE"`: `shopKey = activeShopId`. The interceptor
- *     injects `X-Shop-Id`, the backend returns shop-scoped orders, and
- *     the page hides the `Shop` column.
+ *     injects `X-Shop-Id`, the backend returns shop-scoped orders.
  *   - Otherwise (`UNSELECTED` / hydrating): `shopKey = "NONE"` and the
  *     query is gated off so no request is issued.
+ *   The `Shop` table column itself is always rendered regardless of mode.
  */
 export function useOrders(filters: OrderFilters) {
   const { mode, activeShopId } = useShopContext()
@@ -80,6 +81,27 @@ export function useOrderDetail(orderId: string | null) {
     queryFn: () => getOrderDetail(orderId!),
     enabled: !!orderId,
     staleTime: 15 * 1000,
+  })
+}
+
+export function useOrderNotes(orderId: string | null) {
+  return useQuery({
+    queryKey: ["orders", "notes", orderId],
+    queryFn: () => getOrderNotes(orderId!),
+    enabled: !!orderId,
+    staleTime: 15 * 1000,
+  })
+}
+
+export function useAddOrderNote() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, body }: { orderId: string; body: string }) =>
+      addOrderNote(orderId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["orders", "notes", variables.orderId] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to add note"),
   })
 }
 
