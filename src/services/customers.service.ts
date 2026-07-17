@@ -21,6 +21,7 @@ export async function getCustomers(filters: CustomerFilters = {}) {
     ApiResponse<{
       customers?: Customer[]
       data?: Customer[]
+      activeToday?: number
       pagination: { page: number; limit: number; total: number; totalPages: number }
     }>
   >("/admin/customers", { params })
@@ -28,6 +29,7 @@ export async function getCustomers(filters: CustomerFilters = {}) {
   const result = data.data
   return {
     customers: result.customers ?? result.data ?? [],
+    activeToday: result.activeToday ?? 0,
     pagination: result.pagination,
   }
 }

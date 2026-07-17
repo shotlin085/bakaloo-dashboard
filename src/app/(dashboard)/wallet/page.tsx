@@ -201,7 +201,7 @@ function WalletContent() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by user ID..."
+            placeholder="Filter by user ID or phone number..."
             className="pl-9 font-mono text-xs"
             value={userIdSearch}
             onChange={(e) => { setUserIdSearch(e.target.value); setPage(1) }}

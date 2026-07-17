@@ -232,14 +232,17 @@ export default function CustomersPage() {
   const customers = useMemo(() => data?.customers ?? [], [data?.customers])
   const pagination = data?.pagination
 
-  // Compute summary stats from loaded data
+  // Compute summary stats from loaded data. `active` is a real count of
+  // customers who made an authenticated request in the last 24h (from the
+  // backend) — not a client-side "not blocked" proxy, which said nothing
+  // about whether the account had actually opened the app recently.
   const stats = useMemo(() => {
     const total = pagination?.total ?? customers.length
-    const active = customers.filter((c) => !c.is_blocked).length
+    const active = data?.activeToday ?? 0
     const blocked = customers.filter((c) => c.is_blocked).length
     const totalSpent = customers.reduce((s, c) => s + (c.total_spent ?? 0), 0)
     return { total, active, blocked, totalSpent }
-  }, [customers, pagination])
+  }, [customers, pagination, data?.activeToday])
 
   const clearFilters = useCallback(() => {
     setSearch("")
@@ -325,7 +328,7 @@ export default function CustomersPage() {
               <UserCheck className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Active</p>
+              <p className="text-xs text-muted-foreground">Active Today</p>
               <p className="text-xl font-bold">{stats.active.toLocaleString()}</p>
             </div>
           </CardContent>
