@@ -251,7 +251,77 @@ export function MasterCatalogView() {
   const exportProducts = useExportProducts()
   const bulkUpdate = useBulkUpdateProducts()
 
-  const products = data?.products ?? []
+  // Memoized so `selectedProducts` below (and anything else depending on
+  // `products`) doesn't see a new array identity on every render — `?? []`
+  // alone creates a fresh array whenever `data.products` is undefined.
+  const products = useMemo(() => data?.products ?? [], [data?.products])
+
+  // ── Quick Edit (price/stock, one row per selected product) ──────────────
+  const [quickEditOpen, setQuickEditOpen] = useState(false)
+  const [quickEditDrafts, setQuickEditDrafts] = useState<
+    Record<string, { price: string; stock_quantity: string }>
+  >({})
+  const [propagateToShops, setPropagateToShops] = useState(false)
+
+  const selectedProducts = useMemo(
+    () => products.filter((p) => selectedIds.has(p.id)),
+    [products, selectedIds],
+  )
+
+  function openQuickEdit() {
+    setQuickEditDrafts(
+      Object.fromEntries(
+        selectedProducts.map((p) => [
+          p.id,
+          {
+            price: String(p.price ?? ""),
+            stock_quantity: String(p.stock_quantity ?? ""),
+          },
+        ]),
+      ),
+    )
+    setPropagateToShops(false)
+    setQuickEditOpen(true)
+  }
+
+  function handleQuickEditSave() {
+    // Only send products whose price or stock actually changed — avoids
+    // pointless writes (and, with propagation on, pointless shop_products
+    // updates) for rows the admin only looked at.
+    const changed = selectedProducts.flatMap((p) => {
+      const draft = quickEditDrafts[p.id]
+      if (!draft) return []
+      const draftPrice = draft.price === "" ? undefined : Number(draft.price)
+      const draftStock =
+        draft.stock_quantity === "" ? undefined : Number(draft.stock_quantity)
+      const priceChanged = draftPrice !== undefined && draftPrice !== p.price
+      const stockChanged =
+        draftStock !== undefined && draftStock !== p.stock_quantity
+      if (!priceChanged && !stockChanged) return []
+      return [
+        {
+          id: p.id,
+          ...(priceChanged ? { price: draftPrice } : {}),
+          ...(stockChanged ? { stock_quantity: draftStock } : {}),
+        },
+      ]
+    })
+
+    if (changed.length === 0) {
+      setQuickEditOpen(false)
+      return
+    }
+
+    bulkUpdate.mutate(
+      { products: changed, propagateToShops },
+      {
+        onSuccess: () => {
+          setQuickEditOpen(false)
+          setSelectedIds(new Set())
+        },
+      },
+    )
+  }
   const pagination = data?.pagination
 
   const toggleSelect = (id: string) => {
@@ -409,7 +479,8 @@ export function MasterCatalogView() {
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && canManage && (
-        <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-200 rounded-lg animate-fade-in">
+        <div className="flex flex-col gap-3 p-3 bg-brand-50 border border-brand-200 rounded-lg animate-fade-in">
+          <div className="flex items-center gap-3">
           <CheckSquare className="h-4 w-4 text-brand-500" />
           <span className="text-sm font-medium">
             {selectedIds.size} product(s) selected
@@ -420,10 +491,12 @@ export function MasterCatalogView() {
               size="sm"
               onClick={() =>
                 bulkUpdate.mutate(
-                  Array.from(selectedIds).map((id) => ({
-                    id,
-                    is_active: true,
-                  })),
+                  {
+                    products: Array.from(selectedIds).map((id) => ({
+                      id,
+                      is_active: true,
+                    })),
+                  },
                   { onSuccess: () => setSelectedIds(new Set()) },
                 )
               }
@@ -437,10 +510,12 @@ export function MasterCatalogView() {
               size="sm"
               onClick={() =>
                 bulkUpdate.mutate(
-                  Array.from(selectedIds).map((id) => ({
-                    id,
-                    is_active: false,
-                  })),
+                  {
+                    products: Array.from(selectedIds).map((id) => ({
+                      id,
+                      is_active: false,
+                    })),
+                  },
                   { onSuccess: () => setSelectedIds(new Set()) },
                 )
               }
@@ -466,13 +541,129 @@ export function MasterCatalogView() {
               Delete
             </Button>
             <Button
+              variant={quickEditOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => (quickEditOpen ? setQuickEditOpen(false) : openQuickEdit())}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              Quick Edit
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => {
+                setSelectedIds(new Set())
+                setQuickEditOpen(false)
+              }}
             >
               Clear
             </Button>
           </div>
+          </div>
+
+          {/* Quick Edit panel — one row per selected product (image, name,
+              weight, editable price + stock), plus a single toggle that
+              applies to the whole batch: whether a changed price should
+              also overwrite this product's price at every shop selling it. */}
+          {quickEditOpen && (
+            <div className="w-full space-y-3 rounded-md border border-brand-200 bg-white p-3">
+              <div className="max-h-72 space-y-2 overflow-y-auto">
+                {selectedProducts.map((p) => {
+                  const draft = quickEditDrafts[p.id] ?? {
+                    price: String(p.price ?? ""),
+                    stock_quantity: String(p.stock_quantity ?? ""),
+                  }
+                  const weight = p.net_quantity || p.netQuantity || p.net_weight || p.unit
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 rounded-md border p-2"
+                    >
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+                        {p.thumbnail_url ? (
+                          <Image
+                            src={p.thumbnail_url}
+                            alt={p.name}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <Package className="h-full w-full p-2 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{p.name}</p>
+                        {weight ? (
+                          <p className="text-xs text-muted-foreground">{weight}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">Price (₹)</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={draft.price}
+                            onChange={(e) =>
+                              setQuickEditDrafts((prev) => ({
+                                ...prev,
+                                [p.id]: { ...draft, price: e.target.value },
+                              }))
+                            }
+                            className="h-8 w-24 text-sm"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">Stock</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="1"
+                            value={draft.stock_quantity}
+                            onChange={(e) =>
+                              setQuickEditDrafts((prev) => ({
+                                ...prev,
+                                [p.id]: { ...draft, stock_quantity: e.target.value },
+                              }))
+                            }
+                            className="h-8 w-20 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center justify-between border-t pt-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={propagateToShops}
+                    onCheckedChange={(v) => setPropagateToShops(v === true)}
+                  />
+                  Also update price at shops selling this product
+                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuickEditOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleQuickEditSave}
+                    disabled={bulkUpdate.isPending}
+                  >
+                    {bulkUpdate.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

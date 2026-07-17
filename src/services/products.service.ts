@@ -89,12 +89,29 @@ export async function duplicateProduct(id: string) {
   return data.data
 }
 
-/** Bulk update products */
+export interface BulkUpdateProductItem {
+  id: string
+  price?: number
+  sale_price?: number
+  stock_quantity?: number
+  category_id?: string
+  is_active?: boolean
+}
+
+/**
+ * Bulk update products. `propagateToShops` — when true and an item includes
+ * `price`, that price also overwrites `shop_products.price` for every shop
+ * currently selling it, so per-shop listings match the new master price.
+ */
 export async function bulkUpdateProducts(
-  products: { id: string; price?: number; sale_price?: number; category_id?: string; is_active?: boolean }[]
+  products: BulkUpdateProductItem[],
+  propagateToShops = false,
 ) {
-  const { data } = await api.put<ApiResponse<{ updated: Product[] }>>("/admin/products/bulk-update", {
+  const { data } = await api.put<
+    ApiResponse<{ updated: Product[]; shop_products_updated: number }>
+  >("/admin/products/bulk-update", {
     products,
+    propagate_to_shops: propagateToShops,
   })
   return data.data
 }

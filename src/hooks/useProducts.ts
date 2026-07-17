@@ -9,6 +9,7 @@ import {
   duplicateProduct,
   exportProductsCsv,
   bulkUpdateProducts,
+  type BulkUpdateProductItem,
 } from "@/services/products.service"
 import type { ProductFilters, ProductPayload } from "@/types"
 import { toast } from "sonner"
@@ -130,12 +131,27 @@ export function useExportProducts() {
 export function useBulkUpdateProducts() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (
-      products: { id: string; price?: number; sale_price?: number; category_id?: string; is_active?: boolean }[]
-    ) => bulkUpdateProducts(products),
+    mutationFn: ({
+      products,
+      propagateToShops,
+    }: {
+      products: BulkUpdateProductItem[]
+      propagateToShops?: boolean
+    }) => bulkUpdateProducts(products, propagateToShops),
     onSuccess: (data) => {
-      toast.success(`${data.updated?.length ?? 0} products updated`)
+      const shopCount = data.shop_products_updated ?? 0
+      toast.success(
+        shopCount > 0
+          ? `${data.updated?.length ?? 0} products updated (${shopCount} shop listings synced)`
+          : `${data.updated?.length ?? 0} products updated`
+      )
       qc.invalidateQueries({ queryKey: ["products"] })
+      // Propagation writes shop_products.price directly — drop every
+      // shop-products cache entry so an open Shop Products page reflects
+      // the new price without a manual refresh.
+      if (shopCount > 0) {
+        qc.invalidateQueries({ queryKey: ["shop-products"] })
+      }
     },
     onError: (e: Error) => toast.error(e.message || "Bulk update failed"),
   })
