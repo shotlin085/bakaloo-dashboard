@@ -47,3 +47,10 @@ export interface AdminCreditPayload {
   description?: string
   referenceId?: string
 }
+
+/** Admin debit payload */
+export interface AdminDebitPayload {
+  amount: number
+  description?: string
+  referenceId?: string
+}

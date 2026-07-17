@@ -45,7 +45,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useWalletTransactions, useAdminCredit, useWalletStats } from "@/hooks/useWallet"
+import { useWalletTransactions, useAdminCredit, useAdminDebit, useWalletStats } from "@/hooks/useWallet"
 import { BulkCreditDialog } from "@/components/wallet/BulkCreditDialog"
 import { useDebounce } from "@/hooks/useDebounce"
 import { formatINR } from "@/lib/utils"
@@ -58,8 +58,14 @@ function WalletContent() {
   const [page, setPage] = useState(1)
   const [userIdSearch, setUserIdSearch] = useState("")
   const [creditOpen, setCreditOpen] = useState(false)
+  const [debitOpen, setDebitOpen] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [creditForm, setCreditForm] = useState({
+    userId: "",
+    amount: 0,
+    description: "",
+  })
+  const [debitForm, setDebitForm] = useState({
     userId: "",
     amount: 0,
     description: "",
@@ -80,6 +86,7 @@ function WalletContent() {
   const totalPages = pagination?.totalPages ?? 1
 
   const creditMutation = useAdminCredit()
+  const debitMutation = useAdminDebit()
   const { can } = usePermissions()
   const canManage = can("wallet.manage")
 
@@ -103,6 +110,26 @@ function WalletContent() {
     )
   }
 
+  const handleDebit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!debitForm.userId || debitForm.amount <= 0) return
+    debitMutation.mutate(
+      {
+        userId: debitForm.userId,
+        payload: {
+          amount: debitForm.amount,
+          description: debitForm.description || "Amount deducted by company",
+        },
+      },
+      {
+        onSuccess: () => {
+          setDebitOpen(false)
+          setDebitForm({ userId: "", amount: 0, description: "" })
+        },
+      }
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title="Wallet & Transactions" subtitle="View wallet transactions and credit user wallets">
@@ -110,6 +137,9 @@ function WalletContent() {
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(true)} size="sm">
               <Upload className="h-4 w-4 mr-1.5" /> Bulk Credit CSV
+            </Button>
+            <Button variant="outline" onClick={() => setDebitOpen(true)} size="sm">
+              <ArrowDownCircle className="h-4 w-4 mr-1.5" /> Debit Wallet
             </Button>
             <Button onClick={() => setCreditOpen(true)} size="sm">
               <Plus className="h-4 w-4 mr-1.5" /> Credit Wallet
@@ -434,6 +464,64 @@ function WalletContent() {
               </Button>
               <Button type="submit" disabled={creditMutation.isPending}>
                 {creditMutation.isPending ? "Processing..." : "Credit Wallet"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Debit Dialog */}
+      <Dialog open={debitOpen} onOpenChange={(v) => !v && setDebitOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Debit User Wallet</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleDebit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="debitUserId">User ID *</Label>
+              <Input
+                id="debitUserId"
+                placeholder="Enter user UUID"
+                value={debitForm.userId}
+                onChange={(e) => setDebitForm({ ...debitForm, userId: e.target.value })}
+                required
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="debitAmount">Amount (₹) *</Label>
+              <Input
+                id="debitAmount"
+                type="number"
+                min={1}
+                max={50000}
+                step={0.01}
+                value={debitForm.amount || ""}
+                onChange={(e) =>
+                  setDebitForm({ ...debitForm, amount: parseFloat(e.target.value) || 0 })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="debitDesc">Note (optional)</Label>
+              <Textarea
+                id="debitDesc"
+                placeholder="e.g. Correction for order #1234"
+                value={debitForm.description}
+                onChange={(e) => setDebitForm({ ...debitForm, description: e.target.value })}
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                If left blank, the customer will see &quot;Amount deducted by company&quot; in their wallet history.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDebitOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" disabled={debitMutation.isPending}>
+                {debitMutation.isPending ? "Processing..." : "Debit Wallet"}
               </Button>
             </DialogFooter>
           </form>

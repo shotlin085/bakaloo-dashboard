@@ -25,11 +25,12 @@ import { toast } from "sonner"
 import {
   getWalletTransactions,
   adminCreditWallet,
+  adminDebitWallet,
   getWalletOverviewStats,
 } from "@/services/wallet.service"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
-import type { WalletTransactionFilters, AdminCreditPayload } from "@/types/wallet.types"
+import type { WalletTransactionFilters, AdminCreditPayload, AdminDebitPayload } from "@/types/wallet.types"
 
 /** Sentinel used while the Shop_Context_Store is hydrating. */
 const NONE_SHOP_KEY = "NONE"
@@ -82,6 +83,21 @@ export function useAdminCredit() {
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to credit wallet")
+    },
+  })
+}
+
+export function useAdminDebit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: string; payload: AdminDebitPayload }) =>
+      adminDebitWallet(userId, payload),
+    onSuccess: () => {
+      toast.success("Wallet debited successfully")
+      qc.invalidateQueries({ queryKey: ["wallet"] })
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to debit wallet")
     },
   })
 }

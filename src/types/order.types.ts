@@ -79,6 +79,10 @@ export interface OrderItem {
   unit: string
   total: number
   thumbnail_url?: string | null
+  /** Product's net quantity/weight (e.g. "500g", "1.5kg") joined from the
+   *  product catalog — not a per-order snapshot, so it reflects the
+   *  product's current weight rather than what was true at order time. */
+  net_quantity?: string | null
   created_at?: string
 }
 

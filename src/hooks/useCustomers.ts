@@ -42,6 +42,7 @@ import {
   getCustomerAddresses,
   toggleBlockCustomer,
   creditCustomerWallet,
+  debitCustomerWallet,
   notifyCustomer,
   exportCustomersCsv,
 } from "@/services/customers.service"
@@ -157,6 +158,26 @@ export function useCreditWallet() {
       qc.invalidateQueries({ queryKey: ["customers"] })
     },
     onError: (e: Error) => toast.error(e.message || "Failed to credit wallet"),
+  })
+}
+
+export function useDebitWallet() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      amount,
+      description,
+    }: {
+      id: string
+      amount: number
+      description?: string
+    }) => debitCustomerWallet(id, { amount, description }),
+    onSuccess: () => {
+      toast.success("Wallet debited")
+      qc.invalidateQueries({ queryKey: ["customers"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to debit wallet"),
   })
 }
 

@@ -437,7 +437,9 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                           <p className="text-sm font-medium truncate">{item.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {item.quantity} × {formatINR(item.price)}
-                            {item.unit && ` · ${item.unit}`}
+                            {item.net_quantity
+                              ? ` · ${item.net_quantity}`
+                              : item.unit && ` · ${item.unit}`}
                           </p>
                         </div>
                         <span className="text-sm font-semibold">{formatINR(item.total)}</span>

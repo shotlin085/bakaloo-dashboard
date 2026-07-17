@@ -4,6 +4,7 @@ import type {
   WalletTransaction,
   WalletTransactionFilters,
   AdminCreditPayload,
+  AdminDebitPayload,
   WalletOverviewStats,
 } from "@/types/wallet.types"
 
@@ -47,6 +48,17 @@ export async function adminCreditWallet(
   const { data } = await api.post<
     ApiResponse<{ wallet: { balance: number }; transaction: WalletTransaction }>
   >(`/wallet/admin/${userId}/credit`, payload)
+  return data.data
+}
+
+/** Admin debit a user's wallet */
+export async function adminDebitWallet(
+  userId: string,
+  payload: AdminDebitPayload
+): Promise<{ wallet: { balance: number }; transaction: WalletTransaction }> {
+  const { data } = await api.post<
+    ApiResponse<{ wallet: { balance: number }; transaction: WalletTransaction }>
+  >(`/wallet/admin/${userId}/debit`, payload)
   return data.data
 }
 

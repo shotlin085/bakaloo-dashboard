@@ -84,6 +84,18 @@ export async function creditCustomerWallet(
   return data.data
 }
 
+/** Debit customer wallet */
+export async function debitCustomerWallet(
+  id: string,
+  payload: { amount: number; description?: string }
+) {
+  const { data } = await api.post<ApiResponse<{ wallet_balance: number }>>(
+    `/admin/customers/${id}/debit-wallet`,
+    payload
+  )
+  return data.data
+}
+
 /** Send notification to customer */
 export async function notifyCustomer(
   id: string,

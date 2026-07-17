@@ -35,6 +35,7 @@ import {
   Loader2,
   Crown,
   Navigation,
+  ArrowDownCircle,
 } from "lucide-react"
 import {
   useCustomerDetail,
@@ -42,6 +43,7 @@ import {
   useCustomerAddresses,
   useToggleBlockCustomer,
   useCreditWallet,
+  useDebitWallet,
   useNotifyCustomer,
 } from "@/hooks/useCustomers"
 import { useShopContextStore } from "@/store/shop-context.store"
@@ -63,6 +65,7 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
   const removedAddresses = addresses?.filter((a) => a.deletedAt) ?? []
   const toggleBlock = useToggleBlockCustomer()
   const creditWallet = useCreditWallet()
+  const debitWallet = useDebitWallet()
   const notifyCustomer = useNotifyCustomer()
 
   // Vendor scope enforcement (Req 10.10): a vendor (`assignedShopIds.length > 0`)
@@ -89,6 +92,10 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
   const [walletAmount, setWalletAmount] = useState("")
   const [walletDesc, setWalletDesc] = useState("")
 
+  const [walletDebitDialog, setWalletDebitDialog] = useState(false)
+  const [walletDebitAmount, setWalletDebitAmount] = useState("")
+  const [walletDebitDesc, setWalletDebitDesc] = useState("")
+
   const [notifyDialog, setNotifyDialog] = useState(false)
   const [notifyTitle, setNotifyTitle] = useState("")
   const [notifyBody, setNotifyBody] = useState("")
@@ -102,6 +109,23 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
           setWalletDialog(false)
           setWalletAmount("")
           setWalletDesc("")
+        },
+      }
+    )
+  }
+
+  const debitAmountExceedsBalance =
+    !!customer && !!walletDebitAmount && parseFloat(walletDebitAmount) > customer.wallet_balance
+
+  const handleDebitWallet = () => {
+    if (!customer || !walletDebitAmount || debitAmountExceedsBalance) return
+    debitWallet.mutate(
+      { id: customer.id, amount: parseFloat(walletDebitAmount), description: walletDebitDesc || undefined },
+      {
+        onSuccess: () => {
+          setWalletDebitDialog(false)
+          setWalletDebitAmount("")
+          setWalletDebitDesc("")
         },
       }
     )
@@ -203,6 +227,15 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                     >
                       <Wallet className="h-3.5 w-3.5 mr-1" />
                       Credit Wallet
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8"
+                      onClick={() => setWalletDebitDialog(true)}
+                    >
+                      <ArrowDownCircle className="h-3.5 w-3.5 mr-1" />
+                      Debit Wallet
                     </Button>
                     <Button
                       size="sm"
@@ -410,6 +443,59 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
             >
               {creditWallet.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Credit {walletAmount ? formatINR(parseFloat(walletAmount)) : "₹0"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Wallet Debit Dialog */}
+      <Dialog open={walletDebitDialog} onOpenChange={setWalletDebitDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Debit Wallet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {customer && (
+              <p className="text-xs text-muted-foreground">
+                Current balance: {formatINR(customer.wallet_balance)}
+              </p>
+            )}
+            <div className="space-y-1">
+              <Label>Amount (₹)</Label>
+              <Input
+                type="number"
+                min="1"
+                max="50000"
+                value={walletDebitAmount}
+                onChange={(e) => setWalletDebitAmount(e.target.value)}
+                placeholder="e.g. 200"
+              />
+              {debitAmountExceedsBalance && (
+                <p className="text-xs text-destructive">Amount exceeds current wallet balance.</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label>Note (optional)</Label>
+              <Input
+                value={walletDebitDesc}
+                onChange={(e) => setWalletDebitDesc(e.target.value)}
+                placeholder="e.g. Correction for order #123"
+                maxLength={255}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                If left blank, the customer will see &quot;Amount deducted by company&quot; in their wallet history.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWalletDebitDialog(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleDebitWallet}
+              disabled={!walletDebitAmount || debitAmountExceedsBalance || debitWallet.isPending}
+            >
+              {debitWallet.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Debit {walletDebitAmount ? formatINR(parseFloat(walletDebitAmount)) : "₹0"}
             </Button>
           </DialogFooter>
         </DialogContent>
