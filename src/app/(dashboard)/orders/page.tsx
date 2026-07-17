@@ -68,10 +68,11 @@ import {
   type OrderType,
   type PaymentMethod,
 } from "@/lib/constants"
-import { formatINR, formatRelativeTime, cn } from "@/lib/utils"
+import { formatINR, formatRelativeTime, formatDateTime, cn } from "@/lib/utils"
 import type { OrderFilters } from "@/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer"
+import { OrderCountdown } from "@/components/orders/OrderCountdown"
 import { useConnectionStatus } from "@/hooks/useSocket"
 import { usePermissions } from "@/hooks/usePermissions"
 
@@ -85,6 +86,8 @@ export default function OrdersPage() {
 
 const DEFAULT_LIMIT = 20
 const VALID_LIMITS = [20, 50, 100]
+/** Statuses where an order is no longer actively in transit — the ASAP ETA countdown freezes rather than ticking (or going negative) forever. */
+const TERMINAL_STATUSES = new Set<OrderStatus>(["DELIVERED", "CANCELLED", "REFUNDED"])
 
 function OrdersContent() {
   const router = useRouter()
@@ -729,16 +732,35 @@ function OrdersContent() {
                     </TableCell>
                     <TableCell>
                       {order.order_type ? (
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] px-2 py-0.5 border-0 font-medium"
-                          style={{
-                            backgroundColor: ORDER_TYPE_CONFIG[order.order_type].bg,
-                            color: ORDER_TYPE_CONFIG[order.order_type].text,
-                          }}
-                        >
-                          {ORDER_TYPE_CONFIG[order.order_type].label}
-                        </Badge>
+                        <div className="space-y-0.5">
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] px-2 py-0.5 border-0 font-medium"
+                            style={{
+                              backgroundColor: ORDER_TYPE_CONFIG[order.order_type].bg,
+                              color: ORDER_TYPE_CONFIG[order.order_type].text,
+                            }}
+                          >
+                            {ORDER_TYPE_CONFIG[order.order_type].label}
+                          </Badge>
+                          {/* Express/Standard (ASAP) → live countdown to the
+                              ETA. Scheduled → the exact booked slot. Neither
+                              ticks/renders once the order is no longer
+                              actively in transit. */}
+                          {order.order_type === "SCHEDULED" ? (
+                            <p className="text-[11px] text-muted-foreground">
+                              {order.scheduled_slot_label ??
+                                (order.scheduled_slot_start
+                                  ? formatDateTime(order.scheduled_slot_start)
+                                  : null)}
+                            </p>
+                          ) : order.estimated_delivery ? (
+                            <OrderCountdown
+                              estimatedDelivery={order.estimated_delivery}
+                              frozen={TERMINAL_STATUSES.has(order.status)}
+                            />
+                          ) : null}
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
