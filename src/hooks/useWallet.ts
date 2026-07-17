@@ -26,6 +26,7 @@ import {
   getWalletTransactions,
   adminCreditWallet,
   adminDebitWallet,
+  resolveWalletUser,
   getWalletOverviewStats,
 } from "@/services/wallet.service"
 import { useShopContext } from "@/hooks/useShopContext"
@@ -72,6 +73,22 @@ export function useWalletTransactions(filters: WalletTransactionFilters = {}) {
     staleTime: 30_000,
     refetchOnMount: "always",
     placeholderData: (prev) => prev,
+  })
+}
+
+/**
+ * Resolves a (debounced, caller-supplied) User ID or phone number to the
+ * matching user's name/phone, so the Credit/Debit dialogs can show who an
+ * admin is about to act on before they submit. `query` should already be
+ * debounced by the caller — this hook doesn't debounce internally.
+ */
+export function useResolveWalletUser(query: string) {
+  return useQuery({
+    queryKey: ["wallet", "resolve-user", query] as const,
+    queryFn: () => resolveWalletUser(query),
+    enabled: query.trim().length >= 3,
+    staleTime: 30_000,
+    retry: false,
   })
 }
 

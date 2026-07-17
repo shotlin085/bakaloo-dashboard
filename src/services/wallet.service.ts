@@ -62,6 +62,21 @@ export async function adminDebitWallet(
   return data.data
 }
 
+/** Resolve a User ID or phone number to the matching user's name/phone. */
+export async function resolveWalletUser(
+  query: string
+): Promise<{ id: string; name: string | null; phone: string } | null> {
+  try {
+    const { data } = await api.get<ApiResponse<{ id: string; name: string | null; phone: string }>>(
+      "/wallet/admin/resolve-user",
+      { params: { query } }
+    )
+    return data.data
+  } catch {
+    return null
+  }
+}
+
 /** Get wallet overview stats */
 export async function getWalletOverviewStats(): Promise<WalletOverviewStats> {
   try {

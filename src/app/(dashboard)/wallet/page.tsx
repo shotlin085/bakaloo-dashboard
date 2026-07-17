@@ -19,6 +19,8 @@ import {
   Coins,
   Clock,
   XCircle,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
@@ -45,7 +47,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useWalletTransactions, useAdminCredit, useAdminDebit, useWalletStats } from "@/hooks/useWallet"
+import { useWalletTransactions, useAdminCredit, useAdminDebit, useWalletStats, useResolveWalletUser } from "@/hooks/useWallet"
 import { BulkCreditDialog } from "@/components/wallet/BulkCreditDialog"
 import { useDebounce } from "@/hooks/useDebounce"
 import { formatINR } from "@/lib/utils"
@@ -74,6 +76,17 @@ function WalletContent() {
   const debouncedUserId = useDebounce(userIdSearch, 400)
   const { data: walletStats } = useWalletStats()
 
+  // Resolve whatever's typed into the Credit/Debit "User ID" fields (a UUID
+  // or a phone number) to a real name/phone, so the admin can confirm who
+  // they're about to act on before submitting instead of pasting a bare
+  // UUID blind.
+  const debouncedCreditUserId = useDebounce(creditForm.userId, 400)
+  const debouncedDebitUserId = useDebounce(debitForm.userId, 400)
+  const { data: creditUserMatch, isFetching: creditUserLookupPending } =
+    useResolveWalletUser(debouncedCreditUserId)
+  const { data: debitUserMatch, isFetching: debitUserLookupPending } =
+    useResolveWalletUser(debouncedDebitUserId)
+
   const { data, isLoading } = useWalletTransactions({
     page,
     limit: 20,
@@ -93,9 +106,11 @@ function WalletContent() {
   const handleCredit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!creditForm.userId || creditForm.amount <= 0) return
+    // Prefer the resolved user's real id — covers the case where a phone
+    // number was typed instead of a UUID.
     creditMutation.mutate(
       {
-        userId: creditForm.userId,
+        userId: creditUserMatch?.id ?? creditForm.userId,
         payload: {
           amount: creditForm.amount,
           description: creditForm.description || "Admin credit",
@@ -113,9 +128,11 @@ function WalletContent() {
   const handleDebit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!debitForm.userId || debitForm.amount <= 0) return
+    // Prefer the resolved user's real id — covers the case where a phone
+    // number was typed instead of a UUID.
     debitMutation.mutate(
       {
-        userId: debitForm.userId,
+        userId: debitUserMatch?.id ?? debitForm.userId,
         payload: {
           amount: debitForm.amount,
           description: debitForm.description || "Amount deducted by company",
@@ -423,14 +440,19 @@ function WalletContent() {
           </DialogHeader>
           <form onSubmit={handleCredit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="userId">User ID *</Label>
+              <Label htmlFor="userId">User ID or phone number *</Label>
               <Input
                 id="userId"
-                placeholder="Enter user UUID"
+                placeholder="Enter user UUID or phone number"
                 value={creditForm.userId}
                 onChange={(e) => setCreditForm({ ...creditForm, userId: e.target.value })}
                 required
                 className="font-mono text-xs"
+              />
+              <UserLookupCaption
+                query={debouncedCreditUserId}
+                match={creditUserMatch}
+                isFetching={creditUserLookupPending}
               />
             </div>
             <div className="space-y-1.5">
@@ -478,14 +500,19 @@ function WalletContent() {
           </DialogHeader>
           <form onSubmit={handleDebit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="debitUserId">User ID *</Label>
+              <Label htmlFor="debitUserId">User ID or phone number *</Label>
               <Input
                 id="debitUserId"
-                placeholder="Enter user UUID"
+                placeholder="Enter user UUID or phone number"
                 value={debitForm.userId}
                 onChange={(e) => setDebitForm({ ...debitForm, userId: e.target.value })}
                 required
                 className="font-mono text-xs"
+              />
+              <UserLookupCaption
+                query={debouncedDebitUserId}
+                match={debitUserMatch}
+                isFetching={debitUserLookupPending}
               />
             </div>
             <div className="space-y-1.5">
@@ -539,5 +566,43 @@ export default function WalletPage() {
     <Suspense fallback={<LoadingSkeleton variant="table" />}>
       <WalletContent />
     </Suspense>
+  )
+}
+
+/**
+ * Confirmation caption shown under the Credit/Debit "User ID or phone
+ * number" field — resolves whatever's been typed to a real name/phone so
+ * an admin can see who they're about to act on before submitting, rather
+ * than pasting an id blind. `query` is expected to already be debounced.
+ */
+function UserLookupCaption({
+  query,
+  match,
+  isFetching,
+}: {
+  query: string
+  match: { id: string; name: string | null; phone: string } | null | undefined
+  isFetching: boolean
+}) {
+  if (query.trim().length < 3) return null
+
+  if (isFetching) {
+    return <p className="text-xs text-muted-foreground">Looking up user...</p>
+  }
+
+  if (match) {
+    return (
+      <p className="text-xs text-green-600 flex items-center gap-1">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {match.name || "Unnamed customer"} · {match.phone}
+      </p>
+    )
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground flex items-center gap-1">
+      <AlertCircle className="h-3.5 w-3.5" />
+      No user found for this ID or phone number
+    </p>
   )
 }
