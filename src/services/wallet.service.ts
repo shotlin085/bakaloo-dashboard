@@ -62,12 +62,21 @@ export async function adminDebitWallet(
   return data.data
 }
 
+export interface ResolvedWalletUser {
+  id: string
+  name: string | null
+  phone: string
+  /** This user's most recent actually-PAID orders (amount + order number) — used
+   *  to warn an admin when a Credit Wallet amount doesn't match any real paid
+   *  order, so money never gets refunded for an order that was never paid for
+   *  (e.g. a COD order cancelled before delivery, or an expired ONLINE payment). */
+  recentPaidOrders: { orderNumber: string; amount: number }[]
+}
+
 /** Resolve a User ID or phone number to the matching user's name/phone. */
-export async function resolveWalletUser(
-  query: string
-): Promise<{ id: string; name: string | null; phone: string } | null> {
+export async function resolveWalletUser(query: string): Promise<ResolvedWalletUser | null> {
   try {
-    const { data } = await api.get<ApiResponse<{ id: string; name: string | null; phone: string }>>(
+    const { data } = await api.get<ApiResponse<ResolvedWalletUser>>(
       "/wallet/admin/resolve-user",
       { params: { query } }
     )

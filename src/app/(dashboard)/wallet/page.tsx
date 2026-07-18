@@ -52,6 +52,7 @@ import { BulkCreditDialog } from "@/components/wallet/BulkCreditDialog"
 import { useDebounce } from "@/hooks/useDebounce"
 import { formatINR } from "@/lib/utils"
 import { usePermissions } from "@/hooks/usePermissions"
+import type { ResolvedWalletUser } from "@/services/wallet.service"
 
 type TypeTab = "all" | "CREDIT" | "DEBIT" | "REFUND"
 
@@ -469,6 +470,7 @@ function WalletContent() {
                 }
                 required
               />
+              <UnpaidOrderWarning amount={creditForm.amount} match={creditUserMatch} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="desc">Description</Label>
@@ -581,7 +583,7 @@ function UserLookupCaption({
   isFetching,
 }: {
   query: string
-  match: { id: string; name: string | null; phone: string } | null | undefined
+  match: ResolvedWalletUser | null | undefined
   isFetching: boolean
 }) {
   if (query.trim().length < 3) return null
@@ -603,6 +605,40 @@ function UserLookupCaption({
     <p className="text-xs text-muted-foreground flex items-center gap-1">
       <AlertCircle className="h-3.5 w-3.5" />
       No user found for this ID or phone number
+    </p>
+  )
+}
+
+/**
+ * Warns when a Credit Wallet amount doesn't match any of this customer's
+ * recent actually-PAID orders — catches the mistake of crediting a
+ * "refund" for an order that was never paid for (a COD order cancelled
+ * before delivery, or an ONLINE order whose payment window expired
+ * unpaid), which looks identical to a real refund in the wallet history
+ * but never had matching money collected in the first place. Purely
+ * informational — legitimate free-form credits (bonuses, promotions,
+ * goodwill) aren't tied to any order and are expected to not match.
+ */
+function UnpaidOrderWarning({
+  amount,
+  match,
+}: {
+  amount: number
+  match: ResolvedWalletUser | null | undefined
+}) {
+  if (!match || !amount || amount <= 0) return null
+
+  const matchesPaidOrder = match.recentPaidOrders.some(
+    (o) => Math.abs(o.amount - amount) < 0.005
+  )
+  if (matchesPaidOrder) return null
+
+  return (
+    <p className="text-xs text-amber-600 flex items-center gap-1">
+      <AlertCircle className="h-3.5 w-3.5" />
+      ₹{amount} doesn&apos;t match any of {match.name || "this customer"}&apos;s recent paid
+      orders — if this is a refund, double-check the order was actually paid for before
+      crediting.
     </p>
   )
 }
