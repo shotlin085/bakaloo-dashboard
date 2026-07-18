@@ -69,7 +69,14 @@ export function ServiceAreaTab({ shop }: ServiceAreaTabProps) {
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Delivery radius
             </p>
-            <p className="text-sm">{shop.delivery_radius_km} km</p>
+            <p className="text-sm">
+              {shop.delivery_radius_km} km
+              {shop.pincode_only && (
+                <Badge variant="outline" className="ml-2 border-amber-300 bg-amber-50 text-amber-700">
+                  Pincode-only mode — radius ignored
+                </Badge>
+              )}
+            </p>
           </div>
 
           <div>

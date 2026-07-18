@@ -111,6 +111,7 @@ function buildBlankDefaults(): Partial<ShopInput> {
     logo_url: "", banner_url: "", phone: "", email: "", whatsapp: "",
     address_line1: "", address_line2: "", city: "", state: "", pincode: "",
     serviceable_pincodes: [],
+    pincode_only: false,
     operating_hours: {
       monday: { ...defaultDay }, tuesday: { ...defaultDay },
       wednesday: { ...defaultDay }, thursday: { ...defaultDay },
@@ -655,6 +656,20 @@ export function ShopForm({
                   className="pl-9"
                   aria-invalid={!!errors.delivery_radius_km}
                   {...register("delivery_radius_km", { valueAsNumber: true })} />
+              </div>
+            </Field>
+
+            <Field label="Pincode-Only Mode" htmlFor="pincode_only" className="md:col-span-2"
+              hint="When on, only the exact pincodes above are servable — the delivery radius above is ignored as a fallback match, even for nearby customers.">
+              <div className="flex items-center gap-2">
+                <Switch id="pincode_only" checked={!!watch("pincode_only")}
+                  onCheckedChange={(checked) =>
+                    setValue("pincode_only", checked, { shouldDirty: true })
+                  }
+                  aria-label="Only serve exact pincodes, ignore delivery radius" />
+                <Label htmlFor="pincode_only" className="cursor-pointer text-sm text-slate-600">
+                  Only serve exact pincodes
+                </Label>
               </div>
             </Field>
           </div>

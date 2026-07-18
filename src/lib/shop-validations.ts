@@ -169,6 +169,7 @@ export const shopSchema = z
       .number()
       .positive("Delivery radius must be greater than 0")
       .max(50, "Delivery radius cannot exceed 50 km"),
+    pincode_only: z.boolean().default(false),
 
     // ─── operating hours ───
     operating_hours: operatingHoursSchema,

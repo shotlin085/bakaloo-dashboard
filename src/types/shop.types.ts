@@ -37,6 +37,8 @@ export interface Shop {
 
   serviceable_pincodes: string[]
   delivery_radius_km: number
+  /** When true, this shop is matchable ONLY via serviceable_pincodes — delivery_radius_km is never a fallback match. */
+  pincode_only: boolean
 
   is_active: boolean
   is_verified: boolean
