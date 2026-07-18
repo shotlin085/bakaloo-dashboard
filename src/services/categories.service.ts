@@ -1,9 +1,14 @@
 import api from "@/lib/api"
 import type { ApiResponse, Category, CategoryProductRank, CategoryType, Product } from "@/types"
 
-/** List all categories (flat) — STANDARD only; bundles are fetched separately via getBundles() */
+/**
+ * List all categories (flat) — STANDARD only; bundles are fetched separately
+ * via getBundles(). Uses the admin endpoint so deactivated-but-not-deleted
+ * categories still show here (badged inactive), unlike the public
+ * customer-facing /categories list which hides them.
+ */
 export async function getCategories() {
-  const { data } = await api.get<ApiResponse<Category[]>>("/categories")
+  const { data } = await api.get<ApiResponse<Category[]>>("/categories/admin")
   return data.data
 }
 
