@@ -131,10 +131,9 @@ export async function cancelOrder(
   orderId: string,
   payload: CancelOrderPayload
 ) {
-  const { data } = await api.post<ApiResponse<{ orderId: string; status: string }>>(
-    `/admin/orders/${orderId}/cancel`,
-    payload
-  )
+  const { data } = await api.post<
+    ApiResponse<{ orderId: string; status: string; stockRestoreWarning?: string }>
+  >(`/admin/orders/${orderId}/cancel`, payload)
   return data.data
 }
 

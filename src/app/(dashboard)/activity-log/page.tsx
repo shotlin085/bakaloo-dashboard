@@ -44,6 +44,7 @@ const ENTITY_TYPES = [
   { value: "all", label: "All Entities" },
   { value: "order", label: "Orders" },
   { value: "product", label: "Products" },
+  { value: "shop_product", label: "Shop Listings" },
   { value: "user", label: "Users" },
   { value: "rider", label: "Riders" },
   { value: "banner", label: "Banners" },
@@ -54,6 +55,7 @@ const ENTITY_TYPES = [
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   order: <ShoppingCart className="h-3.5 w-3.5" />,
   product: <Package className="h-3.5 w-3.5" />,
+  shop_product: <Package className="h-3.5 w-3.5" />,
   user: <User className="h-3.5 w-3.5" />,
   rider: <Truck className="h-3.5 w-3.5" />,
   banner: <ImageIcon className="h-3.5 w-3.5" />,
@@ -63,6 +65,7 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 const ENTITY_COLORS: Record<string, string> = {
   order: "bg-blue-50 text-blue-600 border-blue-200",
   product: "bg-green-50 text-green-600 border-green-200",
+  shop_product: "bg-teal-50 text-teal-600 border-teal-200",
   user: "bg-purple-50 text-purple-600 border-purple-200",
   rider: "bg-orange-50 text-orange-600 border-orange-200",
   banner: "bg-pink-50 text-pink-600 border-pink-200",

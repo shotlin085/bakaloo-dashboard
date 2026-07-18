@@ -212,8 +212,15 @@ export function useCancelOrder() {
   return useMutation({
     mutationFn: ({ orderId, payload }: { orderId: string; payload: CancelOrderPayload }) =>
       cancelOrder(orderId, payload),
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Order cancelled")
+      // Previously silent — a failed stock restore (e.g. the listing was
+      // deleted between order placement and cancellation) only showed up
+      // in server logs, never here, so an admin had no way to know
+      // inventory needed a manual check.
+      if (data.stockRestoreWarning) {
+        toast.warning(data.stockRestoreWarning)
+      }
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Cancel failed"),
