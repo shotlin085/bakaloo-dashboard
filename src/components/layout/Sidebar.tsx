@@ -26,6 +26,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  ShieldAlert,
   ShoppingCart,
   Sparkles,
   Star,
@@ -94,6 +95,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Receipt,
   Settings,
   Shield,
+  ShieldAlert,
   Sparkles,
   Star,
   Store,
@@ -187,6 +189,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     section: "COMMERCE",
     items: [
       { label: "Coupons", href: "/coupons", icon: "Ticket" },
+      { label: "Purchase Limits", href: "/purchase-limits", icon: "ShieldAlert" },
       { label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
       { label: "First-Time Offers", href: "/first-time-offers", icon: "Gift" },
       { label: "Cart Milestones", href: "/cart-milestones", icon: "TrendingUp" },
