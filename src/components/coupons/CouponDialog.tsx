@@ -28,7 +28,11 @@ import { useCustomerSegments } from "@/hooks/useCustomerSegments"
 import { useDebounce } from "@/hooks/useDebounce"
 import { getCustomers } from "@/services/customers.service"
 import { getCouponTargetUsers } from "@/services/coupons.service"
+import { getProductDetail } from "@/services/products.service"
+import { CategoryScopePicker, ProductScopePicker } from "@/components/coupons/CouponScopePicker"
 import type { Coupon, CreateCouponPayload, CouponTargetType } from "@/types/coupon.types"
+
+type ScopeMode = "ALL" | "CATEGORY" | "PRODUCT"
 
 interface CouponDialogProps {
   open: boolean
@@ -52,6 +56,9 @@ const INITIAL: CreateCouponPayload & { isActive: boolean } = {
   targetSegmentId: undefined,
   targetUserIds: [],
   cashbackCreditTrigger: "ORDER_DELIVERED",
+  applicableCategoryIds: [],
+  applicableProductIds: [],
+  grantsFreeDelivery: false,
 }
 
 const CASHBACK_TRIGGER_LABELS: Record<"PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED", string> = {
@@ -149,6 +156,8 @@ function CustomerTargetPicker({
 export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
   const [form, setForm] = useState(INITIAL)
   const [targetCustomers, setTargetCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([])
+  const [scopeMode, setScopeMode] = useState<ScopeMode>("ALL")
+  const [scopeProducts, setScopeProducts] = useState<{ id: string; name: string }[]>([])
   const createMutation = useCreateCoupon()
   const updateMutation = useUpdateCoupon()
   const { data: segments } = useCustomerSegments()
@@ -172,6 +181,9 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
         targetSegmentId: coupon.targetSegmentId ?? undefined,
         targetUserIds: [],
         cashbackCreditTrigger: coupon.cashbackCreditTrigger ?? "ORDER_DELIVERED",
+        applicableCategoryIds: coupon.applicableCategoryIds ?? [],
+        applicableProductIds: coupon.applicableProductIds ?? [],
+        grantsFreeDelivery: coupon.grantsFreeDelivery ?? false,
       })
       setTargetCustomers([])
       if (coupon.targetType === "INDIVIDUAL") {
@@ -180,15 +192,33 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
           setForm((f) => ({ ...f, targetUserIds: users.map((u) => u.id) }))
         })
       }
+      setScopeProducts([])
+      if (coupon.applicableCategoryIds?.length) {
+        setScopeMode("CATEGORY")
+      } else if (coupon.applicableProductIds?.length) {
+        setScopeMode("PRODUCT")
+        Promise.all(coupon.applicableProductIds.map((id) => getProductDetail(id))).then((products) =>
+          setScopeProducts(products.map((p) => ({ id: p.id, name: p.name })))
+        )
+      } else {
+        setScopeMode("ALL")
+      }
     } else {
       setForm(INITIAL)
       setTargetCustomers([])
+      setScopeMode("ALL")
+      setScopeProducts([])
     }
   }, [coupon, open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const { isActive, ...rest } = form
+    // null = "clear the scope" (accepted by the update schema); the create
+    // schema doesn't accept null for these two fields, so createMutation
+    // below swaps null back to undefined (= omit entirely, same effect).
+    const scopeCategoryIds = scopeMode === "CATEGORY" && rest.applicableCategoryIds?.length ? rest.applicableCategoryIds : null
+    const scopeProductIds = scopeMode === "PRODUCT" && rest.applicableProductIds?.length ? rest.applicableProductIds : null
     const payload = {
       ...rest,
       code: rest.code.toUpperCase().trim(),
@@ -201,6 +231,8 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
       usageLimit: rest.usageLimit || undefined,
       targetSegmentId: rest.targetType === "SEGMENT" ? rest.targetSegmentId : undefined,
       targetUserIds: rest.targetType === "INDIVIDUAL" ? rest.targetUserIds : undefined,
+      applicableCategoryIds: scopeCategoryIds,
+      applicableProductIds: scopeProductIds,
     }
 
     if (isEdit && coupon) {
@@ -209,7 +241,15 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
         { onSuccess: onClose }
       )
     } else {
-      createMutation.mutate(payload, { onSuccess: onClose })
+      createMutation.mutate(
+        {
+          ...payload,
+          couponType: scopeMode === "CATEGORY" ? "CATEGORY_COUPON" : scopeMode === "PRODUCT" ? "PRODUCT_COUPON" : "PLATFORM_COUPON",
+          applicableCategoryIds: scopeCategoryIds ?? undefined,
+          applicableProductIds: scopeProductIds ?? undefined,
+        },
+        { onSuccess: onClose }
+      )
     }
   }
 
@@ -318,6 +358,75 @@ export function CouponDialog({ open, onClose, coupon }: CouponDialogProps) {
               </Select>
             </div>
           )}
+
+          {/* Free delivery — independent of discount type. Can stack with a
+              real discount (PERCENTAGE/FLAT/CASHBACK) instead of forcing a
+              choice between the two, and — because it's checked separately
+              from the store's standard "free delivery above ₹X" setting —
+              still waives the fee below that threshold whenever this
+              coupon is applied and its own Min Order Amount is met. */}
+          <div className="rounded-lg border p-3 space-y-1">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={form.grantsFreeDelivery}
+                onCheckedChange={(v) => setForm({ ...form, grantsFreeDelivery: v })}
+              />
+              <Label>Also grants free delivery</Label>
+            </div>
+            <p className="text-xs text-muted-foreground pl-[52px]">
+              When on, applying this coupon waives the delivery fee — on top of any discount above, not
+              instead of it — as long as the order meets this coupon&apos;s own Min Order Amount below. This
+              works even if the order is under the store&apos;s regular free-delivery threshold; the two
+              don&apos;t conflict, whichever unlocks free delivery first just applies.
+            </p>
+          </div>
+
+          {/* Applies to — category/bundle/product scope. Empty scope
+              (Whole Order) is the existing default: nothing here changes
+              for a coupon that doesn't set this. */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <Label>Applies to</Label>
+            <Select
+              value={scopeMode}
+              onValueChange={(v) => {
+                const next = v as ScopeMode
+                setScopeMode(next)
+                setForm({ ...form, applicableCategoryIds: [], applicableProductIds: [] })
+                setScopeProducts([])
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Whole order — every product</SelectItem>
+                <SelectItem value="CATEGORY">Specific categories or bundles</SelectItem>
+                <SelectItem value="PRODUCT">Specific products</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {scopeMode === "CATEGORY" && (
+              <CategoryScopePicker
+                selectedIds={form.applicableCategoryIds ?? []}
+                onChange={(ids) => setForm({ ...form, applicableCategoryIds: ids })}
+              />
+            )}
+            {scopeMode === "PRODUCT" && (
+              <ProductScopePicker
+                selected={scopeProducts}
+                onChange={(next) => {
+                  setScopeProducts(next)
+                  setForm({ ...form, applicableProductIds: next.map((p) => p.id) })
+                }}
+              />
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {scopeMode === "ALL"
+                ? "The discount (and Min Order Amount below) applies to the customer's entire cart."
+                : "The discount, and the Min Order Amount below, only ever count the products in the picked categories/bundles/products above — other items in the same order don't get discounted and don't count toward the minimum."}
+            </p>
+          </div>
 
           {/* Min Order + Max Discount */}
           <div className="grid grid-cols-2 gap-3">

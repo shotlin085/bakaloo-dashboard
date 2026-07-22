@@ -23,6 +23,14 @@ export interface Coupon {
   targetType: CouponTargetType
   targetSegmentId: string | null
   cashbackCreditTrigger: "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED"
+  /** Immutable after creation — set once from CreateCouponPayload, never editable via UpdateCouponPayload. */
+  couponType?: "PLATFORM_COUPON" | "SHOP_COUPON" | "CATEGORY_COUPON" | "PRODUCT_COUPON" | "DELIVERY_COUPON"
+  /** Category or bundle ids this coupon is restricted to. Null/empty = applies to the whole order. */
+  applicableCategoryIds: string[] | null
+  /** Specific product ids this coupon is restricted to. Null/empty = applies to the whole order. */
+  applicableProductIds: string[] | null
+  /** Independent of discountType — a PERCENTAGE/FLAT/CASHBACK coupon can also waive delivery. */
+  grantsFreeDelivery: boolean
 }
 
 /** Coupon list filters */
@@ -51,6 +59,10 @@ export interface CreateCouponPayload {
   targetSegmentId?: string
   targetUserIds?: string[]
   cashbackCreditTrigger?: "PAYMENT_SUCCESS" | "ORDER_CONFIRMED" | "ORDER_DELIVERED"
+  couponType?: "PLATFORM_COUPON" | "CATEGORY_COUPON" | "PRODUCT_COUPON"
+  applicableCategoryIds?: string[] | null
+  applicableProductIds?: string[] | null
+  grantsFreeDelivery?: boolean
 }
 
 /** Update coupon payload — all optional + isActive toggle */

@@ -234,6 +234,20 @@ function CouponsContent() {
                           Max: {formatINR(coupon.maxDiscount)}
                         </p>
                       )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(coupon.applicableCategoryIds?.length || coupon.applicableProductIds?.length) ? (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            {coupon.applicableCategoryIds?.length
+                              ? `${coupon.applicableCategoryIds.length} categor${coupon.applicableCategoryIds.length === 1 ? "y" : "ies"}/bundle(s) only`
+                              : `${coupon.applicableProductIds?.length} product(s) only`}
+                          </Badge>
+                        ) : null}
+                        {coupon.grantsFreeDelivery && (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            + Free delivery
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {coupon.minOrderAmount > 0
