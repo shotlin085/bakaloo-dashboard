@@ -32,6 +32,8 @@ export interface PurchaseLimitRule {
   windowPeriod: PurchaseLimitWindowPeriod | null
   windowCount: number | null
   maxQtyPerWindow: number | null
+  /** When true, `maxQtyPerOrder` is skipped for an order that also has products outside this rule's scope. Never affects the window cap. */
+  exemptOrderCapWithOtherItems: boolean
   isActive: boolean
   createdBy: string | null
   updatedBy: string | null
@@ -62,6 +64,8 @@ export interface CreatePurchaseLimitRulePayload {
   windowCount?: number
   /** Integer >= 1. Required if windowEnabled is true. */
   maxQtyPerWindow?: number
+  /** Default false. When true, an order that also contains products outside this rule's scope skips the per-order cap (the window cap still always applies). */
+  exemptOrderCapWithOtherItems?: boolean
 }
 
 /** Update payload — any subset of the (non-targetType) create fields, plus the isActive toggle. */

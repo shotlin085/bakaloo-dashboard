@@ -46,6 +46,7 @@ interface FormState {
   windowPeriod: PurchaseLimitWindowPeriod
   windowCount: string
   maxQtyPerWindow: string
+  exemptOrderCapWithOtherItems: boolean
   isActive: boolean
 }
 
@@ -60,6 +61,7 @@ const INITIAL: FormState = {
   windowPeriod: "WEEK",
   windowCount: "1",
   maxQtyPerWindow: "",
+  exemptOrderCapWithOtherItems: false,
   isActive: true,
 }
 
@@ -98,6 +100,7 @@ export function PurchaseLimitRuleDialog({ open, onClose, rule }: PurchaseLimitRu
         windowPeriod: rule.windowPeriod ?? "WEEK",
         windowCount: rule.windowCount != null ? String(rule.windowCount) : "1",
         maxQtyPerWindow: rule.maxQtyPerWindow != null ? String(rule.maxQtyPerWindow) : "",
+        exemptOrderCapWithOtherItems: rule.exemptOrderCapWithOtherItems,
         isActive: rule.isActive,
       })
     } else {
@@ -161,6 +164,7 @@ export function PurchaseLimitRuleDialog({ open, onClose, rule }: PurchaseLimitRu
       windowPeriod: form.windowEnabled ? form.windowPeriod : undefined,
       windowCount: form.windowEnabled ? parseInt(form.windowCount, 10) : undefined,
       maxQtyPerWindow: form.windowEnabled ? parseInt(form.maxQtyPerWindow, 10) : undefined,
+      exemptOrderCapWithOtherItems: form.exemptOrderCapWithOtherItems,
     }
 
     if (isEdit && rule) {
@@ -280,6 +284,25 @@ export function PurchaseLimitRuleDialog({ open, onClose, rule }: PurchaseLimitRu
             />
             {errors.maxQtyPerOrder && <p className="text-xs text-destructive">{errors.maxQtyPerOrder}</p>}
           </div>
+
+          {/* Solo-order exemption — only meaningful alongside a per-order cap */}
+          {form.maxQtyPerOrder.trim() !== "" && (
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={form.exemptOrderCapWithOtherItems}
+                  onCheckedChange={(v) => setForm({ ...form, exemptOrderCapWithOtherItems: v })}
+                />
+                <Label>Only apply this limit to solo orders</Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-[52px]">
+                When on, the per-order limit above is skipped if the customer&apos;s order also has
+                products outside this rule. Stops someone from ordering just milk every day, without
+                capping a customer who buys milk alongside a normal grocery basket. The time-based limit
+                below (if set) always applies either way.
+              </p>
+            </div>
+          )}
 
           {/* Rolling-window cap */}
           <div className="rounded-lg border p-3 space-y-3">

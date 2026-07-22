@@ -182,6 +182,9 @@ function PurchaseLimitsContent() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {rule.maxQtyPerOrder ?? "—"}
+                    {rule.maxQtyPerOrder != null && rule.exemptOrderCapWithOtherItems && (
+                      <span className="block text-xs text-muted-foreground">solo orders only</span>
+                    )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{formatWindowCap(rule)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
