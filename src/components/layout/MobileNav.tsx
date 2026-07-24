@@ -15,6 +15,7 @@ import {
   Gift,
   Image,
   LayoutDashboard,
+  Map,
   MapPin,
   Package,
   Receipt,
@@ -67,6 +68,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Gift,
   Image,
   LayoutDashboard,
+  Map,
   MapPin,
   Package,
   Receipt,
@@ -118,6 +120,12 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     items: [
       // Ids match `MENU_PERMISSIONS` keys — see Sidebar.tsx for design notes.
       { id: "shops", label: "Shops", href: "/shops", icon: "Store" },
+      {
+        id: "coverageMap",
+        label: "Coverage Map",
+        href: "/hq/coverage-map",
+        icon: "Map",
+      },
       {
         id: "shopProducts",
         label: "Shop Products",

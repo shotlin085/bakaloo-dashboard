@@ -21,6 +21,7 @@ import {
   Image,
   LayoutDashboard,
   LogOut,
+  Map,
   MapPin,
   Package,
   Palette,
@@ -91,6 +92,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   History,
   Image,
   LayoutDashboard,
+  Map,
   MapPin,
   Package,
   Palette,
@@ -168,6 +170,12 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       // to hide super-admin-only or `requiresActiveShop` items as the user's
       // role and Shop_Switcher selection change (Req 4.2, 4.5, 4.6, 4.7).
       { id: "shops", label: "Shops", href: "/shops", icon: "Store" },
+      {
+        id: "coverageMap",
+        label: "Coverage Map",
+        href: "/hq/coverage-map",
+        icon: "Map",
+      },
       {
         id: "shopProducts",
         label: "Shop Products",
