@@ -158,9 +158,21 @@ export default function CoverageMapPage() {
               <CardTitle className="text-base font-semibold">
                 {data ? data.shop.name : "Coverage"}
               </CardTitle>
-              {isFetching && (
-                <span className="text-xs text-muted-foreground">Refreshing…</span>
-              )}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#16A34A]" />
+                    Active order
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#DB2777]" />
+                    No active order
+                  </span>
+                </div>
+                {isFetching && (
+                  <span className="text-xs text-muted-foreground">Refreshing…</span>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="pt-0">
               {isLoading || !data ? (

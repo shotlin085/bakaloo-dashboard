@@ -7,13 +7,18 @@
  * the LiveRiderMap / ShopLocationMap pattern already used elsewhere in this
  * dashboard (Leaflet touches `window`, so it can never run during SSR).
  *
- * Renders: the store's own pin (distinct icon), one boundary polygon per
- * pincode group (a real convex hull for 3+ customers, an approximate
- * circle otherwise — see coverage-map.service.js on the backend), and one
- * avatar pin per covered customer.
+ * Renders: the store's own pin (distinct icon), one boundary circle per
+ * pincode group with its pincode + customer count always visible (see
+ * coverage-map.service.js on the backend — every boundary is a circle
+ * around that pincode's customers, radius-capped so it always reads as a
+ * local area rather than a shape connecting far-apart points), and one
+ * avatar pin per covered customer — green when they have an order that
+ * hasn't been delivered yet, pink otherwise. Clicking a customer opens
+ * their profile in Customers.
  */
 
 import { useEffect, useMemo } from "react"
+import Link from "next/link"
 import L from "leaflet"
 import { MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip, useMap } from "react-leaflet"
 
@@ -22,6 +27,8 @@ import type { CoverageMapData } from "@/services/coverage-map.service"
 import "leaflet/dist/leaflet.css"
 
 const BOUNDARY_COLORS = ["#2563EB", "#0EA5E9", "#4F46E5", "#0891B2", "#7C3AED", "#0284C7"]
+const CUSTOMER_COLOR_ACTIVE_ORDER = "#16A34A"
+const CUSTOMER_COLOR_DEFAULT = "#DB2777"
 
 const STORE_ICON = new L.Icon({
   iconUrl:
@@ -41,13 +48,14 @@ const STORE_ICON = new L.Icon({
   popupAnchor: [0, -48],
 })
 
-function customerIcon(initial: string) {
+function customerIcon(initial: string, hasActiveOrder: boolean) {
   const safeInitial = (initial || "?").slice(0, 1).toUpperCase()
+  const color = hasActiveOrder ? CUSTOMER_COLOR_ACTIVE_ORDER : CUSTOMER_COLOR_DEFAULT
   return L.divIcon({
     className: "coverage-map-customer-icon",
     html: `<div style="
       width:26px;height:26px;border-radius:9999px;
-      background:#DB2777;color:#fff;
+      background:${color};color:#fff;
       display:flex;align-items:center;justify-content:center;
       font-size:12px;font-weight:700;font-family:inherit;
       border:2px solid #fff;
@@ -84,65 +92,95 @@ export function CoverageMapView({ data }: CoverageMapViewProps) {
   const center = useMemo<[number, number]>(() => [data.shop.lat, data.shop.lng], [data.shop])
 
   return (
-    <MapContainer
-      center={center}
-      zoom={13}
-      style={{ height: "100%", width: "100%" }}
-      zoomControl={true}
-      attributionControl={false}
-    >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <FitToCoverage data={data} />
+    <>
+      {/* Strips Leaflet's default tooltip box/arrow for the always-on pincode labels below. */}
+      <style>{`
+        .coverage-map-pincode-label {
+          background: rgba(17, 24, 39, 0.85);
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 2px 8px;
+          font-weight: 600;
+          box-shadow: none;
+        }
+        .coverage-map-pincode-label::before {
+          display: none;
+        }
+      `}</style>
+      <MapContainer
+        center={center}
+        zoom={13}
+        style={{ height: "100%", width: "100%" }}
+        zoomControl={true}
+        attributionControl={false}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <FitToCoverage data={data} />
 
-      {data.boundaries.map((boundary, index) => {
-        const color = BOUNDARY_COLORS[index % BOUNDARY_COLORS.length]
-        return (
-          <Polygon
-            key={boundary.pincode}
-            positions={boundary.polygon}
-            pathOptions={{
-              color,
-              weight: 2.5,
-              fillColor: color,
-              fillOpacity: 0.14,
-            }}
+        {data.boundaries.map((boundary, index) => {
+          const color = BOUNDARY_COLORS[index % BOUNDARY_COLORS.length]
+          return (
+            <Polygon
+              key={boundary.pincode}
+              positions={boundary.polygon}
+              pathOptions={{
+                color,
+                weight: 2.5,
+                fillColor: color,
+                fillOpacity: 0.14,
+              }}
+            >
+              <Tooltip permanent direction="center" className="coverage-map-pincode-label">
+                <span className="text-xs">
+                  {boundary.pincode} · {boundary.count}
+                </span>
+              </Tooltip>
+            </Polygon>
+          )
+        })}
+
+        {data.customers.map((customer) => (
+          <Marker
+            key={customer.userId}
+            position={[customer.lat, customer.lng]}
+            icon={customerIcon(customer.initial, customer.hasActiveOrder)}
           >
-            <Tooltip sticky>
-              <span className="text-xs font-medium">
-                {boundary.pincode} — {boundary.count} customer{boundary.count === 1 ? "" : "s"}
-              </span>
-            </Tooltip>
-          </Polygon>
-        )
-      })}
+            <Popup>
+              <div className="space-y-1.5 text-sm">
+                <p className="font-medium">{customer.name || "Customer"}</p>
+                {customer.pincode && (
+                  <p className="text-xs text-muted-foreground">PIN {customer.pincode}</p>
+                )}
+                <p className="text-xs">
+                  {customer.hasActiveOrder ? (
+                    <span className="font-medium text-green-600">Active order in progress</span>
+                  ) : (
+                    <span className="text-muted-foreground">No active order</span>
+                  )}
+                </p>
+                <Link
+                  href={`/customers?customer=${customer.userId}`}
+                  className="inline-block text-xs font-medium text-primary underline underline-offset-2"
+                >
+                  View customer profile →
+                </Link>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
-      {data.customers.map((customer) => (
-        <Marker
-          key={customer.userId}
-          position={[customer.lat, customer.lng]}
-          icon={customerIcon(customer.initial)}
-        >
+        <Marker position={center} icon={STORE_ICON}>
           <Popup>
             <div className="text-sm">
-              <p className="font-medium">{customer.name || "Customer"}</p>
-              {customer.pincode && (
-                <p className="text-xs text-muted-foreground">PIN {customer.pincode}</p>
-              )}
+              <p className="font-semibold">{data.shop.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {data.shop.city}, {data.shop.state} — {data.shop.pincode}
+              </p>
             </div>
           </Popup>
         </Marker>
-      ))}
-
-      <Marker position={center} icon={STORE_ICON}>
-        <Popup>
-          <div className="text-sm">
-            <p className="font-semibold">{data.shop.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {data.shop.city}, {data.shop.state} — {data.shop.pincode}
-            </p>
-          </div>
-        </Popup>
-      </Marker>
-    </MapContainer>
+      </MapContainer>
+    </>
   )
 }

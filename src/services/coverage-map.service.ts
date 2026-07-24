@@ -5,8 +5,7 @@ import type { ApiResponse } from "@/types"
  * Coverage Map service — talks to `/admin/coverage-map/:shopId`.
  * Returns a store's pin, every currently-covered customer's pin (live
  * pincode/radius match, same logic that gates allocation), and a boundary
- * polygon per pincode group (a real convex hull for 3+ customers, an
- * approximate circle otherwise).
+ * circle per pincode group, centered on that group's customers.
  */
 export interface CoverageMapShop {
   id: string
@@ -26,6 +25,8 @@ export interface CoverageMapCustomer {
   lat: number
   lng: number
   pincode: string | null
+  /** True when this customer has an order that hasn't been delivered/cancelled/refunded yet. */
+  hasActiveOrder: boolean
 }
 
 export interface CoverageMapBoundary {
