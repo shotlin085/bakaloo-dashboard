@@ -21,6 +21,9 @@ export interface FirstTimeOffer {
   autoApply: boolean
   paymentMethodScope: "ALL" | "ONLINE_ONLY"
   cashbackCreditTrigger: CashbackCreditTrigger
+  applicableCategoryIds: string[] | null
+  applicableProductIds: string[] | null
+  grantsFreeDelivery: boolean
   createdAt: string
 }
 
@@ -36,6 +39,9 @@ export interface CreateFirstTimeOfferPayload {
   autoApply?: boolean
   paymentMethodScope?: "ALL" | "ONLINE_ONLY"
   cashbackCreditTrigger?: CashbackCreditTrigger
+  applicableCategoryIds?: string[] | null
+  applicableProductIds?: string[] | null
+  grantsFreeDelivery?: boolean
 }
 
 export interface UpdateFirstTimeOfferPayload extends Partial<CreateFirstTimeOfferPayload> {

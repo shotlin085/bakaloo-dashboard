@@ -21,12 +21,16 @@ import {
 } from "@/components/ui/select"
 import { useCreateFirstTimeOffer, useUpdateFirstTimeOffer } from "@/hooks/useFirstTimeOffers"
 import { useCoupons } from "@/hooks/useCoupons"
+import { getProductDetail } from "@/services/products.service"
+import { CategoryScopePicker, ProductScopePicker } from "@/components/coupons/CouponScopePicker"
 import type {
   FirstTimeOffer,
   CreateFirstTimeOfferPayload,
   FirstTimeOfferRewardType,
   CashbackCreditTrigger,
 } from "@/types/first-time-offer.types"
+
+type ScopeMode = "ALL" | "CATEGORY" | "PRODUCT"
 
 interface FirstTimeOfferDialogProps {
   open: boolean
@@ -60,11 +64,16 @@ const INITIAL: CreateFirstTimeOfferPayload & { isActive: boolean } = {
   autoApply: true,
   paymentMethodScope: "ALL",
   cashbackCreditTrigger: "ORDER_DELIVERED",
+  applicableCategoryIds: [],
+  applicableProductIds: [],
+  grantsFreeDelivery: false,
   isActive: true,
 }
 
 export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDialogProps) {
   const [form, setForm] = useState(INITIAL)
+  const [scopeMode, setScopeMode] = useState<ScopeMode>("ALL")
+  const [scopeProducts, setScopeProducts] = useState<{ id: string; name: string }[]>([])
   const isEdit = !!offer
   const createMutation = useCreateFirstTimeOffer()
   const updateMutation = useUpdateFirstTimeOffer()
@@ -84,16 +93,37 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
         autoApply: offer.autoApply,
         paymentMethodScope: offer.paymentMethodScope,
         cashbackCreditTrigger: offer.cashbackCreditTrigger,
+        applicableCategoryIds: offer.applicableCategoryIds ?? [],
+        applicableProductIds: offer.applicableProductIds ?? [],
+        grantsFreeDelivery: offer.grantsFreeDelivery ?? false,
         isActive: offer.isActive,
       })
+      setScopeProducts([])
+      if (offer.applicableCategoryIds?.length) {
+        setScopeMode("CATEGORY")
+      } else if (offer.applicableProductIds?.length) {
+        setScopeMode("PRODUCT")
+        Promise.all(offer.applicableProductIds.map((id) => getProductDetail(id))).then((products) =>
+          setScopeProducts(products.map((p) => ({ id: p.id, name: p.name })))
+        )
+      } else {
+        setScopeMode("ALL")
+      }
     } else {
       setForm(INITIAL)
+      setScopeMode("ALL")
+      setScopeProducts([])
     }
   }, [offer, open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const { isActive, ...rest } = form
+    // null = "clear the scope" (accepted by the update schema); the create
+    // schema doesn't accept null for these two fields, so createMutation
+    // below swaps null back to undefined (= omit entirely, same effect).
+    const scopeCategoryIds = scopeMode === "CATEGORY" && rest.applicableCategoryIds?.length ? rest.applicableCategoryIds : null
+    const scopeProductIds = scopeMode === "PRODUCT" && rest.applicableProductIds?.length ? rest.applicableProductIds : null
     const payload = {
       ...rest,
       // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
@@ -101,12 +131,21 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
       // with "must match format \"date-time\"".
       startAt: rest.startAt ? new Date(rest.startAt).toISOString() : undefined,
       endAt: rest.endAt ? new Date(rest.endAt).toISOString() : undefined,
+      applicableCategoryIds: scopeCategoryIds,
+      applicableProductIds: scopeProductIds,
     }
 
     if (isEdit && offer) {
       updateMutation.mutate({ id: offer.id, payload: { ...payload, isActive } }, { onSuccess: onClose })
     } else {
-      createMutation.mutate(payload, { onSuccess: onClose })
+      createMutation.mutate(
+        {
+          ...payload,
+          applicableCategoryIds: scopeCategoryIds ?? undefined,
+          applicableProductIds: scopeProductIds ?? undefined,
+        },
+        { onSuccess: onClose }
+      )
     }
   }
 
@@ -218,6 +257,70 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
               />
             </div>
           )}
+
+          {/* Free delivery — independent of reward type. Can stack with a
+              real discount/cashback reward instead of forcing a choice
+              between the two, exactly like the equivalent coupon toggle. */}
+          <div className="rounded-lg border p-3 space-y-1">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={form.grantsFreeDelivery}
+                onCheckedChange={(v) => setForm({ ...form, grantsFreeDelivery: v })}
+              />
+              <Label>Also grants free delivery</Label>
+            </div>
+            <p className="text-xs text-muted-foreground pl-[52px]">
+              When on, this offer waives the delivery fee — on top of any discount/cashback above, not
+              instead of it — as long as the order meets the Minimum Order Amount above.
+            </p>
+          </div>
+
+          {/* Applies to — category/bundle/product scope. Empty scope
+              (Whole Order) is the existing default: nothing here changes
+              for an offer that doesn't set this. */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <Label>Applies to</Label>
+            <Select
+              value={scopeMode}
+              onValueChange={(v) => {
+                const next = v as ScopeMode
+                setScopeMode(next)
+                setForm({ ...form, applicableCategoryIds: [], applicableProductIds: [] })
+                setScopeProducts([])
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Whole order — every product</SelectItem>
+                <SelectItem value="CATEGORY">Specific categories or bundles</SelectItem>
+                <SelectItem value="PRODUCT">Specific products</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {scopeMode === "CATEGORY" && (
+              <CategoryScopePicker
+                selectedIds={form.applicableCategoryIds ?? []}
+                onChange={(ids) => setForm({ ...form, applicableCategoryIds: ids })}
+              />
+            )}
+            {scopeMode === "PRODUCT" && (
+              <ProductScopePicker
+                selected={scopeProducts}
+                onChange={(next) => {
+                  setScopeProducts(next)
+                  setForm({ ...form, applicableProductIds: next.map((p) => p.id) })
+                }}
+              />
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {scopeMode === "ALL"
+                ? "The reward, and the Minimum Order Amount above, apply to the customer's entire cart."
+                : "The reward, and the Minimum Order Amount above, only ever count the products in the picked categories/bundles/products — other items in the same order don't count toward it."}
+            </p>
+          </div>
 
           {showCouponPicker && (
             <div className="space-y-1.5">
