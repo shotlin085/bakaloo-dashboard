@@ -1362,8 +1362,16 @@ function ThemeBuilderPageContent() {
                   Sections
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-xs">
-                    {localSections.filter((s) => s.visible).length}/{localSections.length}
+                  {/* "X of Y visible" instead of a bare "X/Y" — that fraction
+                      format reads as a cap (like the Add Sections panel's
+                      "14/50 slots"), but this is just a visible/total count
+                      for this tab, with no limit implied. */}
+                  <Badge
+                    variant="secondary"
+                    className="rounded-full px-2.5 py-0.5 text-xs"
+                    title={`${localSections.length} section${localSections.length === 1 ? "" : "s"} in this tab, ${localSections.filter((s) => s.visible).length} currently visible`}
+                  >
+                    {localSections.filter((s) => s.visible).length} of {localSections.length} visible
                   </Badge>
                 </div>
               </div>
