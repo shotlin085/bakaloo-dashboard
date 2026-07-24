@@ -51,9 +51,13 @@ export type BuilderDragData =
   | ExistingSectionDragData
   | PreviewInsertSlotData
 
-/** Stable DnD ids — keep them prefixed so we can route by string check too. */
-export const libraryDraggableId = (sectionType: SectionType) =>
-  `library:${sectionType}`
+/**
+ * Stable DnD ids — keep them prefixed so we can route by string check too.
+ * Takes the library card's unique `id` (not `type` — several cards can
+ * share a `type`, see sectionTypesMeta.ts) so every card gets its own
+ * draggable id.
+ */
+export const libraryDraggableId = (cardId: string) => `library:${cardId}`
 
 export const stackDraggableId = (sectionId: string) => `stack:${sectionId}`
 

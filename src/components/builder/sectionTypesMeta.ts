@@ -41,6 +41,17 @@ export const QUICK_TAGS = [
 export type QuickTag = (typeof QUICK_TAGS)[number]
 
 export interface SectionTypeMeta {
+  /**
+   * Unique library-card identity — NOT necessarily the same as `type`.
+   * Several cards can share one `type` (e.g. "Seasonal Mosaic — 2x2 Grid"
+   * and "Seasonal Mosaic — Single Hero" both add a `seasonal_mosaic`
+   * section, just pre-filled with a different `defaultConfig`) so the
+   * library can offer more starting points without needing a new
+   * mobile-app-recognized section type for each one. Always use `id` for
+   * React keys / DnD ids / anything that must be unique per card; use
+   * `type` for what actually gets persisted and rendered.
+   */
+  id: string
   type: SectionType
   label: string
   icon: LucideIcon
@@ -72,6 +83,7 @@ export interface SectionTypeMeta {
 
 export const sectionTypesMeta: SectionTypeMeta[] = [
   {
+    id: "animated_banner",
     type: "animated_banner",
     label: "Animated Banner",
     icon: Image,
@@ -85,6 +97,7 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Open the page with motion or a campaign hero.",
   },
   {
+    id: "fee_strip",
     type: "fee_strip",
     label: "Fee Strip",
     icon: BadgePercent,
@@ -97,11 +110,16 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     dataSources: ["static"],
     useCase: "Highlight free delivery or zero-fee promos.",
   },
+
+  // ── Seasonal Mosaic — one Flutter widget (SeasonalDealMosaic), 5 real
+  // layout_variant values it already knows how to render. Each card below
+  // is the same `type`, just a different starting layout_variant.
   {
+    id: "seasonal_mosaic",
     type: "seasonal_mosaic",
-    label: "Seasonal Mosaic",
+    label: "Seasonal Mosaic — Hero + Four",
     icon: LayoutGrid,
-    description: "Promotional tile layout for campaigns, festivals, and collections.",
+    description: "Big hero tile plus four supporting tiles for campaigns and collections.",
     maxPerTab: 3,
     defaultConfig: {
       layout_variant: "hero_plus_four",
@@ -114,6 +132,76 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Launch a festival or seasonal collection block.",
   },
   {
+    id: "seasonal_mosaic__two_by_three",
+    type: "seasonal_mosaic",
+    label: "Seasonal Mosaic — 2×3 Grid",
+    icon: LayoutGrid,
+    description: "Even 2×3 tile grid — no single dominant hero tile.",
+    maxPerTab: 3,
+    defaultConfig: {
+      layout_variant: "two_by_three",
+      container_color: "#FFF8E1",
+    },
+    accentClassName: "bg-amber-100 text-amber-700 border-amber-200",
+    group: "seasonal",
+    tags: ["Festival", "Deals"],
+    dataSources: ["category", "manual_products"],
+    useCase: "Six evenly-weighted collection tiles.",
+  },
+  {
+    id: "seasonal_mosaic__single_hero",
+    type: "seasonal_mosaic",
+    label: "Seasonal Mosaic — Single Hero",
+    icon: LayoutGrid,
+    description: "One full-width hero tile, no supporting tiles.",
+    maxPerTab: 3,
+    defaultConfig: {
+      layout_variant: "single_hero",
+      container_color: "#FFF8E1",
+    },
+    accentClassName: "bg-amber-100 text-amber-700 border-amber-200",
+    group: "seasonal",
+    tags: ["Festival", "Summer"],
+    dataSources: ["category", "manual_products"],
+    useCase: "One standalone campaign banner-tile.",
+  },
+  {
+    id: "seasonal_mosaic__two_by_two",
+    type: "seasonal_mosaic",
+    label: "Seasonal Mosaic — 2×2 Grid",
+    icon: LayoutGrid,
+    description: "Four evenly-sized tiles in a compact square grid.",
+    maxPerTab: 3,
+    defaultConfig: {
+      layout_variant: "two_by_two",
+      container_color: "#FFF8E1",
+    },
+    accentClassName: "bg-amber-100 text-amber-700 border-amber-200",
+    group: "seasonal",
+    tags: ["Festival", "Deals"],
+    dataSources: ["category", "manual_products"],
+    useCase: "Four collection tiles, compact footprint.",
+  },
+  {
+    id: "seasonal_mosaic__stacked_banners",
+    type: "seasonal_mosaic",
+    label: "Seasonal Mosaic — Stacked Banners",
+    icon: LayoutGrid,
+    description: "Full-width banners stacked vertically, one per campaign.",
+    maxPerTab: 3,
+    defaultConfig: {
+      layout_variant: "stacked_banners",
+      container_color: "#FFF8E1",
+    },
+    accentClassName: "bg-amber-100 text-amber-700 border-amber-200",
+    group: "seasonal",
+    tags: ["Festival", "Summer"],
+    dataSources: ["category", "manual_products"],
+    useCase: "A short vertical run of full-width campaign banners.",
+  },
+
+  {
+    id: "round_category_icons",
     type: "round_category_icons",
     label: "Category Icons",
     icon: Circle,
@@ -126,9 +214,14 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     dataSources: ["category"],
     useCase: "Quick category navigation under the search bar.",
   },
+
+  // ── Product Grid — same widget, `columns` (2 or 3) and
+  // `product_card_style` (QUICK_COMMERCE_COMPACT / BAKALOO_LEGACY_CLEAN)
+  // are both already read by the Flutter renderer.
   {
+    id: "category_product_grid",
     type: "category_product_grid",
-    label: "Product Grid",
+    label: "Product Grid — 3 Column",
     icon: Grid3x3,
     description: "Multi-column product block for category-led merchandising.",
     maxPerTab: 20,
@@ -140,6 +233,40 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Browse products by category or chosen list.",
   },
   {
+    id: "category_product_grid__2col",
+    type: "category_product_grid",
+    label: "Product Grid — 2 Column",
+    icon: Grid3x3,
+    description: "Wider two-column cards — more product detail per row.",
+    maxPerTab: 20,
+    defaultConfig: { columns: 2, card_shape: "rounded" },
+    accentClassName: "bg-sky-100 text-sky-700 border-sky-200",
+    group: "products",
+    tags: ["Bestseller", "Fresh"],
+    dataSources: ["category", "manual_products", "tags"],
+    useCase: "Fewer, larger product cards per row.",
+  },
+  {
+    id: "category_product_grid__classic",
+    type: "category_product_grid",
+    label: "Product Grid — Classic Cards",
+    icon: Grid3x3,
+    description: "3-column grid using the classic (pre-quick-commerce) card style.",
+    maxPerTab: 20,
+    defaultConfig: {
+      columns: 3,
+      card_shape: "rounded",
+      product_card_style: "BAKALOO_LEGACY_CLEAN",
+    },
+    accentClassName: "bg-sky-100 text-sky-700 border-sky-200",
+    group: "products",
+    tags: ["Bestseller", "Fresh"],
+    dataSources: ["category", "manual_products", "tags"],
+    useCase: "Same grid, classic card artwork/typography.",
+  },
+
+  {
+    id: "product_carousel",
     type: "product_carousel",
     label: "Product Carousel",
     icon: Columns,
@@ -153,6 +280,26 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Spotlight a focused product strip.",
   },
   {
+    id: "product_carousel__classic",
+    type: "product_carousel",
+    label: "Product Carousel — Classic Cards",
+    icon: Columns,
+    description: "Same scrollable strip using the classic card style.",
+    maxPerTab: 20,
+    defaultConfig: {
+      card_style: "standard",
+      auto_scroll: false,
+      product_card_style: "BAKALOO_LEGACY_CLEAN",
+    },
+    accentClassName: "bg-violet-100 text-violet-700 border-violet-200",
+    group: "products",
+    tags: ["Bestseller", "Deals"],
+    dataSources: ["category", "manual_products", "bestsellers", "discounted"],
+    useCase: "Focused product strip, classic card artwork.",
+  },
+
+  {
+    id: "trending_products",
     type: "trending_products",
     label: "Trending Products",
     icon: TrendingUp,
@@ -166,6 +313,7 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Show the most-bought items near the user.",
   },
   {
+    id: "promo_carousel",
     type: "promo_carousel",
     label: "Promo Carousel",
     icon: Image,
@@ -185,6 +333,27 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Editorial campaign carousel between sections.",
   },
   {
+    id: "promo_carousel__square",
+    type: "promo_carousel",
+    label: "Promo Carousel — Square",
+    icon: Image,
+    description: "Same sliding carousel with a square (1:1) aspect ratio instead of wide.",
+    maxPerTab: 3,
+    defaultConfig: {
+      banner_source: "system",
+      auto_scroll_speed: 3000,
+      aspect_ratio: "1:1",
+      border_radius: 16,
+      images: [],
+    },
+    accentClassName: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200",
+    group: "hero",
+    tags: ["Festival", "Summer"],
+    dataSources: ["static"],
+    useCase: "Square-format campaign carousel.",
+  },
+  {
+    id: "bank_offers",
     type: "bank_offers",
     label: "Bank Offers",
     icon: CreditCard,
@@ -198,6 +367,7 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Show bank/card-level cashback offers.",
   },
   {
+    id: "custom_banner",
     type: "custom_banner",
     label: "Custom Banner",
     icon: ImagePlus,
@@ -211,6 +381,21 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Drop a single image-driven storytelling block.",
   },
   {
+    id: "custom_banner__square",
+    type: "custom_banner",
+    label: "Custom Banner — Square",
+    icon: ImagePlus,
+    description: "Same banner block, pre-set to a square (1:1) crop.",
+    maxPerTab: 5,
+    defaultConfig: { border_radius: 16, aspect_ratio: "1:1" },
+    accentClassName: "bg-orange-100 text-orange-700 border-orange-200",
+    group: "content",
+    tags: ["Festival", "Summer"],
+    dataSources: ["static"],
+    useCase: "Square storytelling block — good for product close-ups.",
+  },
+  {
+    id: "text_header",
     type: "text_header",
     label: "Text Header",
     icon: Type,
@@ -228,11 +413,33 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Caption upcoming product/category groups.",
   },
   {
+    id: "text_header__centered",
+    type: "text_header",
+    label: "Text Header — Centered",
+    icon: Type,
+    description: "Same text heading, center-aligned and slightly larger.",
+    maxPerTab: 10,
+    defaultConfig: {
+      text: "Section Title",
+      font_size: 22,
+      color: "#000000",
+      alignment: "center",
+    },
+    accentClassName: "bg-slate-100 text-slate-700 border-slate-200",
+    group: "content",
+    dataSources: ["static"],
+    useCase: "A centered title for a standalone block.",
+  },
+
+  // ── Arched Showcase — one Flutter widget, 5 real product_layout values
+  // (horizontal_scroll is the default/fallback; the other 4 are explicit
+  // cases in buildArchedProductLayout).
+  {
+    id: "arched_product_showcase",
     type: "arched_product_showcase",
-    label: "Arched Showcase",
+    label: "Arched Showcase — Horizontal Scroll",
     icon: Columns,
-    description:
-      "Puffy arch-top container with horizontal product cards and See All CTA.",
+    description: "Puffy arch-top container with horizontal product cards and See All CTA.",
     maxPerTab: 3,
     defaultConfig: {
       title: "Top Picks",
@@ -268,6 +475,168 @@ export const sectionTypesMeta: SectionTypeMeta[] = [
     useCase: "Premium curated showcase for top categories.",
   },
   {
+    id: "arched_product_showcase__grid2col",
+    type: "arched_product_showcase",
+    label: "Arched Showcase — 2 Col Grid",
+    icon: Columns,
+    description: "Same arch-top container, products laid out as a 2-column grid.",
+    maxPerTab: 3,
+    defaultConfig: {
+      title: "Top Picks",
+      show_title: true,
+      title_color: "#1A1A1A",
+      banner: {
+        enabled: false,
+        content_source: "lottie",
+        lottie_url: null,
+        image_url: null,
+        height: 120,
+        gradient: ["#E8F5E9", "#C8E6C9"],
+      },
+      category_strip: {
+        enabled: false,
+        items: [],
+        icon_size: 56,
+        show_labels: true,
+      },
+      product_layout: "grid_2col",
+      card_shape: "arch",
+      container_color: "#FDE7C4",
+      bg_gradient: null,
+      box_gradient: null,
+      arch_height: 14,
+      corner_radius: 24,
+      limit: 10,
+    },
+    accentClassName: "bg-orange-100 text-orange-700 border-orange-200",
+    group: "products",
+    tags: ["Bestseller", "Festival"],
+    dataSources: ["category", "manual_products", "bestsellers"],
+    useCase: "Curated showcase, 2-column grid layout.",
+  },
+  {
+    id: "arched_product_showcase__grid3col",
+    type: "arched_product_showcase",
+    label: "Arched Showcase — 3 Col Grid",
+    icon: Columns,
+    description: "Same arch-top container, products laid out as a 3-column grid.",
+    maxPerTab: 3,
+    defaultConfig: {
+      title: "Top Picks",
+      show_title: true,
+      title_color: "#1A1A1A",
+      banner: {
+        enabled: false,
+        content_source: "lottie",
+        lottie_url: null,
+        image_url: null,
+        height: 120,
+        gradient: ["#E8F5E9", "#C8E6C9"],
+      },
+      category_strip: {
+        enabled: false,
+        items: [],
+        icon_size: 56,
+        show_labels: true,
+      },
+      product_layout: "grid_3col",
+      card_shape: "arch",
+      container_color: "#FDE7C4",
+      bg_gradient: null,
+      box_gradient: null,
+      arch_height: 14,
+      corner_radius: 24,
+      limit: 10,
+    },
+    accentClassName: "bg-orange-100 text-orange-700 border-orange-200",
+    group: "products",
+    tags: ["Bestseller", "Festival"],
+    dataSources: ["category", "manual_products", "bestsellers"],
+    useCase: "Curated showcase, 3-column grid layout.",
+  },
+  {
+    id: "arched_product_showcase__heroplusgrid",
+    type: "arched_product_showcase",
+    label: "Arched Showcase — Hero + Grid",
+    icon: Columns,
+    description: "Same arch-top container with one hero product plus a supporting grid.",
+    maxPerTab: 3,
+    defaultConfig: {
+      title: "Top Picks",
+      show_title: true,
+      title_color: "#1A1A1A",
+      banner: {
+        enabled: false,
+        content_source: "lottie",
+        lottie_url: null,
+        image_url: null,
+        height: 120,
+        gradient: ["#E8F5E9", "#C8E6C9"],
+      },
+      category_strip: {
+        enabled: false,
+        items: [],
+        icon_size: 56,
+        show_labels: true,
+      },
+      product_layout: "hero_plus_grid",
+      card_shape: "arch",
+      container_color: "#FDE7C4",
+      bg_gradient: null,
+      box_gradient: null,
+      arch_height: 14,
+      corner_radius: 24,
+      limit: 10,
+    },
+    accentClassName: "bg-orange-100 text-orange-700 border-orange-200",
+    group: "products",
+    tags: ["Bestseller", "Festival"],
+    dataSources: ["category", "manual_products", "bestsellers"],
+    useCase: "One hero product plus a supporting product grid.",
+  },
+  {
+    id: "arched_product_showcase__stacked",
+    type: "arched_product_showcase",
+    label: "Arched Showcase — Stacked Cards",
+    icon: Columns,
+    description: "Same arch-top container with products stacked as full-width cards.",
+    maxPerTab: 3,
+    defaultConfig: {
+      title: "Top Picks",
+      show_title: true,
+      title_color: "#1A1A1A",
+      banner: {
+        enabled: false,
+        content_source: "lottie",
+        lottie_url: null,
+        image_url: null,
+        height: 120,
+        gradient: ["#E8F5E9", "#C8E6C9"],
+      },
+      category_strip: {
+        enabled: false,
+        items: [],
+        icon_size: 56,
+        show_labels: true,
+      },
+      product_layout: "stacked_cards",
+      card_shape: "arch",
+      container_color: "#FDE7C4",
+      bg_gradient: null,
+      box_gradient: null,
+      arch_height: 14,
+      corner_radius: 24,
+      limit: 10,
+    },
+    accentClassName: "bg-orange-100 text-orange-700 border-orange-200",
+    group: "products",
+    tags: ["Bestseller", "Festival"],
+    dataSources: ["category", "manual_products", "bestsellers"],
+    useCase: "Full-width stacked product cards.",
+  },
+
+  {
+    id: "spacer",
     type: "spacer",
     label: "Spacer",
     icon: Space,
@@ -316,9 +685,21 @@ export const SECTION_GROUP_META: Record<
   },
 }
 
-export const sectionTypeMetaByType = Object.fromEntries(
-  sectionTypesMeta.map((meta) => [meta.type, meta])
-) as Record<SectionType, SectionTypeMeta>
+/**
+ * Canonical (generic) meta per underlying `type` — used to render an
+ * already-placed section (icon/label/accent) generically, independent of
+ * which library card originally added it. Deliberately keyed by `type`,
+ * not `id`: multiple library cards can share a type (see above), and the
+ * FIRST one in the array wins here since it's the "plain" variant.
+ */
+export const sectionTypeMetaByType = sectionTypesMeta.reduce<
+  Record<string, SectionTypeMeta>
+>((acc, meta) => {
+  if (!(meta.type in acc)) {
+    acc[meta.type] = meta
+  }
+  return acc
+}, {}) as Record<SectionType, SectionTypeMeta>
 
 export function getSectionTypeMeta(sectionType: SectionType) {
   return sectionTypeMetaByType[sectionType]

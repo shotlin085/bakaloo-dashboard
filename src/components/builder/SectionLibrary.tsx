@@ -191,7 +191,7 @@ export default function SectionLibrary({
 
           return (
             <SectionTypeCard
-              key={meta.type}
+              key={meta.id}
               meta={meta}
               currentCount={currentCount}
               isDisabled={isDisabled}

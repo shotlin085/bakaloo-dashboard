@@ -35,9 +35,10 @@ function CardBody({
   const Icon = meta.icon
   const isAdded = currentCount > 0
 
-  // Library cards are draggable when not disabled.
+  // Library cards are draggable when not disabled. Keyed by the card's own
+  // `id` (not `type` — several cards can share a type; see sectionTypesMeta.ts).
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: libraryDraggableId(meta.type),
+    id: libraryDraggableId(meta.id),
     disabled: isDisabled,
     data: {
       kind: DRAG_KIND.LIBRARY_SECTION,
@@ -50,7 +51,7 @@ function CardBody({
   return (
     <div
       ref={setNodeRef}
-      data-testid={`library-card-${meta.type}`}
+      data-testid={`library-card-${meta.id}`}
       className={cn(
         "relative rounded-2xl border bg-white p-3.5 shadow-sm transition-all duration-200",
         isDisabled
@@ -132,7 +133,7 @@ function CardBody({
           type="button"
           size="sm"
           disabled={isDisabled}
-          data-testid={`add-section-${meta.type}`}
+          data-testid={`add-section-${meta.id}`}
           className="h-8 rounded-lg px-3 text-xs"
           onClick={() => onAdd(meta.type, cloneSectionDefaultConfig(meta))}
         >
