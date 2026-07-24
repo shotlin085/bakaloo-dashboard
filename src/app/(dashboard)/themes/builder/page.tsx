@@ -582,6 +582,22 @@ function ThemeBuilderPageContent() {
     updateThemeTabMutation.mutate({ id: tabId, payload: { label } })
   }
 
+  // TabManagerPanel reorders its own local list on drag purely for instant
+  // visual feedback — it was never actually persisted (no onTabReorder was
+  // wired to it at all), so a drag looked like it worked but silently
+  // reverted on next load. sort_order already exists on ThemeTab and the
+  // update endpoint already accepts it; only tabs whose position actually
+  // changed get a PATCH, so a same-order drag (drop back on itself) is a
+  // no-op.
+  const handleTabReorder = (reorderedIds: string[]) => {
+    reorderedIds.forEach((tabId, index) => {
+      const tab = themeTabs.find((t) => t.id === tabId)
+      if (tab && tab.sort_order !== index) {
+        updateThemeTabMutation.mutate({ id: tabId, payload: { sort_order: index } })
+      }
+    })
+  }
+
   const handleTabArchive = (tabId: string) => {
     if (!window.confirm("Archive this tab? It will be hidden from the builder.")) return
     archiveThemeTabMutation.mutate(tabId)
@@ -835,7 +851,16 @@ function ThemeBuilderPageContent() {
       }
 
       for (const draftSection of draftSections) {
-        const localConfig = deepClone(draftSection.config)
+        // Defensive: a malformed/undefined entry here used to throw
+        // "Cannot read properties of undefined (reading 'config')" and abort
+        // the entire save with everything after it in draftSections never
+        // persisted. Skip just that one section instead of failing the
+        // whole save.
+        if (!draftSection) {
+          console.warn("persistLayout: skipping a null/undefined section entry")
+          continue
+        }
+        const localConfig = deepClone(draftSection.config ?? {})
         const localMerchBinding = normalizeMerchBinding(draftSection.merch_binding)
 
         if (isTempId(draftSection.id)) {
@@ -1480,6 +1505,7 @@ function ThemeBuilderPageContent() {
         onClose={() => setTabManagerOpen(false)}
         onTabSelect={handleTabChange}
         onTabCreate={handleCreateTab}
+        onTabReorder={handleTabReorder}
         onTabUpdate={handleTabUpdate}
         onTabArchive={handleTabArchive}
       />
