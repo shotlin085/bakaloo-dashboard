@@ -116,6 +116,28 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
   const showCouponPicker = form.rewardType === "COUPON_UNLOCK"
   const showCashbackTrigger = form.rewardType === "WALLET_CASHBACK"
 
+  // Same constraint as Cart Milestones' COUPON_UNLOCK reward: unlocking a
+  // coupon only takes effect for a coupon whose own Target Audience is
+  // "Individual" — any other audience runs its own separate eligibility
+  // rule and ignores this unlock entirely. Only offering compatible, active
+  // coupons here prevents that dead-end instead of surfacing it as a
+  // save-time error.
+  const allCoupons = couponsData?.data ?? []
+  const eligibleCoupons = allCoupons.filter((c) => c.targetType === "INDIVIDUAL" && c.isActive)
+  // An offer that saved fine before can still end up pointing at an
+  // incompatible coupon later — e.g. someone edits that SAME coupon's
+  // Target Audience for an unrelated feature (like a Cart Milestone) after
+  // it was already linked here. Keep it selectable (so the picker doesn't
+  // just go blank) but call out exactly what's wrong.
+  const currentCoupon = form.unlockCouponId
+    ? allCoupons.find((c) => c.id === form.unlockCouponId)
+    : undefined
+  const currentCouponIncompatible =
+    !!currentCoupon && (currentCoupon.targetType !== "INDIVIDUAL" || !currentCoupon.isActive)
+  const couponOptions = currentCouponIncompatible
+    ? [currentCoupon, ...eligibleCoupons]
+    : eligibleCoupons
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -208,13 +230,27 @@ export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDia
                   <SelectValue placeholder="Choose a coupon..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(couponsData?.data ?? []).map((c) => (
+                  {couponOptions.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.code}
+                      {(c.targetType !== "INDIVIDUAL" || !c.isActive) && " ⚠️ won't work as-is"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {currentCouponIncompatible ? (
+                <p className="text-xs text-destructive">
+                  &quot;{currentCoupon?.code}&quot; has Target Audience &quot;{currentCoupon?.targetType}
+                  &quot;{!currentCoupon?.isActive ? " and is inactive" : ""} — pick a different coupon, or
+                  go to Coupons and set its Target Audience to &quot;Individual&quot;
+                  {!currentCoupon?.isActive ? " and reactivate it" : ""} to keep using this one.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Only active coupons with Target Audience &quot;Individual&quot; can be unlocked this
+                  way — that&apos;s the only audience setting an unlock actually takes effect on.
+                </p>
+              )}
             </div>
           )}
 

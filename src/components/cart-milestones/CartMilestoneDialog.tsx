@@ -127,6 +127,30 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
   const showCouponPicker = form.rewardType === "COUPON_UNLOCK"
   const showCashbackTrigger = form.rewardType === "CASHBACK"
 
+  // A milestone "unlocks" a coupon by adding the customer to that coupon's
+  // individual target list — coupons.service.js only ever consults that
+  // list for a coupon whose own Target Audience is "Individual". Any other
+  // audience (All/Segment/First-time) runs its own separate eligibility
+  // rule instead and ignores the unlock entirely, so linking one here would
+  // silently do nothing. Only offering compatible, active coupons in this
+  // list prevents that dead-end rather than surfacing it as a save error.
+  const allCoupons = couponsData?.data ?? []
+  const eligibleCoupons = allCoupons.filter((c) => c.targetType === "INDIVIDUAL" && c.isActive)
+  // A milestone that saved fine before can still end up pointing at an
+  // incompatible coupon later — e.g. someone edits that SAME coupon's
+  // Target Audience for an unrelated feature (like First-Time Offers)
+  // after it was already linked here. Keep it selectable (so the picker
+  // doesn't just go blank) but call out exactly what's wrong instead of
+  // letting the admin discover it only via the save-time error.
+  const currentCoupon = form.unlockCouponId
+    ? allCoupons.find((c) => c.id === form.unlockCouponId)
+    : undefined
+  const currentCouponIncompatible =
+    !!currentCoupon && (currentCoupon.targetType !== "INDIVIDUAL" || !currentCoupon.isActive)
+  const couponOptions = currentCouponIncompatible
+    ? [currentCoupon, ...eligibleCoupons]
+    : eligibleCoupons
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -220,13 +244,27 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
                   <SelectValue placeholder="Choose a coupon..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(couponsData?.data ?? []).map((c) => (
+                  {couponOptions.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.code}
+                      {(c.targetType !== "INDIVIDUAL" || !c.isActive) && " ⚠️ won't work as-is"}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {currentCouponIncompatible ? (
+                <p className="text-xs text-destructive">
+                  &quot;{currentCoupon?.code}&quot; has Target Audience &quot;{currentCoupon?.targetType}
+                  &quot;{!currentCoupon?.isActive ? " and is inactive" : ""} — pick a different coupon, or
+                  go to Coupons and set its Target Audience to &quot;Individual&quot;
+                  {!currentCoupon?.isActive ? " and reactivate it" : ""} to keep using this one.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Only active coupons with Target Audience &quot;Individual&quot; can be unlocked this
+                  way — that&apos;s the only audience setting a milestone unlock actually takes effect on.
+                </p>
+              )}
             </div>
           )}
 
