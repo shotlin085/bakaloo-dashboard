@@ -10,6 +10,7 @@ import type { SectionManifest, SectionType } from "@/types/theme.types"
 import { useStoreContext } from "@/contexts/StoreContext"
 import SectionTypeCard from "./SectionTypeCard"
 import {
+  MAX_SECTIONS_PER_TAB,
   QUICK_TAGS,
   SECTION_GROUP_META,
   sectionTypesMeta,
@@ -22,7 +23,6 @@ interface SectionLibraryProps {
   onAdd: (sectionType: SectionType, defaultConfig: Record<string, unknown>) => void
 }
 
-const MAX_SECTIONS_PER_TAB = 50
 type GroupFilter = "all" | SectionTemplateGroup
 
 const GROUP_OPTIONS: Array<{ value: GroupFilter; label: string }> = [

@@ -1,5 +1,5 @@
 import type { SectionManifest } from "@/types/theme.types"
-import { getSectionTypeMeta } from "./sectionTypesMeta"
+import { getSectionTypeMeta, MAX_SECTIONS_PER_TAB } from "./sectionTypesMeta"
 
 export type PublishIssueLevel = "error" | "warning" | "info"
 
@@ -34,8 +34,6 @@ const REQUIRED_DATA_BINDING_TYPES = new Set([
   "seasonal_mosaic",
 ])
 
-const TAB_GLOBAL_LIMIT = 15
-
 export function runPublishChecklist(
   sections: SectionManifest[]
 ): PublishChecklistResult {
@@ -50,11 +48,11 @@ export function runPublishChecklist(
         "This tab has no sections. Customers will see an empty page on this tab.",
     })
   }
-  if (sections.length > TAB_GLOBAL_LIMIT) {
+  if (sections.length > MAX_SECTIONS_PER_TAB) {
     issues.push({
       level: "error",
       code: "tab.over_limit",
-      message: `Tab has ${sections.length}/${TAB_GLOBAL_LIMIT} sections. Remove some before publishing.`,
+      message: `Tab has ${sections.length}/${MAX_SECTIONS_PER_TAB} sections. Remove some before publishing.`,
     })
   }
   if (sections.length > 0 && sections.every((s) => !s.visible)) {

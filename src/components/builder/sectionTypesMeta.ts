@@ -29,6 +29,16 @@ export type SectionTemplateGroup =
   | "content"
   | "seasonal"
 
+/**
+ * Single source of truth for the per-tab section cap. Two places enforce
+ * this — SectionLibrary.tsx (blocks adding past the cap) and
+ * publishChecklist.ts (blocks publishing over the cap) — they used to each
+ * hardcode their own number, drifted apart (15 vs 50), and produced exactly
+ * the confusing "I can add 16 but publish says 16/15" bug. Both now import
+ * this constant instead.
+ */
+export const MAX_SECTIONS_PER_TAB = 50
+
 /** Quick-filter tags surfaced as chips above the library list. */
 export const QUICK_TAGS = [
   "Bestseller",
