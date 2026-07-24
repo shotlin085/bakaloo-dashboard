@@ -22,7 +22,7 @@ interface SectionLibraryProps {
   onAdd: (sectionType: SectionType, defaultConfig: Record<string, unknown>) => void
 }
 
-const MAX_SECTIONS_PER_TAB = 40
+const MAX_SECTIONS_PER_TAB = 50
 type GroupFilter = "all" | SectionTemplateGroup
 
 const GROUP_OPTIONS: Array<{ value: GroupFilter; label: string }> = [
