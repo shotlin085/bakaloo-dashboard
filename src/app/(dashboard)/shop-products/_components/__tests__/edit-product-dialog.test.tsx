@@ -14,10 +14,15 @@
  *      stays open so the operator can retry. Per design.md §8 the hook
  *      already rolled the cache back, so the dialog only needs to not
  *      close.
+ *   4. Stock is a separate call — editing the Stock field additionally
+ *      invokes `useUpdateShopProductStock(activeShopId).mutateAsync`, only
+ *      when the value actually changed, and the dialog closes only once
+ *      both requests resolve.
  *
- * `useUpdateShopProduct`, `useShopContext`, and `next/image` are mocked
- * at the module boundary so the test focuses on the dialog wiring, not
- * the network IO (which has coverage in `useShopProducts.test.tsx`).
+ * `useUpdateShopProduct`, `useUpdateShopProductStock`, `useShopContext`,
+ * and `next/image` are mocked at the module boundary so the test focuses
+ * on the dialog wiring, not the network IO (which has coverage in
+ * `useShopProducts.test.tsx`).
  *
  * Validates: Requirements 7.5, 7.9, 12.5
  */
@@ -69,8 +74,16 @@ const useUpdateShopProductMock = vi.fn((_shopId: string) => ({
   isPending: false,
 }))
 
+const updateStockMutateAsync = vi.fn()
+const useUpdateShopProductStockMock = vi.fn((_shopId: string) => ({
+  mutateAsync: updateStockMutateAsync,
+  isPending: false,
+}))
+
 vi.mock("@/hooks/useShopProducts", () => ({
   useUpdateShopProduct: (shopId: string) => useUpdateShopProductMock(shopId),
+  useUpdateShopProductStock: (shopId: string) =>
+    useUpdateShopProductStockMock(shopId),
 }))
 
 const useShopContextMock = vi.fn(() => ({
@@ -162,6 +175,8 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
 beforeEach(() => {
   updateMutateAsync.mockReset()
   useUpdateShopProductMock.mockClear()
+  updateStockMutateAsync.mockReset()
+  useUpdateShopProductStockMock.mockClear()
 })
 
 afterEach(() => {
@@ -262,9 +277,71 @@ describe("<EditProductDialog /> — submit", () => {
     // `stock_quantity` flows through a different endpoint and must not
     // appear on the update body.
     expect(variables.body).not.toHaveProperty("stock_quantity")
+    // Stock was untouched — the separate stock mutation must not fire.
+    expect(updateStockMutateAsync).not.toHaveBeenCalled()
 
     // Dialog closed on success.
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("also calls useUpdateShopProductStock(activeShopId).mutateAsync when the Stock field changed, and closes only once both requests resolve", async () => {
+    const product = makeShopProduct()
+    updateMutateAsync.mockResolvedValueOnce({})
+    updateStockMutateAsync.mockResolvedValueOnce({})
+
+    const onOpenChange = vi.fn()
+    renderWithClient(
+      <EditProductDialog open onOpenChange={onOpenChange} product={product} />,
+    )
+
+    const stockInput = document.getElementById(
+      "edit-product-stock",
+    ) as HTMLInputElement
+    fireEvent.change(stockInput, { target: { value: "25" } })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("edit-product-submit"))
+    })
+
+    await waitFor(() => {
+      expect(updateStockMutateAsync).toHaveBeenCalledTimes(1)
+    })
+
+    expect(useUpdateShopProductStockMock).toHaveBeenCalledWith("shop-a")
+    expect(updateStockMutateAsync).toHaveBeenCalledWith({
+      id: product.id,
+      stock_quantity: 25,
+    })
+    // The general update still fires for the rest of the fields.
+    expect(updateMutateAsync).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("keeps the dialog open when only the stock mutation rejects", async () => {
+    const product = makeShopProduct()
+    updateMutateAsync.mockResolvedValueOnce({})
+    updateStockMutateAsync.mockRejectedValueOnce(new Error("locked row"))
+
+    const onOpenChange = vi.fn()
+    renderWithClient(
+      <EditProductDialog open onOpenChange={onOpenChange} product={product} />,
+    )
+
+    const stockInput = document.getElementById(
+      "edit-product-stock",
+    ) as HTMLInputElement
+    fireEvent.change(stockInput, { target: { value: "25" } })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("edit-product-submit"))
+    })
+
+    await waitFor(() => {
+      expect(updateStockMutateAsync).toHaveBeenCalledTimes(1)
+    })
+
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(screen.getByTestId("edit-product-form")).toBeInTheDocument()
   })
 
   it("keeps the dialog open when the mutation rejects", async () => {

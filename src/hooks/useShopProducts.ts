@@ -48,6 +48,7 @@ import { qk } from "@/lib/query-keys"
 import {
   shopProductsService,
   type ShopProductCreateBody,
+  type ShopProductStockUpdateBody,
   type ShopProductUpdateBody,
   type ShopProductsListParams,
 } from "@/services/shop-products.service"
@@ -226,9 +227,8 @@ interface UpdateShopProductContext {
  * with server truth — including any server-side fields the patch might
  * have indirectly affected (`is_available` flips when stock crosses zero).
  *
- * Stock changes do NOT flow through this mutation; they go through the
- * dedicated `PATCH /:id/stock` endpoint owned by a future task (see
- * `shop-products.service.ts` notes on `updateStock`).
+ * Stock changes do NOT flow through this mutation; they go through
+ * `useUpdateShopProductStock`, the dedicated row-locked endpoint below.
  */
 export function useUpdateShopProduct(shopId: string) {
   const queryClient = useQueryClient()
@@ -295,6 +295,70 @@ export function useUpdateShopProduct(shopId: string) {
       // Reconcile with server truth regardless of success/failure so
       // server-side derived fields (e.g. `is_available` flipping when
       // stock crosses zero) flow back into the cache.
+      queryClient.invalidateQueries({ queryKey: ["shop-products", shopId] })
+    },
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useUpdateShopProductStock — PATCH /shop-products/:id/stock
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UpdateShopProductStockVariables {
+  id: string
+  stock_quantity: number
+}
+
+/**
+ * Set the absolute stock_quantity on a shop product with optimistic UI
+ * (Req 7.9). Mirrors `useUpdateShopProduct`'s cancel/snapshot/patch →
+ * rollback-on-error → invalidate-on-settle pattern, kept as a separate
+ * mutation because the backend routes this field through a dedicated,
+ * row-locked endpoint (see `shop-products.service.ts` → `updateStock`).
+ */
+export function useUpdateShopProductStock(shopId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    ShopProduct,
+    Error,
+    UpdateShopProductStockVariables,
+    UpdateShopProductContext
+  >({
+    mutationFn: ({ id, stock_quantity }) =>
+      shopProductsService.updateStock(id, { stock_quantity }),
+
+    onMutate: async ({ id, stock_quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ["shop-products", shopId] })
+
+      const previous = queryClient.getQueriesData({
+        queryKey: ["shop-products", shopId],
+      })
+
+      queryClient.setQueriesData<Paginated<ShopProduct>>(
+        { queryKey: ["shop-products", shopId] },
+        (old) => {
+          if (!old || !Array.isArray(old.items)) return old
+          return {
+            ...old,
+            items: old.items.map((p) =>
+              p.id === id ? { ...p, stock_quantity } : p,
+            ),
+          }
+        },
+      )
+
+      return { previous }
+    },
+
+    onError: (_err, _vars, context) => {
+      context?.previous.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data)
+      })
+      toast.error(t("shopProducts.toast.stockUpdateFailed"))
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["shop-products", shopId] })
     },
   })

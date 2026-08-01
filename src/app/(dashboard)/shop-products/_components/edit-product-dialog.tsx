@@ -24,23 +24,23 @@
  *
  * On submit (Req 7.9, design §8 — Property 8: round-trip rollback):
  *   - Calls `useUpdateShopProduct(shopId).mutateAsync({ id: product.id,
- *     body })`. The hook owns the optimistic update — it patches every
- *     matching `["shop-products", shopId, …]` cache entry in place
- *     before the request lands and rolls back on error.
- *   - On success: closes the dialog. The `onSettled` invalidation in
- *     the hook reconciles with server truth (e.g. server-derived
- *     `is_available` flips when stock crosses zero).
- *   - On error: leaves the dialog open so the operator can retry. The
- *     hook's `onError` already restored the snapshot and surfaced the
- *     destructive toast (`shopProducts.toast.updateFailed`).
- *
- * NOTE: `stock_quantity` is included in the form because the schema
- * requires it, but the update mutation strips it before posting —
- * stock changes flow through the dedicated `PATCH /:id/stock` endpoint
- * owned by a future task. The form value defaults to the current row's
- * `stock_quantity` so the Zod schema's `min(0)` constraint is satisfied
- * without forcing the operator to retype it; the input is rendered
- * read-only.
+ *     body })` for every field except stock. The hook owns the optimistic
+ *     update — it patches every matching `["shop-products", shopId, …]`
+ *     cache entry in place before the request lands and rolls back on
+ *     error.
+ *   - `stock_quantity` goes through a second, separate call —
+ *     `useUpdateShopProductStock(shopId).mutateAsync(...)` — only when it
+ *     actually changed, since the backend guards that column with its own
+ *     row-locked endpoint (`PATCH /:id/stock`) instead of the general
+ *     PATCH. Both requests fire concurrently; the dialog only closes once
+ *     both have succeeded.
+ *   - On success: closes the dialog. Each hook's `onSettled` invalidation
+ *     reconciles with server truth (e.g. server-derived `is_available`
+ *     flips when stock crosses zero).
+ *   - On error: leaves the dialog open so the operator can retry. Whichever
+ *     hook(s) failed already restored their own cache snapshot and
+ *     surfaced their own destructive toast; a field that did succeed is
+ *     not resubmitted redundantly since only its own PATCH already landed.
  *
  * Responsiveness (Req 12.5): single-column form with
  * `max-h-[90vh] overflow-y-auto` so it scrolls cleanly at the 360 × 640
@@ -65,7 +65,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-import { useUpdateShopProduct } from "@/hooks/useShopProducts"
+import {
+  useUpdateShopProduct,
+  useUpdateShopProductStock,
+} from "@/hooks/useShopProducts"
 import { useShopContext } from "@/hooks/useShopContext"
 import { t } from "@/lib/i18n"
 import {
@@ -101,8 +104,9 @@ export interface EditProductDialogProps {
  * operator can submit immediately after toggling one field without being
  * asked to re-enter the rest.
  *
- * `stock_quantity` is preserved for schema-validation purposes only; the
- * update path strips it before posting (see file-header note).
+ * `stock_quantity` defaults to the row's current value so the submit
+ * handler's change-detection (see file header) doesn't fire a spurious
+ * stock PATCH when the operator only touched an unrelated field.
  */
 function buildDefaultsFromProduct(product: ShopProduct): ShopProductInput {
   return {
@@ -140,6 +144,7 @@ export function EditProductDialog({
   // The hook owns optimistic update + rollback (design §8); this
   // component only triggers it.
   const updateMutation = useUpdateShopProduct(activeShopId ?? "")
+  const updateStockMutation = useUpdateShopProductStock(activeShopId ?? "")
 
   const {
     control,
@@ -173,30 +178,48 @@ export function EditProductDialog({
     if (!activeShopId) return
 
     try {
-      await updateMutation.mutateAsync({
-        id: product.id,
-        body: {
-          price: values.price,
-          sale_price: values.sale_price,
-          cost_price: values.cost_price,
-          low_stock_threshold: values.low_stock_threshold,
-          max_order_qty: values.max_order_qty,
-          is_available: values.is_available,
-          is_featured: values.is_featured,
-        },
-      })
-      // Close on success. The hook's `onSettled` invalidation will
+      const requests: Promise<unknown>[] = [
+        updateMutation.mutateAsync({
+          id: product.id,
+          body: {
+            price: values.price,
+            sale_price: values.sale_price,
+            cost_price: values.cost_price,
+            low_stock_threshold: values.low_stock_threshold,
+            max_order_qty: values.max_order_qty,
+            is_available: values.is_available,
+            is_featured: values.is_featured,
+          },
+        }),
+      ]
+
+      // Stock is only resubmitted when it actually changed — it flows
+      // through its own row-locked endpoint (see file header), so there's
+      // no reason to hit it on every save.
+      if (values.stock_quantity !== product.stock_quantity) {
+        requests.push(
+          updateStockMutation.mutateAsync({
+            id: product.id,
+            stock_quantity: values.stock_quantity,
+          }),
+        )
+      }
+
+      await Promise.all(requests)
+      // Close on success. Each hook's `onSettled` invalidation will
       // refetch the list so server-derived fields (e.g. `is_available`
       // flipping when stock crosses zero) reconcile with the cache.
       onOpenChange(false)
     } catch {
-      // Hook's `onError` already rolled the cache back and surfaced the
-      // destructive toast. Stay open so the operator can retry without
-      // re-typing every value.
+      // Whichever hook's mutation failed already rolled its cache back
+      // and surfaced its own destructive toast. Stay open so the operator
+      // can retry — any field whose PATCH already landed keeps that value
+      // rather than being silently lost.
     }
   }
 
-  const submitting = isSubmitting || updateMutation.isPending
+  const submitting =
+    isSubmitting || updateMutation.isPending || updateStockMutation.isPending
   const canSubmit = Boolean(activeShopId) && !submitting
 
   return (
@@ -274,14 +297,10 @@ export function EditProductDialog({
               min={0}
               required
               error={errors.stock_quantity?.message}
-              // Stock changes flow through the dedicated stock endpoint
-              // owned by a future task. We surface the field so the
-              // schema's `min(0)` requirement is satisfied with the
-              // current persisted value, but render it read-only to
-              // communicate that this dialog cannot mutate it. Removing
-              // it would require diverging from the shared
-              // `shopProductSchema` (Req 7.5 — single source of truth).
-              readOnly
+              // Submitted separately via `useUpdateShopProductStock` (see
+              // file header) when it differs from the row's current value
+              // — the dedicated `PATCH /:id/stock` endpoint this hits is
+              // row-locked, unlike the general shop-product PATCH.
               {...register("stock_quantity", { valueAsNumber: true })}
             />
             <NumberField

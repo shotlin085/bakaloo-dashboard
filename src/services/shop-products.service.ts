@@ -65,6 +65,17 @@ export interface ShopProductUpdateBody {
 }
 
 /**
+ * Body accepted by `PATCH /api/v1/shop-products/[id]/stock`.
+ * Matches `stockUpdateSchema` on the backend, which also accepts a `delta`
+ * mode — the dashboard only ever sends an absolute `stock_quantity` since
+ * the Edit dialog's Stock field is a plain "set it to this value" input,
+ * same as every other field on the form.
+ */
+export interface ShopProductStockUpdateBody {
+  stock_quantity: number
+}
+
+/**
  * Raw payload returned by `GET /api/v1/shop-products` inside
  * `ApiResponse.data`. The Dashboard normalizes this into a
  * `Paginated<ShopProduct>` so consumers can rely on the canonical
@@ -217,6 +228,27 @@ export const shopProductsService = {
       body,
     )
     return data.data
+  },
+
+  /**
+   * Set the absolute stock_quantity on a shop product (Req 7.9).
+   *
+   * Kept separate from `update()` because the backend guards this write
+   * with a `SELECT ... FOR UPDATE` row lock (30/min rate limit) that the
+   * other fields don't need — see backend service `updateStock`. The
+   * response envelope also differs: the backend returns
+   * `{ shopProduct, prev }` here (not a bare `ShopProduct`) so a caller can
+   * see the pre-update quantity, which we don't currently need but must
+   * unwrap correctly.
+   */
+  async updateStock(
+    id: string,
+    body: ShopProductStockUpdateBody,
+  ): Promise<ShopProduct> {
+    const { data } = await api.patch<
+      ApiResponse<{ shopProduct: ShopProduct; prev: ShopProduct }>
+    >(`/shop-products/${id}/stock`, body)
+    return data.data.shopProduct
   },
 
   /**

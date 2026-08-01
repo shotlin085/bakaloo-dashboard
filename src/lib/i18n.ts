@@ -205,12 +205,14 @@ const en: Bundle = {
   "shopProducts.toast.duplicateEditLink": "Edit existing product",
   "shopProducts.toast.updated": "Product updated",
   "shopProducts.toast.updateFailed": "Could not save changes. Please retry.",
+  "shopProducts.toast.stockUpdateFailed": "Could not update stock. Please retry.",
   "shopProducts.toast.removed": "Product removed",
   "shopProducts.toast.removeFailed": "Could not remove the product.",
   "shopProducts.confirmRemove.title": "Remove product from shop?",
   "shopProducts.confirmRemove.description":
     "Customers will no longer see this product in this shop.",
   "shopProducts.confirmRemove.confirm": "Remove",
+  "shopProducts.actions.edit": "Edit",
 
   // ---------- Products tabs — Master Catalog vs Shop Products (Req 10.7) ----
   // Tab labels for the `/products` surface, which now exposes both the

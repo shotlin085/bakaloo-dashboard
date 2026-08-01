@@ -296,7 +296,7 @@ export function ProductActions({
             onSelect={() => setIsEditOpen(true)}
             data-testid={`product-actions-edit-${product.id}`}
           >
-            {t("shops.edit.submit")}
+            {t("shopProducts.actions.edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
