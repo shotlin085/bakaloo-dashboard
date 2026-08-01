@@ -62,3 +62,16 @@ export async function updateMember(
 export async function removeMember(memberId: string): Promise<void> {
   await api.delete(`/admin/team/${memberId}`)
 }
+
+/**
+ * Reset a team member's login password to a freshly generated temp
+ * password (never a caller-supplied value). The backend returns the
+ * plaintext exactly once — it is never retrievable again — and forces
+ * the member to change it on their next login.
+ */
+export async function resetMemberPassword(
+  memberId: string
+): Promise<{ temp_password: string }> {
+  const { data } = await api.post(`/admin/team/${memberId}/reset-password`)
+  return data.data ?? data
+}

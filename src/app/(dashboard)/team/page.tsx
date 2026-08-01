@@ -12,7 +12,11 @@ import {
   UserCheck,
   UserX,
   Check,
+  KeyRound,
+  AlertTriangle,
+  Copy,
 } from "lucide-react"
+import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -64,6 +68,7 @@ import {
   useInviteMember,
   useUpdateMember,
   useRemoveMember,
+  useResetMemberPassword,
 } from "@/hooks/useRBAC"
 import type {
   Role,
@@ -126,10 +131,22 @@ function MembersTab() {
   const { data: members, isLoading } = useTeamMembers()
   const updateMember = useUpdateMember()
   const removeMember = useRemoveMember()
+  const resetPassword = useResetMemberPassword()
   const { data: roles } = useRoles()
   const [changingRole, setChangingRole] = useState<{ id: string; roleId: string } | null>(null)
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [tempPasswordMemberName, setTempPasswordMemberName] = useState("")
   const { can } = usePermissions()
   const canManageTeam = can("team.manage")
+
+  const handleResetPassword = (memberId: string, memberName: string) => {
+    resetPassword.mutate(memberId, {
+      onSuccess: (result) => {
+        setTempPasswordMemberName(memberName)
+        setTempPassword(result.temp_password)
+      },
+    })
+  }
 
   if (isLoading) {
     return (
@@ -249,6 +266,13 @@ function MembersTab() {
                           </>
                         )}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleResetPassword(m.id, m.name)}
+                        disabled={resetPassword.isPending}
+                      >
+                        <KeyRound className="h-3.5 w-3.5 mr-2" />
+                        Reset Password
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
@@ -311,6 +335,45 @@ function MembersTab() {
             >
               Save
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Temp Password Modal — shown once, never persisted client-side */}
+      <Dialog open={!!tempPassword} onOpenChange={() => setTempPassword(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Temporary Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 p-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                This password will only be shown <strong>once</strong>. Copy it
+                now and share it securely with {tempPasswordMemberName}. It
+                cannot be retrieved later.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg bg-muted px-4 py-3 font-mono text-lg tracking-wider select-all">
+                {tempPassword}
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(tempPassword ?? "")
+                  toast.success("Copied to clipboard")
+                }}
+                className="gap-1"
+              >
+                <Copy className="h-4 w-4" />
+                Copy
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTempPassword(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

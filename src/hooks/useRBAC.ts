@@ -10,6 +10,7 @@ import {
   inviteMember,
   updateMember,
   removeMember,
+  resetMemberPassword,
 } from "@/services/rbac.service"
 import type {
   CreateRolePayload,
@@ -141,6 +142,20 @@ export function useRemoveMember() {
       toast.success("Member removed")
     },
     onError: () => toast.error("Failed to remove member"),
+  })
+}
+
+/**
+ * Reset a team member's password. No cache invalidation on success — this
+ * mutation doesn't change anything the list displays (role/status/last
+ * login are untouched). The caller reads `data.temp_password` from the
+ * mutation result to show the one-time reveal dialog; we don't toast a
+ * generic success here since that dialog IS the success state.
+ */
+export function useResetMemberPassword() {
+  return useMutation({
+    mutationFn: (memberId: string) => resetMemberPassword(memberId),
+    onError: () => toast.error("Failed to reset password"),
   })
 }
 
