@@ -99,7 +99,11 @@ const TIMELINE_ICONS: Record<string, React.ReactNode> = {
 export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerProps) {
   const router = useRouter()
   const { data: order, isLoading } = useOrderDetail(orderId)
-  const { data: customer, isLoading: customerLoading } = useCustomerDetail(order?.user_id ?? null)
+  const {
+    data: customer,
+    isLoading: customerLoading,
+    isError: customerErrored,
+  } = useCustomerDetail(order?.user_id ?? null)
   const updateStatus = useUpdateOrderStatus()
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
@@ -167,6 +171,8 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   // (`addressLine1`/`addressLine2`, from the addresses repository's
   // snake_case -> camelCase formatter) — fall back to the older
   // `line1`/`address_line` keys for any legacy/manually-created orders.
+  // This snapshot is what was saved at order time — never the customer's
+  // current/updated profile address — so it stays accurate for old orders.
   const deliveryAddr = order?.delivery_address
   const streetAddress =
     deliveryAddr?.addressLine1 || deliveryAddr?.line1 || deliveryAddr?.address_line
@@ -177,9 +183,36 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
     typeof deliveryLng === "number" &&
     Number.isFinite(deliveryLat) &&
     Number.isFinite(deliveryLng)
+  const hasAnyAddressData = !!(
+    streetAddress ||
+    deliveryAddr?.addressLine2 ||
+    deliveryAddr?.city ||
+    deliveryAddr?.pincode
+  )
+
+  const storeLat = order?.store?.lat
+  const storeLng = order?.store?.lng
+  const hasStoreCoords =
+    typeof storeLat === "number" &&
+    typeof storeLng === "number" &&
+    Number.isFinite(storeLat) &&
+    Number.isFinite(storeLng)
+
+  // Prefer real turn-by-turn driving directions (store -> customer) — only
+  // fall back to a destination-only pin when the fulfilling shop has no
+  // saved coordinates (e.g. a legacy order with no shop attribution). The
+  // button itself is disabled entirely when even the destination is
+  // unknown; it never uses the admin's own browser location.
   const deliveryMapsUrl = hasDeliveryCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${deliveryLat},${deliveryLng}`
+    ? hasStoreCoords
+      ? `https://www.google.com/maps/dir/?api=1&origin=${storeLat},${storeLng}&destination=${deliveryLat},${deliveryLng}&travelmode=driving`
+      : `https://www.google.com/maps/search/?api=1&query=${deliveryLat},${deliveryLng}`
     : null
+
+  // Road distance: only ever a genuine stored Google route (see
+  // `resolveRoadRouteDistance` on the backend) — never a haversine
+  // straight-line value, even as a fallback.
+  const roadDistanceKm = order?.delivery_route?.distance_km ?? null
 
   const handleStatusChange = (newStatus: string) => {
     if (!order) return
@@ -435,43 +468,38 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     {/* Reliability signal — how many of this customer's past
                         orders actually completed vs. were cancelled/returned,
                         so an admin can gauge trustworthiness without leaving
-                        this drawer. Explicit loading/loaded/unavailable states
-                        so a fetch failure fails loudly instead of the whole
-                        row silently disappearing. */}
+                        this drawer. Three explicit states: skeleton while
+                        loading (never a flashed "0"), the real counts once
+                        loaded, or "—" per box on a genuine fetch failure —
+                        the labels stay visible either way rather than the
+                        whole row silently disappearing. */}
                     {customerLoading ? (
-                      <div className="flex items-center gap-1.5 mt-2">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         <Skeleton className="h-5 w-24 rounded-full" />
                         <Skeleton className="h-5 w-24 rounded-full" />
                         <Skeleton className="h-5 w-24 rounded-full" />
-                      </div>
-                    ) : customer ? (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
-                          style={{ backgroundColor: "#ECFDF5", color: "#10B981" }}
-                        >
-                          {customer.completed_orders} Completed
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
-                          style={{ backgroundColor: "#F5F3FF", color: "#8B5CF6" }}
-                        >
-                          {customer.returned_orders} Returned
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] px-2 py-0.5 border-0 font-semibold"
-                          style={{ backgroundColor: "#FEF2F2", color: "#EF4444" }}
-                        >
-                          {customer.cancelled_orders} Cancelled
-                        </Badge>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-muted-foreground mt-2">
-                        Order history unavailable for this customer.
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <StatBadge
+                          label="Completed"
+                          value={customerErrored ? null : customer?.completed_orders}
+                          bg="#ECFDF5"
+                          fg="#10B981"
+                        />
+                        <StatBadge
+                          label="Returned"
+                          value={customerErrored ? null : customer?.returned_orders}
+                          bg="#F5F3FF"
+                          fg="#8B5CF6"
+                        />
+                        <StatBadge
+                          label="Cancelled"
+                          value={customerErrored ? null : customer?.cancelled_orders}
+                          bg="#FEF2F2"
+                          fg="#EF4444"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -593,18 +621,27 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
 
                 {/* Delivery */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <h4 className="text-sm font-semibold flex items-center gap-1.5">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       Delivery
                     </h4>
-                    {deliveryMapsUrl && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        asChild
-                      >
+                    {/* Always rendered — disabled only when the customer's
+                        own delivery coordinates are missing, per spec, with
+                        a tooltip explaining why rather than just vanishing. */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!deliveryMapsUrl}
+                      title={
+                        deliveryMapsUrl
+                          ? undefined
+                          : "Customer location is not available for this order"
+                      }
+                      asChild={!!deliveryMapsUrl}
+                    >
+                      {deliveryMapsUrl ? (
                         <a
                           href={deliveryMapsUrl}
                           target="_blank"
@@ -613,9 +650,19 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                           <Navigation className="h-3 w-3 mr-1" />
                           View live on Map
                         </a>
-                      </Button>
-                    )}
+                      ) : (
+                        <span>
+                          <Navigation className="h-3 w-3 mr-1" />
+                          View live on Map
+                        </span>
+                      )}
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {roadDistanceKm != null
+                      ? `Road distance: ${roadDistanceKm} km`
+                      : "Road distance unavailable"}
+                  </p>
                   <div className="text-sm text-muted-foreground space-y-1">
 
                     {/* Scheduled delivery badge */}
@@ -663,22 +710,33 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       </Button>
                     )}
 
-                    <p>{streetAddress || "Address not available"}</p>
-                    {deliveryAddr?.addressLine2 && <p>{deliveryAddr.addressLine2}</p>}
-                    {deliveryAddr?.landmark && (
-                      <p className="text-xs">Landmark: {deliveryAddr.landmark}</p>
-                    )}
-                    {deliveryAddr?.city && (
-                      <p>
-                        {deliveryAddr.city}
-                        {deliveryAddr.state && `, ${deliveryAddr.state}`}
-                        {deliveryAddr.pincode && ` – ${deliveryAddr.pincode}`}
-                      </p>
-                    )}
-                    {hasDeliveryCoords && (
-                      <p className="text-xs font-mono">
-                        {deliveryLat!.toFixed(6)}, {deliveryLng!.toFixed(6)}
-                      </p>
+                    {hasAnyAddressData ? (
+                      <>
+                        {deliveryAddr?.label && (
+                          <p className="text-xs font-medium text-foreground">
+                            {deliveryAddr.label}
+                          </p>
+                        )}
+                        <p>{streetAddress || "—"}</p>
+                        {deliveryAddr?.addressLine2 && <p>{deliveryAddr.addressLine2}</p>}
+                        {deliveryAddr?.landmark && (
+                          <p className="text-xs">Landmark: {deliveryAddr.landmark}</p>
+                        )}
+                        {deliveryAddr?.city && (
+                          <p>
+                            {deliveryAddr.city}
+                            {deliveryAddr.state && `, ${deliveryAddr.state}`}
+                            {deliveryAddr.pincode && ` – ${deliveryAddr.pincode}`}
+                          </p>
+                        )}
+                        {hasDeliveryCoords && (
+                          <p className="text-xs font-mono">
+                            {deliveryLat!.toFixed(6)}, {deliveryLng!.toFixed(6)}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p>Delivery address unavailable</p>
                     )}
                     {order.delivery_notes && (
                       <p className="text-xs italic mt-1">📝 {order.delivery_notes}</p>
@@ -1043,6 +1101,30 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
       </DialogContent>
     </Dialog>
     </>
+  )
+}
+
+/** One "Completed 12" / "Returned —" pill in the customer reliability row. */
+function StatBadge({
+  label,
+  value,
+  bg,
+  fg,
+}: {
+  label: string
+  value: number | null | undefined
+  bg: string
+  fg: string
+}) {
+  return (
+    <Badge
+      variant="outline"
+      className="text-[11px] px-2 py-0.5 border-0 font-medium gap-1"
+      style={{ backgroundColor: bg, color: fg }}
+    >
+      <span>{label}</span>
+      <span className="font-bold">{value == null ? "—" : value}</span>
+    </Badge>
   )
 }
 

@@ -142,6 +142,28 @@ export interface DeliveryAssignment {
   rating_note: string | null
 }
 
+/** The shop that fulfilled the order — its saved location, used as the
+ *  route origin for "View live on Map" and (when available) road-distance
+ *  calculation. Never the customer's browser location or a hardcoded pin. */
+export interface OrderStore {
+  id: string
+  name: string | null
+  lat: number | null
+  lng: number | null
+}
+
+/**
+ * A genuine road-route distance sourced from a Google route already stored
+ * against the order (see `resolveRoadRouteDistance` on the backend).
+ * `distance_km` is `null` — not a haversine fallback — when no real route
+ * data exists for this order; the UI must render that as "unavailable",
+ * never compute or display a straight-line substitute.
+ */
+export interface OrderDeliveryRoute {
+  distance_km: number | null
+  source: string | null
+}
+
 export interface OrderDetail extends Order {
   customer_name: string
   customer_phone: string
@@ -154,6 +176,8 @@ export interface OrderDetail extends Order {
   timeline: OrderTimeline[]
   payment: OrderPayment | null
   delivery: DeliveryAssignment | null
+  store: OrderStore | null
+  delivery_route: OrderDeliveryRoute
 }
 
 /** Order count by status (for tab badges) */
