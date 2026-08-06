@@ -95,6 +95,8 @@ const GROUPS: SettingsGroup[] = [
     label: "Rider Payouts",
     icon: Bike,
     keys: [
+      { key: "rider_commission_enabled", label: "Rider Commission Enabled", type: "boolean" },
+      { key: "rider_max_active_orders", label: "Default Rider Capacity", type: "number", suffix: "orders" },
       { key: "rider_base_pay_3km", label: "Base Pay (0–3 km)", type: "number", suffix: "₹" },
       { key: "rider_base_pay_5km", label: "Base Pay (3–5 km)", type: "number", suffix: "₹" },
       { key: "rider_base_pay_8km", label: "Base Pay (5–8 km)", type: "number", suffix: "₹" },

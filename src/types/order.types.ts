@@ -64,6 +64,15 @@ export interface Order {
    * an order reaches PACKED.
    */
   suggested_rider?: { id: string; name: string; phone: string; is_online: boolean } | null
+  /** Which tier of the resolver decided the current rider — null before any assignment. */
+  assignment_method?: 'MANUAL' | 'AREA_SEGMENT' | 'AUTO' | null
+  area_segment_id?: string | null
+  area_segment_name?: string | null
+  assigned_at?: string | null
+  notification_sent_at?: string | null
+  pickup_token_status?: 'ACTIVE' | 'VERIFIED' | 'CONSUMED' | 'REVOKED' | 'EXPIRED' | null
+  pickup_status?: 'ASSIGNED' | 'ACCEPTED' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | null
+  assignment_history?: AssignmentLogEntry[]
   /**
    * Shop attribution joined by the backend on cross-shop list responses
    * (Super_Admin "All Shops" mode). All fields are optional so the type
@@ -175,6 +184,18 @@ export interface OrderStore {
 export interface OrderDeliveryRoute {
   distance_km: number | null
   source: string | null
+}
+
+/** One row of rider_assignment_log — "which rule selected the final rider, and why." */
+export interface AssignmentLogEntry {
+  id: string
+  order_id: string
+  rider_id: string | null
+  rider_name: string | null
+  method: 'MANUAL' | 'AREA_SEGMENT' | 'AUTO' | 'NONE'
+  reason: string | null
+  triggered_by: string | null
+  decided_at: string
 }
 
 export interface OrderDetail extends Order {

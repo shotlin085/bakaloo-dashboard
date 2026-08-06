@@ -23,6 +23,7 @@ import {
   LogOut,
   Map,
   MapPin,
+  MapPinned,
   Package,
   Palette,
   Receipt,
@@ -95,6 +96,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   Map,
   MapPin,
+  MapPinned,
   Package,
   Palette,
   Receipt,
@@ -164,6 +166,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         icon: "Bike",
         badgeKey: "pendingRiderApprovals",
       },
+      { label: "Area Segments", href: "/area-segments", icon: "MapPinned" },
     ],
   },
   {

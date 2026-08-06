@@ -73,6 +73,13 @@ export const qk = {
   customerSegmentMembers: (id: string, params: ListParams) =>
     ["customer-segments", id, "members", params] as const,
 
+  // ── Area Segments (platform-wide, NOT shop-scoped — a segment's rider
+  //    covers a set of exact customer+address pairs regardless of shop) ───
+  areaSegments: () => ["area-segments", "list"] as const,
+  areaSegmentAddresses: (id: string, params: ListParams) =>
+    ["area-segments", id, "addresses", params] as const,
+  areaSegmentActiveOrders: (id: string) => ["area-segments", id, "active-orders"] as const,
+
   // ── First-Time Offers (platform-wide, NOT shop-scoped) ──────────────────
   firstTimeOffers: () => ["first-time-offers", "list"] as const,
 

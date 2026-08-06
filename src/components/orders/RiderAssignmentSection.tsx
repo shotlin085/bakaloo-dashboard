@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Truck, Phone } from "lucide-react"
+import { Truck, Phone, MapPinned, Bell, QrCode, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -13,7 +13,22 @@ import {
 } from "@/components/ui/select"
 import { useRiders } from "@/hooks/useRiders"
 import { useAssignRider } from "@/hooks/useOrders"
+import { formatDateTime } from "@/lib/utils"
 import type { OrderDetail } from "@/types"
+
+const ASSIGNMENT_METHOD_LABEL: Record<string, string> = {
+  MANUAL: "Manual",
+  AREA_SEGMENT: "Area Segment",
+  AUTO: "Automatic",
+}
+
+const PICKUP_TOKEN_LABEL: Record<string, string> = {
+  ACTIVE: "Ready to scan",
+  VERIFIED: "Scanned",
+  CONSUMED: "Picked up",
+  REVOKED: "Revoked",
+  EXPIRED: "Expired",
+}
 
 /**
  * Rider Assignment section for the order-detail drawer — only rendered once
@@ -56,6 +71,43 @@ export function RiderAssignmentSection({ order }: { order: OrderDetail }) {
         </Badge>
       )}
 
+      {order.rider_id && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          {order.assignment_method && (
+            <Badge variant="outline" className="font-normal">
+              {ASSIGNMENT_METHOD_LABEL[order.assignment_method] ?? order.assignment_method}
+            </Badge>
+          )}
+          {order.assignment_method === "AREA_SEGMENT" && order.area_segment_name && (
+            <Badge variant="outline" className="font-normal">
+              <MapPinned className="h-3 w-3 mr-1" />
+              {order.area_segment_name}
+            </Badge>
+          )}
+          {order.pickup_status && (
+            <Badge variant="outline" className="font-normal">
+              {order.pickup_status.replaceAll("_", " ")}
+            </Badge>
+          )}
+          {order.pickup_token_status && (
+            <Badge variant="outline" className="font-normal">
+              <QrCode className="h-3 w-3 mr-1" />
+              {PICKUP_TOKEN_LABEL[order.pickup_token_status] ?? order.pickup_token_status}
+            </Badge>
+          )}
+          <Badge variant="outline" className="font-normal">
+            <Bell className="h-3 w-3 mr-1" />
+            {order.notification_sent_at ? "Rider notified" : "Not yet notified"}
+          </Badge>
+        </div>
+      )}
+
+      {order.assigned_at && (
+        <p className="text-xs text-muted-foreground mb-2">
+          Assigned {formatDateTime(order.assigned_at)}
+        </p>
+      )}
+
       {order.rider_name && (
         <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
           <span>Currently:</span>
@@ -93,6 +145,27 @@ export function RiderAssignmentSection({ order }: { order: OrderDetail }) {
           {assignRider.isPending ? "Assigning..." : order.rider_id ? "Change Rider" : "Assign"}
         </Button>
       </div>
+
+      {order.assignment_history && order.assignment_history.length > 0 && (
+        <details className="mt-3">
+          <summary className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1 select-none">
+            <History className="h-3 w-3" />
+            Assignment history ({order.assignment_history.length})
+          </summary>
+          <ul className="mt-1.5 space-y-1 border-l pl-3">
+            {order.assignment_history.map((entry) => (
+              <li key={entry.id} className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {ASSIGNMENT_METHOD_LABEL[entry.method] ?? entry.method}
+                </span>
+                {entry.rider_name && <> — {entry.rider_name}</>}
+                <span className="block">{entry.reason}</span>
+                <span className="text-[11px]">{formatDateTime(entry.decided_at)}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   )
 }

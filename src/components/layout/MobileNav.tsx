@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Map,
   MapPin,
+  MapPinned,
   Package,
   Receipt,
   Settings,
@@ -71,6 +72,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   Map,
   MapPin,
+  MapPinned,
   Package,
   Receipt,
   Settings,
@@ -116,6 +118,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { label: "Categories", href: "/categories", icon: "Tags" },
       { label: "Customers", href: "/customers", icon: "Users" },
       { label: "Riders", href: "/riders", icon: "Bike" },
+      { label: "Area Segments", href: "/area-segments", icon: "MapPinned" },
     ],
   },
   {

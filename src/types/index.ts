@@ -41,6 +41,7 @@ export type {
   OrderPayment,
   DeliveryAssignment,
   DeliveryAddress,
+  AssignmentLogEntry,
   OrderStatusCounts,
   OrderFilters,
   UpdateOrderStatusPayload,
