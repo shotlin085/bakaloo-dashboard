@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import { RiderAssignmentSection } from "@/components/orders/RiderAssignmentSection"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -743,20 +744,24 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     )}
                   </div>
 
-                  {/* Rider info */}
-                  {order.rider_name && (
-                    <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <Truck className="h-4 w-4 text-brand-500" />
-                      <div className="text-sm">
-                        <span className="font-medium">{order.rider_name}</span>
-                        {order.rider_phone && (
-                          <span className="text-muted-foreground ml-2 text-xs">
-                            <Phone className="h-3 w-3 inline mr-0.5" />
-                            {order.rider_phone}
-                          </span>
-                        )}
+                  {/* Rider Assignment — editable once Packed, read-only chip otherwise */}
+                  {order.status === "PACKED" ? (
+                    <RiderAssignmentSection order={order} />
+                  ) : (
+                    order.rider_name && (
+                      <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                        <Truck className="h-4 w-4 text-brand-500" />
+                        <div className="text-sm">
+                          <span className="font-medium">{order.rider_name}</span>
+                          {order.rider_phone && (
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              <Phone className="h-3 w-3 inline mr-0.5" />
+                              {order.rider_phone}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )
                   )}
 
                   {/* Delivery assignment details */}

@@ -1,6 +1,12 @@
 import type { OrderStatus, OrderType, PaymentMethod } from "@/lib/constants"
 
 export interface DeliveryAddress {
+  // The originating `addresses.id` row this order's delivery snapshot was
+  // taken from — present because checkout spreads the full saved-address
+  // row into `orders.delivery_address` (see backend
+  // orders/orders.service.js). Used to match "same delivery address" for
+  // the sticky rider suggestion, since address text can drift.
+  id?: string
   line1?: string
   line2?: string
   label?: string
@@ -51,6 +57,13 @@ export interface Order {
   customer_name?: string
   customer_phone?: string
   rider_name?: string | null
+  /**
+   * The rider previously assigned to this customer's same saved address, if
+   * any — only populated by the backend when `rider_id` is not yet set.
+   * Pre-fills (but never auto-confirms) the Rider Assignment dropdown once
+   * an order reaches PACKED.
+   */
+  suggested_rider?: { id: string; name: string; phone: string; is_online: boolean } | null
   /**
    * Shop attribution joined by the backend on cross-shop list responses
    * (Super_Admin "All Shops" mode). All fields are optional so the type
