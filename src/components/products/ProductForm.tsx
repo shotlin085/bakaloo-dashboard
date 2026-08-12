@@ -86,6 +86,9 @@ interface FormData {
   unit: string
   sku: string
   barcode: string
+  hsnCode: string
+  uqc: string
+  gstRate: string
   thumbnailUrl: string
   /** Ordered gallery (index 0 = primary). Mirrors thumbnailUrl on submit. */
   images: string[]
@@ -148,6 +151,19 @@ const UNIT_LABELS: Record<string, string> = {
 const CERT_OPTIONS = ["Organic", "FSSAI", "ISO", "Vegan", "Gluten-Free"]
 const DEFAULT_NUTRITION_KEYS = ["Calories", "Protein", "Fat", "Carbs", "Fiber"]
 
+// GST-standard Unit Quantity Codes (subset covering Bakaloo's product units).
+const UQC_OPTIONS = ["KGS", "GMS", "LTR", "MLT", "NOS", "PAC", "BOX", "DOZ", "OTH"]
+const UNIT_TO_UQC: Record<string, string> = {
+  kg: "KGS",
+  g: "GMS",
+  l: "LTR",
+  ml: "MLT",
+  piece: "NOS",
+  pack: "PAC",
+  dozen: "DOZ",
+  box: "BOX",
+}
+
 const INITIAL: FormData = {
   name: "",
   description: "",
@@ -159,6 +175,9 @@ const INITIAL: FormData = {
   unit: "piece",
   sku: "",
   barcode: "",
+  hsnCode: "",
+  uqc: "",
+  gstRate: "",
   thumbnailUrl: "",
   images: [],
   tags: "",
@@ -268,6 +287,9 @@ export function ProductForm({
       unit: product.unit ?? "piece",
       sku: product.sku ?? "",
       barcode: product.barcode ?? "",
+      hsnCode: product.hsn_code ?? "",
+      uqc: product.uqc ?? "",
+      gstRate: parseOptionalNumber(product.gst_rate),
       thumbnailUrl: product.thumbnail_url ?? "",
       // Seed gallery from images[]; fall back to a 1-image gallery built
       // from the legacy thumbnail so existing products keep working.
@@ -427,6 +449,13 @@ export function ProductForm({
       unit: form.unit,
       sku: form.sku || undefined,
       barcode: form.barcode || undefined,
+      // GSTR-1: hsnCode/uqc are text, sent as "" (not undefined) so
+      // clearing the field actually clears it — see the comment above on
+      // metaTitle/vendorName for why. gstRate is a number field with no
+      // clear-once-set path today, matching avgRating/ratingCount below.
+      hsnCode: form.hsnCode || "",
+      uqc: form.uqc || "",
+      gstRate: form.gstRate ? parseFloat(form.gstRate) : undefined,
       thumbnailUrl: (form.images[0] ?? form.thumbnailUrl) || undefined,
       images: form.images.length > 0 ? form.images : undefined,
       lowStockThreshold: form.lowStockThreshold ? parseInt(form.lowStockThreshold, 10) : undefined,
@@ -584,6 +613,55 @@ export function ProductForm({
                 <FieldLabel htmlFor="barcode" icon={<ScanBarcode className="h-3.5 w-3.5" />}>Barcode</FieldLabel>
                 <Input id="barcode" value={form.barcode} onChange={(e) => set("barcode", e.target.value)} placeholder="e.g. 8901234567890" />
                 <FieldHint>The printed EAN/UPC barcode on the pack. Used for scanning at the warehouse.</FieldHint>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            icon={<IndianRupee className="h-4 w-4" />}
+            title="Tax / GST"
+            description="Used to build the GSTR-1 HSN Summary report. Doesn't affect the price shown to shoppers — GST is still charged as one rate per order at checkout."
+          >
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <FieldLabel htmlFor="hsnCode" icon={<Hash className="h-3.5 w-3.5" />}>HSN Code</FieldLabel>
+                <Input
+                  id="hsnCode"
+                  value={form.hsnCode}
+                  onChange={(e) => set("hsnCode", e.target.value)}
+                  placeholder="e.g. 0401"
+                  maxLength={8}
+                />
+                <FieldHint>The GST HSN code for this product. Leave blank if unknown — it&apos;ll show as &ldquo;Unknown&rdquo; on the HSN Summary report.</FieldHint>
+              </div>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="uqc" icon={<Scale className="h-3.5 w-3.5" />}>UQC (Unit)</FieldLabel>
+                <select
+                  id="uqc"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={form.uqc || UNIT_TO_UQC[form.unit] || ""}
+                  onChange={(e) => set("uqc", e.target.value)}
+                >
+                  <option value="">Select unit code</option>
+                  {UQC_OPTIONS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                <FieldHint>GST&apos;s standard unit code. Defaults from the product unit above.</FieldHint>
+              </div>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="gstRate" icon={<IndianRupee className="h-3.5 w-3.5" />}>GST Rate (%)</FieldLabel>
+                <Input
+                  id="gstRate"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={form.gstRate}
+                  onChange={(e) => set("gstRate", e.target.value)}
+                  placeholder="Platform default"
+                />
+                <FieldHint>Leave blank to use the platform&apos;s default GST rate from Settings → Fees.</FieldHint>
               </div>
             </div>
           </SectionCard>

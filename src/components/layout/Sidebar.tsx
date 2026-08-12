@@ -200,6 +200,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         href: "/shop-transactions",
         icon: "Receipt",
       },
+      { label: "GSTR-1", href: "/hq/finance/gstr1", icon: "FileText" },
     ],
   },
   {

@@ -30,6 +30,9 @@ export interface ProductPayload {
   unit: string
   sku?: string
   barcode?: string
+  hsnCode?: string
+  uqc?: string
+  gstRate?: number
   thumbnailUrl?: string
   /** Ordered gallery image URLs (index 0 = primary). Max 5. */
   images?: string[]
@@ -93,6 +96,7 @@ export interface Product {
   cost_price?: number | null
   gst_rate?: number
   hsn_code?: string | null
+  uqc?: string | null
   stock_quantity: number
   low_stock_threshold: number
   sku?: string | null

@@ -127,7 +127,7 @@ const HQ_NAV_ITEMS: NavItem[] = [
   {
     id: "finance",
     label: "Finance",
-    href: "/shop-financials",
+    href: "/hq/finance",
     icon: "CreditCard",
     permissions: ["shop-financials.read"],
   },

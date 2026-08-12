@@ -27,9 +27,12 @@ interface BulkImportDialogProps {
   onClose: () => void
 }
 
-const CSV_TEMPLATE = `name,price,stock_quantity,unit,category_id,description,images,is_featured
-"Fresh Tomato",45,100,kg,CATEGORY_ID_HERE,"Fresh organic tomatoes","https://example.com/tomato.jpg",false
-"Amul Milk 500ml",30,200,piece,CATEGORY_ID_HERE,"Fresh toned milk","",false`
+// hsn_code/uqc/gst_rate are optional -- leave blank to skip and they'll
+// fall back to the platform's default GST rate (and "Unknown" HSN) on the
+// GSTR-1 HSN Summary report.
+const CSV_TEMPLATE = `name,price,stock_quantity,unit,category_id,description,images,is_featured,hsn_code,uqc,gst_rate
+"Fresh Tomato",45,100,kg,CATEGORY_ID_HERE,"Fresh organic tomatoes","https://example.com/tomato.jpg",false,0702,KGS,5
+"Amul Milk 500ml",30,200,piece,CATEGORY_ID_HERE,"Fresh toned milk","",false,0401,NOS,5`
 
 export function BulkImportDialog({ open, onClose }: BulkImportDialogProps) {
   const [file, setFile] = useState<File | null>(null)

@@ -8,11 +8,14 @@
  */
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import {
   Download,
   CheckCircle,
   Loader2,
   PlayCircle,
+  Receipt,
+  ArrowRight,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -78,6 +81,7 @@ export default function HQFinancePage() {
         <TabsList>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="financials">Financials & Payouts</TabsTrigger>
+          <TabsTrigger value="gstr1">GSTR-1</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions" className="mt-4">
@@ -85,6 +89,9 @@ export default function HQFinancePage() {
         </TabsContent>
         <TabsContent value="financials" className="mt-4">
           <FinancialsTab />
+        </TabsContent>
+        <TabsContent value="gstr1" className="mt-4">
+          <Gstr1Tab />
         </TabsContent>
       </Tabs>
     </div>
@@ -158,12 +165,12 @@ function TransactionsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={shopId} onValueChange={(v) => { setShopId(v); setPage(1) }}>
+        <Select value={shopId || "ALL"} onValueChange={(v) => { setShopId(v === "ALL" ? "" : v); setPage(1) }}>
           <SelectTrigger className="h-9 w-[180px]" aria-label="Filter by shop">
             <SelectValue placeholder="All Shops" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Shops</SelectItem>
+            <SelectItem value="ALL">All Shops</SelectItem>
             {shops.map((shop) => (
               <SelectItem key={shop.id} value={shop.id}>{shop.name}</SelectItem>
             ))}
@@ -319,23 +326,23 @@ function FinancialsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={shopId} onValueChange={(v) => { setShopId(v); setPage(1) }}>
+        <Select value={shopId || "ALL"} onValueChange={(v) => { setShopId(v === "ALL" ? "" : v); setPage(1) }}>
           <SelectTrigger className="h-9 w-[180px]" aria-label="Filter by shop">
             <SelectValue placeholder="All Shops" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Shops</SelectItem>
+            <SelectItem value="ALL">All Shops</SelectItem>
             {shops.map((shop) => (
               <SelectItem key={shop.id} value={shop.id}>{shop.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={payoutStatus} onValueChange={(v) => { setPayoutStatus(v); setPage(1) }}>
+        <Select value={payoutStatus || "ALL"} onValueChange={(v) => { setPayoutStatus(v === "ALL" ? "" : v); setPage(1) }}>
           <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by payout status">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
+            <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
             <SelectItem value="PAID">Paid</SelectItem>
             <SelectItem value="OVERDUE">Overdue</SelectItem>
@@ -393,5 +400,32 @@ function FinancialsTab() {
         </div>
       )}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GSTR-1 Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Gstr1Tab() {
+  return (
+    <Card>
+      <CardContent className="p-6 flex flex-col items-center text-center gap-3">
+        <Receipt className="h-8 w-8 text-muted-foreground" />
+        <div>
+          <p className="font-medium">GSTR-1 — B2CS &amp; HSN Summary</p>
+          <p className="text-sm text-muted-foreground max-w-md">
+            State+rate-wise B2C summary and HSN summary, for monthly or quarterly
+            filing periods, with due dates and an Excel export matching the GSTR-1
+            offline utility format.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/hq/finance/gstr1">
+            Open GSTR-1 Report <ArrowRight className="h-4 w-4 ml-1" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
