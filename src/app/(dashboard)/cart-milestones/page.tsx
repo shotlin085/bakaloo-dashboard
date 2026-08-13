@@ -111,7 +111,14 @@ function CartMilestonesContent() {
                     <TableCell className="font-medium">{milestone.name}</TableCell>
                     <TableCell>{formatINR(milestone.minCartAmount)}</TableCell>
                     <TableCell className="text-sm">
-                      {(REWARD_SUMMARY[milestone.rewardType] ?? (() => milestone.rewardType))(milestone)}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span>{(REWARD_SUMMARY[milestone.rewardType] ?? (() => milestone.rewardType))(milestone)}</span>
+                        {milestone.grantsFreeDelivery && (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            + Free delivery
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {milestone.applicableUserType === "ALL"

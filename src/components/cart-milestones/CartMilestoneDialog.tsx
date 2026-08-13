@@ -70,6 +70,7 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
   priority: 0,
   cashbackCreditTrigger: "ORDER_DELIVERED",
   usageLimitPerUser: undefined,
+  grantsFreeDelivery: false,
   isActive: true,
 }
 
@@ -99,6 +100,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         priority: milestone.priority,
         cashbackCreditTrigger: milestone.cashbackCreditTrigger,
         usageLimitPerUser: milestone.usageLimitPerUser ?? undefined,
+        grantsFreeDelivery: milestone.grantsFreeDelivery ?? false,
         isActive: milestone.isActive,
       })
     } else {
@@ -380,6 +382,20 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
             />
             <p className="text-xs text-muted-foreground">
               How many times the same customer can earn this milestone&apos;s reward. Leave blank for unlimited (every qualifying order).
+            </p>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-1">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={form.grantsFreeDelivery}
+                onCheckedChange={(v) => setForm({ ...form, grantsFreeDelivery: v })}
+              />
+              <Label>Also grants free delivery</Label>
+            </div>
+            <p className="text-xs text-muted-foreground pl-[52px]">
+              When on, reaching this milestone waives the delivery fee — on top of the reward above, not
+              instead of it — for any order that meets the Minimum Cart Amount.
             </p>
           </div>
 

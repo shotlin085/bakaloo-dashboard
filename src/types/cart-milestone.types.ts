@@ -20,6 +20,7 @@ export interface CartMilestone {
   priority: number
   cashbackCreditTrigger: CashbackCreditTrigger
   usageLimitPerUser: number | null
+  grantsFreeDelivery: boolean
   createdAt: string
 }
 
@@ -39,6 +40,7 @@ export interface CreateCartMilestonePayload {
   priority?: number
   cashbackCreditTrigger?: CashbackCreditTrigger
   usageLimitPerUser?: number | null
+  grantsFreeDelivery?: boolean
 }
 
 export interface UpdateCartMilestonePayload extends Partial<CreateCartMilestonePayload> {
