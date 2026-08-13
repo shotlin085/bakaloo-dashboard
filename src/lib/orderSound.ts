@@ -1,14 +1,14 @@
 "use client"
 
 /**
- * New-order sound alerts. Two distinct tones so an admin can tell by ear
- * whether an incoming order needs to be handled now (ASAP) or can wait
- * (SCHEDULED) without looking at the screen.
+ * New-order sound alert — same tone for every incoming order (ASAP or
+ * SCHEDULED). Kept as a per-mode map so a distinct tone per mode can be
+ * reintroduced later without touching callers.
  */
 
 const SOUND_URLS = {
-  ASAP: "/sounds/order-asap.wav",
-  SCHEDULED: "/sounds/order-scheduled.wav",
+  ASAP: "/sounds/order-alert.mp3",
+  SCHEDULED: "/sounds/order-alert.mp3",
 } as const
 
 type DeliveryMode = keyof typeof SOUND_URLS
