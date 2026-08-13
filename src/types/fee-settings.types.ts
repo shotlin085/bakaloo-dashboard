@@ -20,6 +20,8 @@ export interface FeeSettings {
   max_delivery_distance_km: number | null
   free_delivery_enabled: boolean
   free_delivery_above: number | null
+  /** Whether this threshold also shows up as its own checkpoint in the cart-milestone reward ladder (Smart Bottom Bar). Off by default. */
+  free_delivery_in_milestone_ladder: boolean
 
   // Handling
   handling_fee_enabled: boolean

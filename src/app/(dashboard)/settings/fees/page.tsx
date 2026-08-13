@@ -396,15 +396,31 @@ function DeliverySection({ draft, set }: DeliverySectionProps) {
           />
         </div>
         {draft.free_delivery_enabled ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField
-              id="free_delivery_above"
-              label="Free delivery above"
-              suffix="₹"
-              value={draft.free_delivery_above}
-              onChange={(v) => set("free_delivery_above", v)}
-            />
-          </div>
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <NumberField
+                id="free_delivery_above"
+                label="Free delivery above"
+                suffix="₹"
+                value={draft.free_delivery_above}
+                onChange={(v) => set("free_delivery_above", v)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Show in milestone progress bar</p>
+                <p className="text-xs text-muted-foreground">
+                  Off by default, so this threshold doesn&apos;t appear as its own checkpoint
+                  alongside real Cart Milestones (Smart Bottom Bar). Turn on only if you want
+                  this free-delivery threshold treated as a milestone in that progress track too.
+                </p>
+              </div>
+              <Switch
+                checked={draft.free_delivery_in_milestone_ladder}
+                onCheckedChange={(v) => set("free_delivery_in_milestone_ladder", v)}
+              />
+            </div>
+          </>
         ) : null}
 
         <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
