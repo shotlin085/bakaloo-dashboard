@@ -8,6 +8,7 @@ export interface CartMilestone {
   minCartAmount: number
   rewardType: CartMilestoneRewardType
   rewardValue: number | null
+  rewardPercent: number | null
   maxDiscount: number | null
   unlockCouponId: string | null
   messageBefore: string | null
@@ -29,6 +30,7 @@ export interface CreateCartMilestonePayload {
   minCartAmount: number
   rewardType: CartMilestoneRewardType
   rewardValue?: number
+  rewardPercent?: number | null
   maxDiscount?: number
   unlockCouponId?: string
   messageBefore?: string

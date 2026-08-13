@@ -28,7 +28,10 @@ import { formatINR } from "@/lib/utils"
 import type { CartMilestone } from "@/types/cart-milestone.types"
 
 const REWARD_SUMMARY: Record<string, (m: CartMilestone) => string> = {
-  CASHBACK: (m) => `${formatINR(m.rewardValue ?? 0)} cashback${m.maxDiscount ? ` (max ${formatINR(m.maxDiscount)})` : ""}`,
+  CASHBACK: (m) =>
+    m.rewardPercent != null
+      ? `${m.rewardPercent}% cashback${m.maxDiscount ? ` (up to ${formatINR(m.maxDiscount)})` : ""}`
+      : `${formatINR(m.rewardValue ?? 0)} cashback${m.maxDiscount ? ` (max ${formatINR(m.maxDiscount)})` : ""}`,
   FLAT_DISCOUNT: (m) => `${formatINR(m.rewardValue ?? 0)} off`,
   COUPON_UNLOCK: () => "Unlocks a coupon",
 }
