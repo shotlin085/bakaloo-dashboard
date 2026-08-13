@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Select,
   SelectContent,
@@ -65,11 +66,14 @@ const CREDIT_TRIGGER_LABELS: Record<PaymentOfferCreditTrigger, string> = {
   ORDER_DELIVERED: "After order delivered (safest)",
 }
 
+type CashbackType = "FLAT" | "PERCENTAGE"
+
 type OfferForm = {
   provider: string
   title: string
   description: string
   iconUrl: string
+  cashbackType: CashbackType
   cashbackAmount: string
   cashbackPercent: string
   minOrderAmount: string
@@ -113,6 +117,10 @@ function createInitialForm(offer?: PaymentOfferAdmin | null): OfferForm {
     title: offer?.title ?? "",
     description: offer?.description ?? "",
     iconUrl: offer?.icon_url ?? "",
+    cashbackType:
+      offer?.cashback_percent !== null && offer?.cashback_percent !== undefined
+        ? "PERCENTAGE"
+        : "FLAT",
     cashbackAmount: offer ? String(offer.cashback_amount) : "",
     cashbackPercent:
       offer?.cashback_percent === null || offer?.cashback_percent === undefined
@@ -216,7 +224,11 @@ export default function PaymentOffersPage() {
   }
 
   const buildPayload = (): PaymentOfferPayload | null => {
-    const cashbackAmount = Number(form.cashbackAmount)
+    const isPercentage = form.cashbackType === "PERCENTAGE"
+    const cashbackAmount = isPercentage ? 0 : Number(form.cashbackAmount)
+    const cashbackPercent = isPercentage
+      ? parseOptionalNumber(form.cashbackPercent)
+      : null
     const minOrderAmount = Number(form.minOrderAmount || 0)
 
     if (!form.provider.trim() || !form.title.trim()) {
@@ -224,8 +236,18 @@ export default function PaymentOffersPage() {
       return null
     }
 
-    if (!Number.isFinite(cashbackAmount) || cashbackAmount < 0) {
+    if (!isPercentage && (!Number.isFinite(cashbackAmount) || cashbackAmount < 0)) {
       toast.error("Cashback amount must be 0 or higher")
+      return null
+    }
+
+    if (isPercentage && (cashbackPercent === null || cashbackPercent <= 0 || cashbackPercent > 100)) {
+      toast.error("Cashback % must be between 1 and 100")
+      return null
+    }
+
+    if (isPercentage && parseOptionalNumber(form.maxCashback) === null) {
+      toast.error("Max Cashback (cap) is required for percentage-based offers")
       return null
     }
 
@@ -240,7 +262,7 @@ export default function PaymentOffersPage() {
       description: form.description.trim() || null,
       iconUrl: form.iconUrl.trim() || null,
       cashbackAmount,
-      cashbackPercent: parseOptionalNumber(form.cashbackPercent),
+      cashbackPercent,
       minOrderAmount,
       maxCashback: parseOptionalNumber(form.maxCashback),
       lockThreshold: parseOptionalNumber(form.lockThreshold),
@@ -281,8 +303,7 @@ export default function PaymentOffersPage() {
             <TableRow>
               <TableHead>Provider</TableHead>
               <TableHead>Title</TableHead>
-              <TableHead>Cashback ₹</TableHead>
-              <TableHead>Cashback %</TableHead>
+              <TableHead>Cashback</TableHead>
               <TableHead>Min Order</TableHead>
               <TableHead>Max Cashback</TableHead>
               <TableHead>Lock Threshold</TableHead>
@@ -295,7 +316,7 @@ export default function PaymentOffersPage() {
             {isLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 10 }).map((__, cell) => (
+                  {Array.from({ length: 9 }).map((__, cell) => (
                     <TableCell key={cell}>
                       <div className="h-4 w-20 animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -304,7 +325,7 @@ export default function PaymentOffersPage() {
               ))
             ) : orderedOffers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     title="No payment offers yet"
                     description="Create your first offer to surface cashback promos in cart."
@@ -332,11 +353,19 @@ export default function PaymentOffersPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{formatINR(offer.cashback_amount)}</TableCell>
                     <TableCell>
-                      {offer.cashback_percent !== null
-                        ? `${offer.cashback_percent}%`
-                        : "—"}
+                      {offer.cashback_percent !== null ? (
+                        <span>
+                          {offer.cashback_percent}%
+                          {offer.max_cashback !== null && (
+                            <span className="text-muted-foreground">
+                              {" "}(up to {formatINR(offer.max_cashback)})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span>{formatINR(offer.cashback_amount)} flat</span>
+                      )}
                     </TableCell>
                     <TableCell>{formatINR(offer.min_order_amount)}</TableCell>
                     <TableCell>
@@ -478,38 +507,122 @@ export default function PaymentOffersPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="offer-cashback-amount">Cashback Amount</Label>
-              <Input
-                id="offer-cashback-amount"
-                type="number"
-                min={0}
-                value={form.cashbackAmount}
-                onChange={(event) =>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Cashback Type</Label>
+              <RadioGroup
+                className="grid grid-cols-2 gap-3"
+                value={form.cashbackType}
+                onValueChange={(value) =>
                   setForm((current) => ({
                     ...current,
-                    cashbackAmount: event.target.value,
+                    cashbackType: value as CashbackType,
                   }))
                 }
-              />
+              >
+                <Label
+                  htmlFor="offer-type-flat"
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 font-normal",
+                    form.cashbackType === "FLAT" && "border-primary bg-primary/5"
+                  )}
+                >
+                  <RadioGroupItem value="FLAT" id="offer-type-flat" className="mt-0.5" />
+                  <span>
+                    <span className="block text-sm font-medium">Flat amount</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Same ₹ cashback on every order, e.g. flat ₹10.
+                    </span>
+                  </span>
+                </Label>
+                <Label
+                  htmlFor="offer-type-percentage"
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 font-normal",
+                    form.cashbackType === "PERCENTAGE" && "border-primary bg-primary/5"
+                  )}
+                >
+                  <RadioGroupItem
+                    value="PERCENTAGE"
+                    id="offer-type-percentage"
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Percentage, capped</span>
+                    <span className="block text-xs text-muted-foreground">
+                      E.g. 80% cashback, up to ₹50 max.
+                    </span>
+                  </span>
+                </Label>
+              </RadioGroup>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="offer-cashback-percent">Cashback %</Label>
-              <Input
-                id="offer-cashback-percent"
-                type="number"
-                min={0}
-                max={100}
-                value={form.cashbackPercent}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    cashbackPercent: event.target.value,
-                  }))
-                }
-              />
-            </div>
+            {form.cashbackType === "FLAT" ? (
+              <div className="space-y-2">
+                <Label htmlFor="offer-cashback-amount">Cashback Amount (₹)</Label>
+                <Input
+                  id="offer-cashback-amount"
+                  type="number"
+                  min={0}
+                  placeholder="10"
+                  value={form.cashbackAmount}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      cashbackAmount: event.target.value,
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Flat rupee amount credited on every qualifying order.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="offer-cashback-percent">Cashback %</Label>
+                  <Input
+                    id="offer-cashback-percent"
+                    type="number"
+                    min={1}
+                    max={100}
+                    placeholder="80"
+                    value={form.cashbackPercent}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        cashbackPercent: event.target.value,
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    % of the order value credited as cashback.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="offer-max-cashback-percentage">
+                    Max Cashback / Reward Cap (₹)
+                  </Label>
+                  <Input
+                    id="offer-max-cashback-percentage"
+                    type="number"
+                    min={0}
+                    placeholder="50"
+                    value={form.maxCashback}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        maxCashback: event.target.value,
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {form.cashbackPercent || "80"}% cashback, capped at ₹
+                    {form.maxCashback || "50"} — never more, even on a bigger cart.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="offer-min-order">Min Order Amount</Label>
@@ -522,22 +635,6 @@ export default function PaymentOffersPage() {
                   setForm((current) => ({
                     ...current,
                     minOrderAmount: event.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="offer-max-cashback">Max Cashback</Label>
-              <Input
-                id="offer-max-cashback"
-                type="number"
-                min={0}
-                value={form.maxCashback}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    maxCashback: event.target.value,
                   }))
                 }
               />
