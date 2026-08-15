@@ -131,7 +131,11 @@ export default function PaymentsSettingsPage() {
 
     const payload: Record<string, string | number | boolean> = {}
     for (const [key, val] of Object.entries(draft)) {
-      if (settings[key] && settings[key].value !== val) {
+      // `settings[key]` can be undefined for a brand-new key the backend
+      // hasn't seeded yet (e.g. before its migration ran) — treat that the
+      // same as "changed" so the first save actually creates it, instead of
+      // silently no-op'ing because there's nothing to compare against.
+      if (!settings[key] || settings[key].value !== val) {
         payload[key] = val
       }
     }

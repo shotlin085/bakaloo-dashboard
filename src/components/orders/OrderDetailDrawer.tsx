@@ -783,6 +783,46 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     </div>
                   )}
 
+                  {/* COD payment collection — only present once the rider
+                      has gone through the collect-payment step at delivery;
+                      null for Wallet/Online orders (already paid). */}
+                  {order.delivery &&
+                    (order.delivery.cash_collected != null ||
+                      order.delivery.upi_collected != null) && (
+                      <div className="mt-2 rounded-lg bg-muted/40 p-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
+                          Payment Collected
+                        </p>
+                        <div className="space-y-1 text-sm">
+                          {order.delivery.cash_collected != null && (
+                            <Row
+                              label="Cash"
+                              value={formatINR(order.delivery.cash_collected)}
+                            />
+                          )}
+                          {order.delivery.upi_collected != null && (
+                            <Row
+                              label="UPI"
+                              value={formatINR(order.delivery.upi_collected)}
+                            />
+                          )}
+                          <Row
+                            label="Total collected"
+                            value={formatINR(
+                              // Postgres DECIMAL columns come back as strings
+                              // (no type parser registered backend-side, same
+                              // as total_amount elsewhere on this object) —
+                              // Number() first so this sums instead of
+                              // string-concatenating "0.00" + "55.00".
+                              Number(order.delivery.cash_collected ?? 0) +
+                                Number(order.delivery.upi_collected ?? 0)
+                            )}
+                            className="font-semibold text-foreground"
+                          />
+                        </div>
+                      </div>
+                    )}
+
                   {/* Proof photo */}
                   {order.proof_photo_url && (
                     <div className="mt-3">

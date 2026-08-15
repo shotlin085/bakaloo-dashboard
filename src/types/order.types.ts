@@ -162,6 +162,11 @@ export interface DeliveryAssignment {
   tip_amount: number
   rating: number | null
   rating_note: string | null
+  /** COD only — how much the rider recorded as collected in cash / via the
+   *  UPI QR at delivery time. Null until the order is delivered, and null
+   *  forever for Wallet/Online orders (already paid). */
+  cash_collected: number | null
+  upi_collected: number | null
 }
 
 /** The shop that fulfilled the order — its saved location, used as the
