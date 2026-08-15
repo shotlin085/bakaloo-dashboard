@@ -351,6 +351,30 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                   Placed {formatDateTime(order.created_at)} · {formatRelativeTime(order.created_at)}
                 </p>
 
+                {/* Rider Assignment — first section in the drawer, not
+                    buried below Status Timeline/Notes/Customer/Items, so
+                    it's the first thing an admin sees on a Packed order
+                    that still needs a rider picked. Editable once Packed,
+                    read-only chip otherwise. */}
+                {order.status === "PACKED" ? (
+                  <RiderAssignmentSection order={order} />
+                ) : (
+                  order.rider_name && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Truck className="h-4 w-4 text-brand-500" />
+                      <div className="text-sm">
+                        <span className="font-medium">{order.rider_name}</span>
+                        {order.rider_phone && (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            <Phone className="h-3 w-3 inline mr-0.5" />
+                            {order.rider_phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+
                 <Separator />
 
                 {/* Status Timeline */}
@@ -743,26 +767,6 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       <p className="text-xs italic mt-1">📝 {order.delivery_notes}</p>
                     )}
                   </div>
-
-                  {/* Rider Assignment — editable once Packed, read-only chip otherwise */}
-                  {order.status === "PACKED" ? (
-                    <RiderAssignmentSection order={order} />
-                  ) : (
-                    order.rider_name && (
-                      <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                        <Truck className="h-4 w-4 text-brand-500" />
-                        <div className="text-sm">
-                          <span className="font-medium">{order.rider_name}</span>
-                          {order.rider_phone && (
-                            <span className="text-muted-foreground ml-2 text-xs">
-                              <Phone className="h-3 w-3 inline mr-0.5" />
-                              {order.rider_phone}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
 
                   {/* Delivery assignment details */}
                   {order.delivery && (
