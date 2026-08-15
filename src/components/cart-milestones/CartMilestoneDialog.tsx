@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils"
 import { useCreateCartMilestone, useUpdateCartMilestone } from "@/hooks/useCartMilestones"
 import { useCustomerSegments } from "@/hooks/useCustomerSegments"
 import { useCoupons } from "@/hooks/useCoupons"
+import { getProductDetail } from "@/services/products.service"
+import { CategoryScopePicker, ProductScopePicker } from "@/components/coupons/CouponScopePicker"
 import type {
   CartMilestone,
   CreateCartMilestonePayload,
@@ -33,6 +35,7 @@ import type {
 } from "@/types/cart-milestone.types"
 
 type CashbackMode = "FLAT" | "PERCENTAGE"
+type ScopeMode = "ALL" | "CATEGORY" | "PRODUCT"
 
 interface CartMilestoneDialogProps {
   open: boolean
@@ -76,12 +79,16 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
   cashbackCreditTrigger: "ORDER_DELIVERED",
   usageLimitPerUser: undefined,
   grantsFreeDelivery: false,
+  applicableCategoryIds: [],
+  applicableProductIds: [],
   isActive: true,
 }
 
 export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneDialogProps) {
   const [form, setForm] = useState(INITIAL)
   const [cashbackMode, setCashbackMode] = useState<CashbackMode>("FLAT")
+  const [scopeMode, setScopeMode] = useState<ScopeMode>("ALL")
+  const [scopeProducts, setScopeProducts] = useState<{ id: string; name: string }[]>([])
   const isEdit = !!milestone
   const createMutation = useCreateCartMilestone()
   const updateMutation = useUpdateCartMilestone()
@@ -108,12 +115,27 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         cashbackCreditTrigger: milestone.cashbackCreditTrigger,
         usageLimitPerUser: milestone.usageLimitPerUser ?? undefined,
         grantsFreeDelivery: milestone.grantsFreeDelivery ?? false,
+        applicableCategoryIds: milestone.applicableCategoryIds ?? [],
+        applicableProductIds: milestone.applicableProductIds ?? [],
         isActive: milestone.isActive,
       })
       setCashbackMode(milestone.rewardPercent != null ? "PERCENTAGE" : "FLAT")
+      setScopeProducts([])
+      if (milestone.applicableCategoryIds?.length) {
+        setScopeMode("CATEGORY")
+      } else if (milestone.applicableProductIds?.length) {
+        setScopeMode("PRODUCT")
+        Promise.all(milestone.applicableProductIds.map((id) => getProductDetail(id))).then((products) =>
+          setScopeProducts(products.map((p) => ({ id: p.id, name: p.name })))
+        )
+      } else {
+        setScopeMode("ALL")
+      }
     } else {
       setForm(INITIAL)
       setCashbackMode("FLAT")
+      setScopeMode("ALL")
+      setScopeProducts([])
     }
   }, [milestone, open])
 
@@ -121,17 +143,31 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
     e.preventDefault()
     const { isActive, ...rest } = form
     const isPercentageCashback = rest.rewardType === "CASHBACK" && cashbackMode === "PERCENTAGE"
+    // null = "clear the scope" (accepted by the update schema); the create
+    // schema doesn't accept null for these two fields, so createMutation
+    // below swaps null back to undefined (= omit entirely, same effect).
+    const scopeCategoryIds = scopeMode === "CATEGORY" && rest.applicableCategoryIds?.length ? rest.applicableCategoryIds : null
+    const scopeProductIds = scopeMode === "PRODUCT" && rest.applicableProductIds?.length ? rest.applicableProductIds : null
     const payload = {
       ...rest,
       rewardValue: isPercentageCashback ? undefined : rest.rewardValue,
       rewardPercent: isPercentageCashback ? rest.rewardPercent : null,
       messageBefore: rest.messageBefore || undefined,
       messageAfter: rest.messageAfter || undefined,
+      applicableCategoryIds: scopeCategoryIds,
+      applicableProductIds: scopeProductIds,
     }
     if (isEdit && milestone) {
       updateMutation.mutate({ id: milestone.id, payload: { ...payload, isActive } }, { onSuccess: onClose })
     } else {
-      createMutation.mutate(payload, { onSuccess: onClose })
+      createMutation.mutate(
+        {
+          ...payload,
+          applicableCategoryIds: scopeCategoryIds ?? undefined,
+          applicableProductIds: scopeProductIds ?? undefined,
+        },
+        { onSuccess: onClose }
+      )
     }
   }
 
@@ -472,6 +508,53 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
             <p className="text-xs text-muted-foreground pl-[52px]">
               When on, reaching this milestone waives the delivery fee — on top of the reward above, not
               instead of it — for any order that meets the Minimum Cart Amount.
+            </p>
+          </div>
+
+          {/* Applies to — category/bundle/product scope. Empty scope
+              (Whole Order) is the existing default: nothing here changes
+              for a milestone that doesn't set this. */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <Label>Applies to</Label>
+            <Select
+              value={scopeMode}
+              onValueChange={(v) => {
+                const next = v as ScopeMode
+                setScopeMode(next)
+                setForm({ ...form, applicableCategoryIds: [], applicableProductIds: [] })
+                setScopeProducts([])
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Whole order — every product</SelectItem>
+                <SelectItem value="CATEGORY">Specific categories or bundles</SelectItem>
+                <SelectItem value="PRODUCT">Specific products</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {scopeMode === "CATEGORY" && (
+              <CategoryScopePicker
+                selectedIds={form.applicableCategoryIds ?? []}
+                onChange={(ids) => setForm({ ...form, applicableCategoryIds: ids })}
+              />
+            )}
+            {scopeMode === "PRODUCT" && (
+              <ProductScopePicker
+                selected={scopeProducts}
+                onChange={(next) => {
+                  setScopeProducts(next)
+                  setForm({ ...form, applicableProductIds: next.map((p) => p.id) })
+                }}
+              />
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {scopeMode === "ALL"
+                ? "The reward, and the Minimum Cart Amount above, apply to the customer's entire cart."
+                : "The reward, and the Minimum Cart Amount above, only ever count the products in the picked categories/bundles/products above — other items in the same order don't count toward the minimum or get discounted."}
             </p>
           </div>
 

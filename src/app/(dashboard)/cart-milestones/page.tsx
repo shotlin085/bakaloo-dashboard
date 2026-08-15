@@ -122,6 +122,13 @@ function CartMilestonesContent() {
                           </Badge>
                         )}
                       </div>
+                      {(milestone.applicableCategoryIds?.length || milestone.applicableProductIds?.length) ? (
+                        <Badge variant="outline" className="text-[10px] font-normal mt-1">
+                          {milestone.applicableCategoryIds?.length
+                            ? `${milestone.applicableCategoryIds.length} categor${milestone.applicableCategoryIds.length === 1 ? "y" : "ies"}/bundle(s) only`
+                            : `${milestone.applicableProductIds?.length} product(s) only`}
+                        </Badge>
+                      ) : null}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {milestone.applicableUserType === "ALL"

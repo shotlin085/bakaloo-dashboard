@@ -22,6 +22,8 @@ export interface CartMilestone {
   cashbackCreditTrigger: CashbackCreditTrigger
   usageLimitPerUser: number | null
   grantsFreeDelivery: boolean
+  applicableCategoryIds: string[] | null
+  applicableProductIds: string[] | null
   createdAt: string
 }
 
@@ -43,6 +45,8 @@ export interface CreateCartMilestonePayload {
   cashbackCreditTrigger?: CashbackCreditTrigger
   usageLimitPerUser?: number | null
   grantsFreeDelivery?: boolean
+  applicableCategoryIds?: string[] | null
+  applicableProductIds?: string[] | null
 }
 
 export interface UpdateCartMilestonePayload extends Partial<CreateCartMilestonePayload> {
