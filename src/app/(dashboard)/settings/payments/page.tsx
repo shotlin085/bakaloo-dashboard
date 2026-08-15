@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, Banknote, CreditCard, Loader2, Save, Wallet } from "lucide-react"
+import { AlertTriangle, Banknote, CreditCard, Loader2, QrCode, Save, Wallet } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -89,6 +89,7 @@ const TOGGLES: ToggleConfig[] = [
 
 const COD_MIN_KEY = "cod_min_order_amount"
 const COD_MAX_KEY = "cod_max_amount"
+const BUSINESS_UPI_ID_KEY = "business_upi_id"
 
 export default function PaymentsSettingsPage() {
   const { data: settings, isLoading } = useSettings()
@@ -150,6 +151,11 @@ export default function PaymentsSettingsPage() {
     const v = draft[key] ?? settings?.[key]?.value
     const n = Number(v)
     return Number.isFinite(n) ? n : 0
+  }
+
+  function getStringValue(key: string): string {
+    const v = draft[key] ?? settings?.[key]?.value
+    return typeof v === "string" ? v : ""
   }
 
   if (isLoading) {
@@ -266,6 +272,35 @@ export default function PaymentsSettingsPage() {
               </div>
             )
           })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Cash on Delivery Collection</CardTitle>
+          <CardDescription>
+            Riders show this UPI ID as a QR code to COD customers who want to pay digitally at
+            the door, then record how much was collected via UPI vs. cash.
+          </CardDescription>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-4">
+          <div className="flex items-start gap-3 max-w-sm">
+            <QrCode className="h-4 w-4 mt-2.5 text-muted-foreground" />
+            <div className="flex-1 space-y-1.5">
+              <Label className="text-sm font-medium">Business UPI ID</Label>
+              <Input
+                type="text"
+                placeholder="business@upi"
+                value={getStringValue(BUSINESS_UPI_ID_KEY)}
+                onChange={(e) => handleChange(BUSINESS_UPI_ID_KEY, e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used to generate the payment QR code riders show for Cash on Delivery orders.
+                Leave blank to hide the QR step in the rider app.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
