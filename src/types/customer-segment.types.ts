@@ -39,3 +39,14 @@ export interface SegmentCandidate {
   email: string | null
   avatar_url: string | null
 }
+
+/** Result of a bulk Excel/CSV member import — matched by customer number only. */
+export interface ImportSegmentMembersResult {
+  totalRows: number
+  matchedCount: number
+  addedCount: number
+  alreadyMemberCount: number
+  notFoundCount: number
+  notFoundSample: string[]
+  unmatchedRows: number
+}

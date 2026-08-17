@@ -6,6 +6,7 @@ import type {
   UpdateSegmentPayload,
   SegmentMember,
   SegmentCandidate,
+  ImportSegmentMembersResult,
 } from "@/types/customer-segment.types"
 
 export async function getSegments(): Promise<CustomerSegment[]> {
@@ -58,6 +59,28 @@ export async function searchSegmentCandidates(id: string, q: string): Promise<Se
   const { data } = await api.get<ApiResponse<SegmentCandidate[]>>(
     `/admin/customer-segments/${id}/search-candidates`,
     { params: { q } }
+  )
+  return data.data
+}
+
+/** Downloads the .xlsx template for bulk member import (Customer Number + Customer Name columns) */
+export async function downloadSegmentImportTemplate(): Promise<Blob> {
+  const { data } = await api.get("/admin/customer-segments/import-template", {
+    responseType: "blob",
+  })
+  return data as Blob
+}
+
+/** Bulk-imports segment members from an uploaded .xlsx/.xls/.csv file, matched by phone number */
+export async function importSegmentMembers(
+  id: string,
+  file: File
+): Promise<ImportSegmentMembersResult> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const { data } = await api.post<ApiResponse<ImportSegmentMembersResult>>(
+    `/admin/customer-segments/${id}/members/import`,
+    formData
   )
   return data.data
 }

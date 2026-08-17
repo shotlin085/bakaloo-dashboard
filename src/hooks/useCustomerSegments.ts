@@ -11,6 +11,8 @@ import {
   getSegmentMembers,
   addSegmentMembers,
   removeSegmentMember,
+  downloadSegmentImportTemplate,
+  importSegmentMembers,
 } from "@/services/customer-segments.service"
 import { qk } from "@/lib/query-keys"
 import type { CreateSegmentPayload, UpdateSegmentPayload } from "@/types/customer-segment.types"
@@ -101,6 +103,35 @@ export function useRemoveSegmentMember(segmentId: string) {
   return useMutation({
     mutationFn: (userId: string) => removeSegmentMember(segmentId, userId),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-segments"] })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useDownloadSegmentImportTemplate() {
+  return useMutation({
+    mutationFn: () => downloadSegmentImportTemplate(),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "customer-segment-import-template.xlsx"
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useImportSegmentMembers(segmentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => importSegmentMembers(segmentId, file),
+    onSuccess: (result) => {
+      toast.success(
+        `${result.addedCount} customer${result.addedCount === 1 ? "" : "s"} added from file`
+      )
       qc.invalidateQueries({ queryKey: ["customer-segments"] })
     },
     onError: (err) => toast.error(getErrorMessage(err)),
