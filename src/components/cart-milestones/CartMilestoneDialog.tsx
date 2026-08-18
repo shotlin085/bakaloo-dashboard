@@ -34,7 +34,7 @@ import type {
   CashbackCreditTrigger,
 } from "@/types/cart-milestone.types"
 
-type CashbackMode = "FLAT" | "PERCENTAGE"
+type AmountMode = "FLAT" | "PERCENTAGE"
 type ScopeMode = "ALL" | "CATEGORY" | "PRODUCT"
 
 interface CartMilestoneDialogProps {
@@ -45,7 +45,7 @@ interface CartMilestoneDialogProps {
 
 const REWARD_TYPE_LABELS: Record<CartMilestoneRewardType, string> = {
   CASHBACK: "Wallet cashback (₹)",
-  FLAT_DISCOUNT: "Flat discount (₹)",
+  FLAT_DISCOUNT: "Instant discount (₹)",
   COUPON_UNLOCK: "Unlock a coupon",
 }
 
@@ -87,7 +87,7 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
 
 export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneDialogProps) {
   const [form, setForm] = useState(INITIAL)
-  const [cashbackMode, setCashbackMode] = useState<CashbackMode>("FLAT")
+  const [amountMode, setAmountMode] = useState<AmountMode>("FLAT")
   const [scopeMode, setScopeMode] = useState<ScopeMode>("ALL")
   const [scopeProducts, setScopeProducts] = useState<{ id: string; name: string }[]>([])
   const isEdit = !!milestone
@@ -121,7 +121,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         applicableProductIds: milestone.applicableProductIds ?? [],
         isActive: milestone.isActive,
       })
-      setCashbackMode(milestone.rewardPercent != null ? "PERCENTAGE" : "FLAT")
+      setAmountMode(milestone.rewardPercent != null ? "PERCENTAGE" : "FLAT")
       setScopeProducts([])
       if (milestone.applicableCategoryIds?.length) {
         setScopeMode("CATEGORY")
@@ -135,16 +135,22 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
       }
     } else {
       setForm(INITIAL)
-      setCashbackMode("FLAT")
+      setAmountMode("FLAT")
       setScopeMode("ALL")
       setScopeProducts([])
     }
   }, [milestone, open])
 
+  // CASHBACK and FLAT_DISCOUNT ("Instant discount") both support the same
+  // flat-₹-or-percentage-capped shape — mirrors payment_offers.cashback_percent
+  // and cart_milestones.reward_percent, which are reward-type-agnostic columns.
+  const showAmountModeToggle = form.rewardType === "CASHBACK" || form.rewardType === "FLAT_DISCOUNT"
+  const isPercentageMode = showAmountModeToggle && amountMode === "PERCENTAGE"
+  const amountModeNoun = form.rewardType === "CASHBACK" ? "Cashback" : "Discount"
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const { isActive, ...rest } = form
-    const isPercentageCashback = rest.rewardType === "CASHBACK" && cashbackMode === "PERCENTAGE"
     // null = "clear the scope" (accepted by the update schema); the create
     // schema doesn't accept null for these two fields, so createMutation
     // below swaps null back to undefined (= omit entirely, same effect).
@@ -156,8 +162,8 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
     const excludedSegmentId = rest.applicableUserType === "ALL" && rest.excludedSegmentId ? rest.excludedSegmentId : null
     const payload = {
       ...rest,
-      rewardValue: isPercentageCashback ? undefined : rest.rewardValue,
-      rewardPercent: isPercentageCashback ? rest.rewardPercent : null,
+      rewardValue: isPercentageMode ? undefined : rest.rewardValue,
+      rewardPercent: isPercentageMode ? rest.rewardPercent : null,
       messageBefore: rest.messageBefore || undefined,
       messageAfter: rest.messageAfter || undefined,
       applicableCategoryIds: scopeCategoryIds,
@@ -180,10 +186,8 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending
-  const showCashbackModeToggle = form.rewardType === "CASHBACK"
-  const isPercentageCashback = showCashbackModeToggle && cashbackMode === "PERCENTAGE"
-  const showRewardValue = form.rewardType !== "COUPON_UNLOCK" && !isPercentageCashback
-  const showMaxDiscount = form.rewardType === "CASHBACK"
+  const showRewardValue = form.rewardType !== "COUPON_UNLOCK" && !isPercentageMode
+  const showMaxDiscount = showAmountModeToggle
   const showCouponPicker = form.rewardType === "COUPON_UNLOCK"
   const showCashbackTrigger = form.rewardType === "CASHBACK"
 
@@ -275,9 +279,9 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
                 />
               </div>
             )}
-            {isPercentageCashback && (
+            {isPercentageMode && (
               <div className="space-y-1.5">
-                <Label htmlFor="cm-percent">Cashback % *</Label>
+                <Label htmlFor="cm-percent">{amountModeNoun} % *</Label>
                 <Input
                   id="cm-percent"
                   type="number"
@@ -294,19 +298,19 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
             )}
           </div>
 
-          {showCashbackModeToggle && (
+          {showAmountModeToggle && (
             <div className="space-y-1.5">
-              <Label>Cashback Type</Label>
+              <Label>{amountModeNoun} Type</Label>
               <RadioGroup
                 className="grid grid-cols-2 gap-3"
-                value={cashbackMode}
-                onValueChange={(v) => setCashbackMode(v as CashbackMode)}
+                value={amountMode}
+                onValueChange={(v) => setAmountMode(v as AmountMode)}
               >
                 <Label
                   htmlFor="cm-mode-flat"
                   className={cn(
                     "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 font-normal",
-                    cashbackMode === "FLAT" && "border-primary bg-primary/5"
+                    amountMode === "FLAT" && "border-primary bg-primary/5"
                   )}
                 >
                   <RadioGroupItem value="FLAT" id="cm-mode-flat" className="mt-0.5" />
@@ -319,13 +323,15 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
                   htmlFor="cm-mode-percentage"
                   className={cn(
                     "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 font-normal",
-                    cashbackMode === "PERCENTAGE" && "border-primary bg-primary/5"
+                    amountMode === "PERCENTAGE" && "border-primary bg-primary/5"
                   )}
                 >
                   <RadioGroupItem value="PERCENTAGE" id="cm-mode-percentage" className="mt-0.5" />
                   <span>
                     <span className="block text-sm font-medium">Percentage, capped</span>
-                    <span className="block text-xs text-muted-foreground">E.g. 80% cashback, up to ₹50 max.</span>
+                    <span className="block text-xs text-muted-foreground">
+                      E.g. 80% {form.rewardType === "CASHBACK" ? "cashback" : "off"}, up to ₹50 max.
+                    </span>
                   </span>
                 </Label>
               </RadioGroup>
@@ -334,7 +340,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
 
           {showMaxDiscount && (
             <div className="space-y-1.5">
-              <Label htmlFor="cm-max">Maximum Reward Cap{isPercentageCashback ? " *" : ""}</Label>
+              <Label htmlFor="cm-max">Maximum Reward Cap{isPercentageMode ? " *" : ""}</Label>
               <Input
                 id="cm-max"
                 type="number"
@@ -344,12 +350,12 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
                   setForm({ ...form, maxDiscount: e.target.value ? parseFloat(e.target.value) : undefined })
                 }
                 placeholder="No cap"
-                required={isPercentageCashback}
+                required={isPercentageMode}
               />
-              {isPercentageCashback && (
+              {isPercentageMode && (
                 <p className="text-xs text-muted-foreground">
-                  {form.rewardPercent || "80"}% cashback, capped at ₹{form.maxDiscount || "50"} — never more,
-                  even on a bigger cart.
+                  {form.rewardPercent || "80"}% {form.rewardType === "CASHBACK" ? "cashback" : "off"}, capped at ₹
+                  {form.maxDiscount || "50"} — never more, even on a bigger cart.
                 </p>
               )}
             </div>
