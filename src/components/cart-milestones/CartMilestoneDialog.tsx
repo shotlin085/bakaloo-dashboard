@@ -74,6 +74,7 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
   iconUrl: undefined,
   applicableUserType: "ALL",
   applicableSegmentId: undefined,
+  excludedSegmentId: undefined,
   stackableWithCoupon: true,
   priority: 0,
   cashbackCreditTrigger: "ORDER_DELIVERED",
@@ -110,6 +111,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         iconUrl: milestone.iconUrl ?? undefined,
         applicableUserType: milestone.applicableUserType,
         applicableSegmentId: milestone.applicableSegmentId ?? undefined,
+        excludedSegmentId: milestone.excludedSegmentId ?? undefined,
         stackableWithCoupon: milestone.stackableWithCoupon,
         priority: milestone.priority,
         cashbackCreditTrigger: milestone.cashbackCreditTrigger,
@@ -148,6 +150,10 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
     // below swaps null back to undefined (= omit entirely, same effect).
     const scopeCategoryIds = scopeMode === "CATEGORY" && rest.applicableCategoryIds?.length ? rest.applicableCategoryIds : null
     const scopeProductIds = scopeMode === "PRODUCT" && rest.applicableProductIds?.length ? rest.applicableProductIds : null
+    // Only meaningful for "All users" — cleared (null) otherwise so
+    // switching away from ALL doesn't leave a stale exclusion silently
+    // sitting on a FIRST_TIME/SEGMENT milestone that never consults it.
+    const excludedSegmentId = rest.applicableUserType === "ALL" && rest.excludedSegmentId ? rest.excludedSegmentId : null
     const payload = {
       ...rest,
       rewardValue: isPercentageCashback ? undefined : rest.rewardValue,
@@ -156,6 +162,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
       messageAfter: rest.messageAfter || undefined,
       applicableCategoryIds: scopeCategoryIds,
       applicableProductIds: scopeProductIds,
+      excludedSegmentId,
     }
     if (isEdit && milestone) {
       updateMutation.mutate({ id: milestone.id, payload: { ...payload, isActive } }, { onSuccess: onClose })
@@ -165,6 +172,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
           ...payload,
           applicableCategoryIds: scopeCategoryIds ?? undefined,
           applicableProductIds: scopeProductIds ?? undefined,
+          excludedSegmentId: excludedSegmentId ?? undefined,
         },
         { onSuccess: onClose }
       )
@@ -466,6 +474,38 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
               </div>
             )}
           </div>
+
+          {/* Exclude a segment from "All users" — lets a segment that
+              already has its own dedicated, segment-scoped milestone sit
+              that one out here, instead of also qualifying for this
+              broader one and double-dipping on both rewards for the same
+              purchase. Only meaningful (and only shown) for "All users";
+              switching away from that clears it. */}
+          {form.applicableUserType === "ALL" && (
+            <div className="space-y-1.5">
+              <Label>Exclude a segment (optional)</Label>
+              <Select
+                value={form.excludedSegmentId ?? "none"}
+                onValueChange={(v) => setForm({ ...form, excludedSegmentId: v === "none" ? undefined : v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None — every user is eligible</SelectItem>
+                  {(segments ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Customers in this segment won&apos;t see or earn this milestone — use this when that segment
+                already has its own dedicated milestone, so they don&apos;t get both rewards for the same order.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="cm-priority">Priority (higher shows first when tied)</Label>

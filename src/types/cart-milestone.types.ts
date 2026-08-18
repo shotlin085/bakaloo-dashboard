@@ -17,6 +17,7 @@ export interface CartMilestone {
   isActive: boolean
   applicableUserType: MilestoneUserType
   applicableSegmentId: string | null
+  excludedSegmentId: string | null
   stackableWithCoupon: boolean
   priority: number
   cashbackCreditTrigger: CashbackCreditTrigger
@@ -40,6 +41,7 @@ export interface CreateCartMilestonePayload {
   iconUrl?: string
   applicableUserType?: MilestoneUserType
   applicableSegmentId?: string
+  excludedSegmentId?: string | null
   stackableWithCoupon?: boolean
   priority?: number
   cashbackCreditTrigger?: CashbackCreditTrigger
