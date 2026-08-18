@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { UAParser } from "ua-parser-js"
 import {
   Activity,
   Search,
@@ -13,6 +14,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Monitor,
+  Smartphone,
+  Tablet,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -71,6 +75,65 @@ const ENTITY_COLORS: Record<string, string> = {
   banner: "bg-pink-50 text-pink-600 border-pink-200",
   coupon: "bg-amber-50 text-amber-600 border-amber-200",
   settings: "bg-muted text-muted-foreground border-border",
+}
+
+const DEVICE_ICONS: Record<string, React.ReactNode> = {
+  mobile: <Smartphone className="h-3.5 w-3.5" />,
+  tablet: <Tablet className="h-3.5 w-3.5" />,
+}
+
+// ISO 3166-1 alpha-2 -> flag emoji, via Unicode regional indicator symbols
+// (each letter A-Z maps to U+1F1E6..U+1F1FF). Renders natively, no icon
+// font/package needed.
+function countryCodeToFlagEmoji(countryCode: string): string {
+  return countryCode
+    .toUpperCase()
+    .replace(/./g, (char) =>
+      String.fromCodePoint(127397 + char.charCodeAt(0))
+    )
+}
+
+function LocationCell({
+  ip,
+  countryCode,
+}: {
+  ip: string | null
+  countryCode: string | null
+}) {
+  if (!ip) {
+    return <span className="text-xs text-muted-foreground">—</span>
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <span
+        className="text-sm leading-none"
+        title={countryCode === "IN" ? "India" : countryCode ?? "Unknown location"}
+      >
+        {countryCode ? countryCodeToFlagEmoji(countryCode) : "🌐"}
+      </span>
+      <span className="text-muted-foreground font-mono truncate max-w-[130px]">
+        {ip}
+      </span>
+    </div>
+  )
+}
+
+function DeviceCell({ userAgent }: { userAgent: string | null }) {
+  if (!userAgent) {
+    return <span className="text-xs text-muted-foreground">Unknown device</span>
+  }
+
+  const { browser, os, device } = new UAParser(userAgent).getResult()
+  const icon = DEVICE_ICONS[device.type ?? ""] ?? <Monitor className="h-3.5 w-3.5" />
+  const label = [browser.name, os.name].filter(Boolean).join(" · ") || "Unknown"
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {icon}
+      <span className="truncate max-w-[140px]">{label}</span>
+    </div>
+  )
 }
 
 export default function ActivityLogPage() {
@@ -152,6 +215,8 @@ export default function ActivityLogPage() {
                 <TableHead>Action</TableHead>
                 <TableHead>Entity</TableHead>
                 <TableHead>Changes</TableHead>
+                <TableHead className="w-[150px]">Location</TableHead>
+                <TableHead className="w-[160px]">Device</TableHead>
                 <TableHead className="w-[160px]">Time</TableHead>
               </TableRow>
             </TableHeader>
@@ -162,6 +227,8 @@ export default function ActivityLogPage() {
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                 </TableRow>
               ))}
@@ -182,6 +249,8 @@ export default function ActivityLogPage() {
                 <TableHead>Action</TableHead>
                 <TableHead>Entity</TableHead>
                 <TableHead>Changes</TableHead>
+                <TableHead className="w-[150px]">Location</TableHead>
+                <TableHead className="w-[160px]">Device</TableHead>
                 <TableHead className="w-[160px]">Time</TableHead>
               </TableRow>
             </TableHeader>
@@ -217,6 +286,12 @@ export default function ActivityLogPage() {
                       oldValue={log.old_value}
                       newValue={log.new_value}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <LocationCell ip={log.ip_address} countryCode={log.country_code} />
+                  </TableCell>
+                  <TableCell>
+                    <DeviceCell userAgent={log.user_agent} />
                   </TableCell>
                   <TableCell>
                     <div className="text-xs">

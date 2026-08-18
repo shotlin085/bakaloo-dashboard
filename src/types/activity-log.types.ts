@@ -10,6 +10,8 @@ export interface ActivityLog {
   old_value: Record<string, unknown> | string | null
   new_value: Record<string, unknown> | string | null
   ip_address: string | null
+  user_agent: string | null
+  country_code: string | null
   created_at: string
 }
 
