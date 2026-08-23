@@ -18,6 +18,7 @@ export interface CartMilestone {
   applicableUserType: MilestoneUserType
   applicableSegmentId: string | null
   excludedSegmentId: string | null
+  excludeFirstTimeUsers: boolean
   stackableWithCoupon: boolean
   priority: number
   cashbackCreditTrigger: CashbackCreditTrigger
@@ -42,6 +43,7 @@ export interface CreateCartMilestonePayload {
   applicableUserType?: MilestoneUserType
   applicableSegmentId?: string
   excludedSegmentId?: string | null
+  excludeFirstTimeUsers?: boolean
   stackableWithCoupon?: boolean
   priority?: number
   cashbackCreditTrigger?: CashbackCreditTrigger

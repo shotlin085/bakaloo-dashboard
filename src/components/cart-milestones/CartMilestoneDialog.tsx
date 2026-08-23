@@ -75,6 +75,7 @@ const INITIAL: CreateCartMilestonePayload & { isActive: boolean } = {
   applicableUserType: "ALL",
   applicableSegmentId: undefined,
   excludedSegmentId: undefined,
+  excludeFirstTimeUsers: false,
   stackableWithCoupon: true,
   priority: 0,
   cashbackCreditTrigger: "ORDER_DELIVERED",
@@ -112,6 +113,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
         applicableUserType: milestone.applicableUserType,
         applicableSegmentId: milestone.applicableSegmentId ?? undefined,
         excludedSegmentId: milestone.excludedSegmentId ?? undefined,
+        excludeFirstTimeUsers: milestone.excludeFirstTimeUsers ?? false,
         stackableWithCoupon: milestone.stackableWithCoupon,
         priority: milestone.priority,
         cashbackCreditTrigger: milestone.cashbackCreditTrigger,
@@ -156,10 +158,12 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
     // below swaps null back to undefined (= omit entirely, same effect).
     const scopeCategoryIds = scopeMode === "CATEGORY" && rest.applicableCategoryIds?.length ? rest.applicableCategoryIds : null
     const scopeProductIds = scopeMode === "PRODUCT" && rest.applicableProductIds?.length ? rest.applicableProductIds : null
-    // Only meaningful for "All users" — cleared (null) otherwise so
-    // switching away from ALL doesn't leave a stale exclusion silently
-    // sitting on a FIRST_TIME/SEGMENT milestone that never consults it.
-    const excludedSegmentId = rest.applicableUserType === "ALL" && rest.excludedSegmentId ? rest.excludedSegmentId : null
+    // Only meaningful for "All users" — cleared otherwise so switching away
+    // from ALL doesn't leave a stale exclusion silently sitting on a
+    // FIRST_TIME/SEGMENT milestone that never consults it.
+    const isAllUsers = rest.applicableUserType === "ALL"
+    const excludedSegmentId = isAllUsers && rest.excludedSegmentId ? rest.excludedSegmentId : null
+    const excludeFirstTimeUsers = isAllUsers && !!rest.excludeFirstTimeUsers
     const payload = {
       ...rest,
       rewardValue: isPercentageMode ? undefined : rest.rewardValue,
@@ -169,6 +173,7 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
       applicableCategoryIds: scopeCategoryIds,
       applicableProductIds: scopeProductIds,
       excludedSegmentId,
+      excludeFirstTimeUsers,
     }
     if (isEdit && milestone) {
       updateMutation.mutate({ id: milestone.id, payload: { ...payload, isActive } }, { onSuccess: onClose })
@@ -509,6 +514,30 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
               <p className="text-xs text-muted-foreground">
                 Customers in this segment won&apos;t see or earn this milestone — use this when that segment
                 already has its own dedicated milestone, so they don&apos;t get both rewards for the same order.
+              </p>
+            </div>
+          )}
+
+          {/* Exclude first-time customers from "All users" — the same
+              double-dip problem as the segment exclusion above, but for the
+              separate First-Time Offer feature: without this, a brand-new
+              customer could earn BOTH their dedicated First-Time Offer AND
+              this general milestone on the same order. Only meaningful
+              (and only shown) for "All users"; switching away from that
+              clears it. */}
+          {form.applicableUserType === "ALL" && (
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={form.excludeFirstTimeUsers}
+                  onCheckedChange={(v) => setForm({ ...form, excludeFirstTimeUsers: v })}
+                />
+                <Label>Exclude first-time customers</Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-[52px]">
+                When on, a customer placing their first order won&apos;t see or earn this milestone — only
+                their First-Time Offer applies. Turn this on if you don&apos;t want new customers getting
+                both rewards on the same order.
               </p>
             </div>
           )}
