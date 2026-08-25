@@ -27,6 +27,7 @@ import {
   Package,
   Palette,
   Receipt,
+  ScrollText,
   Settings,
   Shield,
   ShieldAlert,
@@ -100,6 +101,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Package,
   Palette,
   Receipt,
+  ScrollText,
   Settings,
   Shield,
   ShieldAlert,
@@ -149,6 +151,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
           { label: "Store Hours", href: "/settings/store-hours", icon: "Clock" },
           { label: "Delivery Calendar", href: "/settings/delivery-calendar", icon: "CalendarDays" },
           { label: "App Version", href: "/settings/app-version", icon: "Smartphone" },
+          { label: "Legal Pages", href: "/settings/legal-pages", icon: "ScrollText" },
         ],
       },
       {
