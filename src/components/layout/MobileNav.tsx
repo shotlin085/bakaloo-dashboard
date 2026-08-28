@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Bell,
+  BellRing,
   Bike,
   ClipboardList,
   CalendarDays,
@@ -61,6 +62,7 @@ type NavItem = {
 const ICON_MAP: Record<string, LucideIcon> = {
   BarChart3,
   Bell,
+  BellRing,
   Bike,
   ClipboardList,
   CalendarDays,
@@ -108,6 +110,11 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
             label: "Payment Offers",
             href: "/settings/payment-offers",
             icon: "Gift",
+          },
+          {
+            label: "Order Notifications",
+            href: "/settings/order-notifications",
+            icon: "BellRing",
           },
           { label: "Delivery Timer", href: "/settings/delivery-timer", icon: "Timer" },
           { label: "Pincode Mapping", href: "/settings/pincode-mapping", icon: "MapPin" },

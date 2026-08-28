@@ -10,7 +10,6 @@ import {
   Save,
   RotateCcw,
   Bell,
-  BellRing,
   Key,
   MapPin,
   Database,
@@ -121,26 +120,6 @@ const GROUPS: SettingsGroup[] = [
       { key: "sms_api_key", label: "SMS API Key", type: "text" },
       { key: "otp_sms_template", label: "OTP SMS Template", type: "text" },
       { key: "order_confirmed_sms", label: "Order Confirmed SMS", type: "text" },
-    ],
-  },
-  {
-    // Per-event on/off switches for the push/in-app notifications sent to a
-    // customer as their order moves through its lifecycle. Separate from
-    // the "Notifications" group above, which configures the SMS provider
-    // itself rather than which order events actually fire one.
-    label: "Order Notifications",
-    icon: BellRing,
-    keys: [
-      { key: "notify_evt_order_placed", label: "Order Placed", type: "boolean" },
-      { key: "notify_evt_order_confirmed", label: "Order Confirmed", type: "boolean" },
-      { key: "notify_evt_order_preparing", label: "Order Being Prepared", type: "boolean" },
-      { key: "notify_evt_order_packed", label: "Order Packed", type: "boolean" },
-      { key: "notify_evt_rider_accepted", label: "Rider Accepted Order", type: "boolean" },
-      { key: "notify_evt_out_for_delivery", label: "Out For Delivery", type: "boolean" },
-      { key: "notify_evt_otp_resent", label: "Delivery OTP Resent", type: "boolean" },
-      { key: "notify_evt_delivered", label: "Order Delivered", type: "boolean" },
-      { key: "notify_evt_cancelled", label: "Order Cancelled", type: "boolean" },
-      { key: "notify_evt_refunded", label: "Refund Processed", type: "boolean" },
     ],
   },
   {
