@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Archive, Check, GripVertical, Pencil, Plus, X } from "lucide-react"
+import { Archive, Check, GripVertical, Pencil, Plus, Star, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { ThemeTab } from "@/types/theme.types"
@@ -36,6 +36,7 @@ interface TabManagerPanelProps {
   onTabReorder?: (reorderedIds: string[]) => void
   onTabUpdate?: (tabId: string, label: string) => void
   onTabArchive?: (tabId: string) => void
+  onSetDefault?: (tabId: string) => void
 }
 
 interface SortableTabItemProps {
@@ -44,6 +45,7 @@ interface SortableTabItemProps {
   onSelect: (tabId: string) => void
   onUpdate?: (tabId: string, label: string) => void
   onArchive?: (tabId: string) => void
+  onSetDefault?: (tabId: string) => void
 }
 
 // ——— Modifier ————————————————————————————————————————————————————
@@ -55,7 +57,7 @@ const restrictToVerticalAxis: Modifier = ({ transform }) => ({
 
 // ——— SortableTabItem —————————————————————————————————————————————
 
-function SortableTabItem({ tab, isActive, onSelect, onUpdate, onArchive }: SortableTabItemProps) {
+function SortableTabItem({ tab, isActive, onSelect, onUpdate, onArchive, onSetDefault }: SortableTabItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(tab.label)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -145,15 +147,34 @@ function SortableTabItem({ tab, isActive, onSelect, onUpdate, onArchive }: Sorta
       ) : (
         <button
           type="button"
-          className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900"
+          className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left text-sm font-semibold text-slate-900"
           onClick={() => onSelect(tab.id)}
         >
-          {tab.label}
+          <span className="truncate">{tab.label}</span>
+          {tab.is_default && (
+            <Star
+              className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400"
+              aria-label="Default landing tab"
+            />
+          )}
         </button>
       )}
 
       {!isEditing && (
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          {onSetDefault && !tab.is_default && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-slate-400 hover:bg-amber-50 hover:text-amber-500"
+              onClick={() => onSetDefault(tab.id)}
+              aria-label="Set as default landing tab"
+              title="Set as default landing tab"
+            >
+              <Star className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button
             type="button"
             size="icon"
@@ -194,6 +215,7 @@ function TabManagerPanel({
   onTabReorder,
   onTabUpdate,
   onTabArchive,
+  onSetDefault,
 }: TabManagerPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -343,6 +365,7 @@ function TabManagerPanel({
                       }}
                       onUpdate={onTabUpdate}
                       onArchive={onTabArchive}
+                      onSetDefault={onSetDefault}
                     />
                   ))}
                 </div>

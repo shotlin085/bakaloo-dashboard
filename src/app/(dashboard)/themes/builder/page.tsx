@@ -603,6 +603,10 @@ function ThemeBuilderPageContent() {
     archiveThemeTabMutation.mutate(tabId)
   }
 
+  const handleSetDefaultTab = (tabId: string) => {
+    updateThemeTabMutation.mutate({ id: tabId, payload: { is_default: true } })
+  }
+
   const handleAddSection = (
     sectionType: SectionType,
     defaultConfig: Record<string, unknown>
@@ -1516,6 +1520,7 @@ function ThemeBuilderPageContent() {
         onTabReorder={handleTabReorder}
         onTabUpdate={handleTabUpdate}
         onTabArchive={handleTabArchive}
+        onSetDefault={handleSetDefaultTab}
       />
 
       <NewTabDialog
