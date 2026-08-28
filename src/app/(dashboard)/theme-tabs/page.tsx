@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Star,
   Tags,
   Trash2,
 } from "lucide-react"
@@ -50,6 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -112,6 +114,7 @@ interface ThemeTabFormData {
   text_color: string
   sort_order: number
   status: ThemeTab["status"]
+  is_default: boolean
   merch_config: ThemeTabMerchConfig
 }
 
@@ -124,6 +127,7 @@ function createEmptyForm(storeKey: ThemeStoreKey = "zepto"): ThemeTabFormData {
     text_color: "#000000",
     sort_order: 0,
     status: "active",
+    is_default: false,
     merch_config: defaultMerchConfig(),
   }
 }
@@ -137,6 +141,7 @@ function buildFormFromTab(tab: ThemeTab): ThemeTabFormData {
     text_color: tab.text_color ?? "#000000",
     sort_order: tab.sort_order,
     status: tab.status,
+    is_default: tab.is_default,
     merch_config: mergeMerchConfig(tab.merch_config),
   }
 }
@@ -358,6 +363,7 @@ export default function ThemeTabsPage() {
       text_color: form.text_color.trim() || null,
       sort_order: Number(form.sort_order) || 0,
       status: form.status,
+      is_default: form.is_default,
       merch_config: form.merch_config,
     }
 
@@ -388,6 +394,13 @@ export default function ThemeTabsPage() {
     updateThemeTab.mutate({
       id: tab.id,
       payload: { sort_order: nextIndex },
+    })
+  }
+
+  const handleSetDefaultTab = (tab: ThemeTab) => {
+    updateThemeTab.mutate({
+      id: tab.id,
+      payload: { is_default: true },
     })
   }
 
@@ -523,6 +536,12 @@ export default function ThemeTabsPage() {
                         <div className="font-medium">{tab.label}</div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant="outline">{tab.key}</Badge>
+                          {tab.is_default ? (
+                            <Badge className="border-amber-200 bg-amber-500/15 text-amber-700">
+                              <Star className="mr-1 h-3 w-3" />
+                              Default
+                            </Badge>
+                          ) : null}
                           <span>{tab.id.slice(0, 8)}...</span>
                         </div>
                       </div>
@@ -614,6 +633,15 @@ export default function ThemeTabsPage() {
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
+                        {tab.status === "active" && !tab.is_default ? (
+                          <DropdownMenuItem
+                            onClick={() => handleSetDefaultTab(tab)}
+                            disabled={updateThemeTab.isPending}
+                          >
+                            <Star className="mr-2 h-4 w-4" />
+                            Set as default
+                          </DropdownMenuItem>
+                        ) : null}
                         {tab.status === "active" ? (
                           <DropdownMenuItem
                             onClick={() => handleArchiveTab(tab)}
@@ -745,6 +773,19 @@ export default function ThemeTabsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label>Default landing tab</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Customers see this tab first when they open the app for this store.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.is_default}
+                      onCheckedChange={(checked) => updateForm("is_default", checked)}
+                    />
                   </div>
 
                   <div className="space-y-2">

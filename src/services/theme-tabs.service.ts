@@ -18,6 +18,7 @@ type RawThemeTab = {
   text_color: string | null
   sort_order: number
   status: ThemeTab["status"]
+  is_default: boolean
   merch_config: ThemeTabMerchConfig | null
   archived_at: string | null
   created_at: string
@@ -78,6 +79,7 @@ function normalizeThemeTab(raw: RawThemeTab): ThemeTab {
     text_color: raw.text_color,
     sort_order: raw.sort_order,
     status: raw.status,
+    is_default: raw.is_default,
     merch_config: raw.merch_config ?? defaultMerchConfig(),
     archived_at: raw.archived_at,
     created_at: raw.created_at,

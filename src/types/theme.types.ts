@@ -125,6 +125,7 @@ export interface ThemeTab {
   text_color: string | null
   sort_order: number
   status: ThemeTabStatus
+  is_default: boolean
   merch_config: ThemeTabMerchConfig
   archived_at: string | null
   created_at: string
@@ -213,6 +214,7 @@ export interface CreateThemeTabPayload {
   text_color?: string | null
   sort_order?: number
   status?: ThemeTabStatus
+  is_default?: boolean
   merch_config?: Partial<ThemeTabMerchConfig>
 }
 
@@ -224,6 +226,7 @@ export interface UpdateThemeTabPayload {
   text_color?: string | null
   sort_order?: number
   status?: ThemeTabStatus
+  is_default?: boolean
   merch_config?: Partial<ThemeTabMerchConfig>
 }
 
