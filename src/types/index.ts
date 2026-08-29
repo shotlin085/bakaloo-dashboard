@@ -50,6 +50,7 @@ export type {
   CancelOrderPayload,
   RescheduleOrderPayload,
   BulkStatusPayload,
+  RazorpayPaymentDetail,
 } from "./order.types"
 export type {
   Product,

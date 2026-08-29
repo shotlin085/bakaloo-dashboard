@@ -16,6 +16,7 @@ import {
   bulkUpdateStatus,
   downloadPackingSlip,
   resyncOrderPayment,
+  getRazorpayDetails,
 } from "@/services/orders.service"
 import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload } from "@/types"
 import { toast } from "sonner"
@@ -225,6 +226,19 @@ export function useCancelOrder() {
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Cancel failed"),
+  })
+}
+
+/** Lazy — only fetches once the "Razorpay Details" panel is actually
+ *  expanded (`enabled`), since it's a live third-party API call, not a
+ *  free local read. */
+export function useRazorpayDetails(orderId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["orders", "razorpay-details", orderId],
+    queryFn: () => getRazorpayDetails(orderId!),
+    enabled: !!orderId && enabled,
+    staleTime: 60 * 1000,
+    retry: false,
   })
 }
 

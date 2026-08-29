@@ -205,6 +205,34 @@ export interface OrderDeliveryRoute {
   source: string | null
 }
 
+/** Full payment detail fetched live from Razorpay's own record — everything
+ *  they track that isn't mirrored into our own `payments` table. */
+export interface RazorpayPaymentDetail {
+  id: string
+  status: string
+  method: string
+  amount: number
+  amountRefunded: number
+  refundStatus: string | null
+  currency: string
+  fee: number | null
+  tax: number | null
+  international: boolean
+  email: string | null
+  contact: string | null
+  vpa: string | null
+  bank: string | null
+  wallet: string | null
+  card: { last4: string; network: string; type: string; issuer: string | null } | null
+  acquirerReference: string | null
+  upiTransactionId: string | null
+  createdAt: string | null
+  errorCode: string | null
+  errorDescription: string | null
+  errorReason: string | null
+  notes: Record<string, unknown> | null
+}
+
 /** One row of rider_assignment_log — "which rule selected the final rider, and why." */
 export interface AssignmentLogEntry {
   id: string
@@ -250,6 +278,10 @@ export interface OrderFilters {
   deliveryType?: string
   riderId?: string
   area?: string
+  /** Orders where Razorpay captured a payment after the order had already
+   *  moved on (almost always cancelled) — flagged for manual review rather
+   *  than auto-confirmed, since stock may already be back on the shelf. */
+  needsPaymentReview?: boolean
 }
 
 /** Status update payload */

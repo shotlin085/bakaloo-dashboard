@@ -11,6 +11,7 @@ const TYPE_ICONS: Record<string, string> = {
   ORDER: "🛒",
   STOCK: "⚠️",
   PAYMENT: "💰",
+  PAYMENT_REVIEW: "🚨",
   DELIVERY: "🚴",
   SYSTEM: "ℹ️",
 }

@@ -12,6 +12,7 @@ import type {
   CancelOrderPayload,
   RescheduleOrderPayload,
   BulkStatusPayload,
+  RazorpayPaymentDetail,
 } from "@/types"
 
 /** List orders with filters + pagination */
@@ -25,6 +26,7 @@ export async function getOrders(filters: OrderFilters = {}) {
   if (filters.startDate) params.startDate = filters.startDate
   if (filters.endDate) params.endDate = filters.endDate
   if (filters.deliveryType) params.deliveryType = filters.deliveryType
+  if (filters.needsPaymentReview) params.needsPaymentReview = "true"
 
   const { data } = await api.get<
     ApiResponse<{
@@ -147,6 +149,15 @@ export async function resyncOrderPayment(orderId: string) {
   const { data } = await api.post<
     ApiResponse<{ captured: boolean; needsManualReview: boolean; order: unknown }>
   >(`/admin/orders/${orderId}/reconcile-payment`)
+  return data.data
+}
+
+/** Full payment detail fetched live from Razorpay — not mirrored into our
+ *  own schema, so this is always complete and current. */
+export async function getRazorpayDetails(orderId: string) {
+  const { data } = await api.get<ApiResponse<RazorpayPaymentDetail>>(
+    `/admin/orders/${orderId}/razorpay-details`
+  )
   return data.data
 }
 

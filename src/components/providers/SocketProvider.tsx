@@ -129,14 +129,27 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: ["products"] })
     })
 
+    // Fired specifically when Razorpay captures a payment for an order that
+    // had already moved on (almost always cancelled) — the backend
+    // deliberately does NOT auto-confirm this case (stock may already be
+    // back on the shelf), so it needs a human to review it. Not fired for
+    // routine successful payments — those don't need anyone's attention.
     s.on("dashboard:payment_received", (payment) => {
-      toast.success(`💰 Payment: ₹${payment.amount}`, {
-        description: `${payment.method} — Order ${payment.orderId}`,
+      toast.warning(`🚨 Payment needs review — Order ${payment.orderNumber ?? payment.orderId}`, {
+        description: `₹${payment.amount} was captured after the order had already ${payment.orderStatus === "CANCELLED" ? "been cancelled" : "moved on"} — check Orders → Needs Review.`,
+      })
+      useNotificationStore.getState().addNotification({
+        id: `payment-review-${payment.orderId}-${Date.now()}`,
+        title: "Payment needs review",
+        body: `Order ${payment.orderNumber ?? payment.orderId} — ₹${payment.amount} captured after the order moved on`,
+        type: "PAYMENT_REVIEW",
+        read: false,
+        created_at: new Date().toISOString(),
+        data: { orderId: payment.orderId },
       })
       const qc = getQueryClient()
       qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       qc.invalidateQueries({ queryKey: ["orders"] })
-      qc.invalidateQueries({ queryKey: ["wallet-transactions"] })
     })
 
     // ── Abandoned cart status transitions (recovered/converted) ─────────

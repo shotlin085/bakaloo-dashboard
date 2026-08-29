@@ -60,6 +60,9 @@ import {
   Navigation,
   CalendarClock,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Landmark,
 } from "lucide-react"
 import {
   useOrderDetail,
@@ -72,6 +75,7 @@ import {
   useOrderNotes,
   useAddOrderNote,
   useResyncPayment,
+  useRazorpayDetails,
 } from "@/hooks/useOrders"
 import { useCustomerDetail } from "@/hooks/useCustomers"
 import { useShopContextStore } from "@/store/shop-context.store"
@@ -113,6 +117,12 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const refundOrder = useRefundOrder()
   const cancelOrder = useCancelOrder()
   const resyncPayment = useResyncPayment()
+  const [showRazorpayDetails, setShowRazorpayDetails] = useState(false)
+  const {
+    data: razorpayDetails,
+    isLoading: razorpayDetailsLoading,
+    isError: razorpayDetailsErrored,
+  } = useRazorpayDetails(order?.id ?? null, showRazorpayDetails)
   const rescheduleOrder = useRescheduleOrder()
   const downloadPacking = useDownloadPackingSlip()
   const { data: notes, isLoading: notesLoading } = useOrderNotes(orderId)
@@ -671,6 +681,71 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                           was <strong>not</strong> auto-confirmed since stock may already be
                           back on the shelf. Re-confirm manually if fulfillable, or refund.
                         </p>
+                      </div>
+                    )}
+                    {order.payment?.razorpay_payment_id && (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowRazorpayDetails((v) => !v)}
+                          className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          <Landmark className="h-3.5 w-3.5" />
+                          Razorpay Details
+                          {showRazorpayDetails ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        {showRazorpayDetails && (
+                          <div className="mt-2 rounded-lg border bg-muted/30 p-3 text-xs">
+                            {razorpayDetailsLoading ? (
+                              <p className="text-muted-foreground">Fetching from Razorpay…</p>
+                            ) : razorpayDetailsErrored || !razorpayDetails ? (
+                              <p className="text-muted-foreground">
+                                Couldn&apos;t fetch live details from Razorpay right now.
+                              </p>
+                            ) : (
+                              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                <RzpRow label="Method" value={razorpayDetails.method} />
+                                {razorpayDetails.vpa && <RzpRow label="UPI ID" value={razorpayDetails.vpa} />}
+                                {razorpayDetails.bank && <RzpRow label="Bank" value={razorpayDetails.bank} />}
+                                {razorpayDetails.wallet && <RzpRow label="Wallet" value={razorpayDetails.wallet} />}
+                                {razorpayDetails.card && (
+                                  <RzpRow
+                                    label="Card"
+                                    value={`${razorpayDetails.card.network} •••• ${razorpayDetails.card.last4} (${razorpayDetails.card.type})`}
+                                  />
+                                )}
+                                <RzpRow label="International" value={razorpayDetails.international ? "Yes" : "No"} />
+                                {razorpayDetails.fee != null && <RzpRow label="Razorpay fee" value={formatINR(razorpayDetails.fee)} />}
+                                {razorpayDetails.tax != null && <RzpRow label="Tax (GST)" value={formatINR(razorpayDetails.tax)} />}
+                                {razorpayDetails.acquirerReference && (
+                                  <RzpRow label="Acquirer ref (ARN)" value={razorpayDetails.acquirerReference} mono />
+                                )}
+                                {razorpayDetails.upiTransactionId && (
+                                  <RzpRow label="UPI txn ID" value={razorpayDetails.upiTransactionId} mono />
+                                )}
+                                {razorpayDetails.createdAt && (
+                                  <RzpRow label="Captured at" value={formatDateTime(razorpayDetails.createdAt)} />
+                                )}
+                                {razorpayDetails.amountRefunded > 0 && (
+                                  <RzpRow
+                                    label="Refunded"
+                                    value={`${formatINR(razorpayDetails.amountRefunded)} (${razorpayDetails.refundStatus ?? "—"})`}
+                                  />
+                                )}
+                                {(razorpayDetails.errorReason || razorpayDetails.errorDescription) && (
+                                  <RzpRow
+                                    label="Decline reason"
+                                    value={razorpayDetails.errorReason ?? razorpayDetails.errorDescription ?? ""}
+                                  />
+                                )}
+                              </dl>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                     {order.savings_total > 0 && (
@@ -1240,6 +1315,18 @@ function Row({
       <span className="text-muted-foreground">{label}</span>
       <span>{value}</span>
     </div>
+  )
+}
+
+/** One key/value pair in the Razorpay Details grid. */
+function RzpRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn("text-right font-medium text-foreground", mono && "font-mono text-[11px]")}>
+        {value}
+      </dd>
+    </>
   )
 }
 

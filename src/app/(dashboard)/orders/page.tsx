@@ -14,6 +14,7 @@ import {
   Truck,
   RefreshCw,
   Printer,
+  AlertTriangle,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -140,6 +141,9 @@ function OrdersContent() {
   const [bulkRiderId, setBulkRiderId] = useState("")
   const [riderFilter, setRiderFilter] = useState(() => searchParams.get("rider") ?? "")
   const [areaFilter, setAreaFilter] = useState(() => searchParams.get("area") ?? "")
+  const [needsReviewOnly, setNeedsReviewOnly] = useState(
+    () => searchParams.get("needsReview") === "true"
+  )
 
   // Merges the given filter values into the URL query string in a single
   // `router.replace` (shallow, no scroll/refetch of the rest of the app).
@@ -190,11 +194,26 @@ function OrdersContent() {
     (status: string) => {
       const next = status === "ALL" ? "" : (status as OrderStatus)
       setStatusFilter(next)
+      setNeedsReviewOnly(false)
       setPageState(1)
-      updateQuery({ status: next, page: undefined })
+      updateQuery({ status: next, needsReview: undefined, page: undefined })
     },
     [updateQuery],
   )
+
+  const handleNeedsReviewToggle = useCallback(() => {
+    setNeedsReviewOnly((prev) => {
+      const next = !prev
+      if (next) setStatusFilter("")
+      setPageState(1)
+      updateQuery({
+        needsReview: next ? "true" : undefined,
+        status: next ? undefined : undefined,
+        page: undefined,
+      })
+      return next
+    })
+  }, [updateQuery])
 
   const handlePaymentChange = useCallback(
     (v: string) => {
@@ -306,6 +325,7 @@ function OrdersContent() {
     ...(deliveryType && { deliveryType }),
     ...(riderFilter && { riderId: riderFilter }),
     ...(areaFilter && { area: areaFilter }),
+    ...(needsReviewOnly && { needsPaymentReview: true }),
   }
 
   const { data, isLoading } = useOrders(filters)
@@ -337,6 +357,7 @@ function OrdersContent() {
     setDeliveryType("")
     setRiderFilter("")
     setAreaFilter("")
+    setNeedsReviewOnly(false)
     setPageState(1)
     setSelectedIds(new Set())
     updateQuery({
@@ -350,6 +371,7 @@ function OrdersContent() {
       deliveryType: undefined,
       rider: undefined,
       area: undefined,
+      needsReview: undefined,
       page: undefined,
     })
   }
@@ -371,7 +393,8 @@ function OrdersContent() {
     }
   }
 
-  const hasActiveFilters = search || statusFilter || paymentFilter || dateRange.from || minAmount || maxAmount || deliveryType || riderFilter || areaFilter
+  const hasActiveFilters = search || statusFilter || paymentFilter || dateRange.from || minAmount || maxAmount || deliveryType || riderFilter || areaFilter || needsReviewOnly
+  const needsReviewCount = statusCounts?.NEEDS_REVIEW ?? 0
 
   return (
     <div className="space-y-4">
@@ -437,6 +460,31 @@ function OrdersContent() {
           })}
         </TabsList>
       </Tabs>
+
+      {/* Needs Review — orders where Razorpay captured a payment after the
+          order had already moved on (almost always cancelled). Kept
+          separate from the status tabs since this can happen to an order
+          in any status; it's a payment-reconciliation flag, not a
+          fulfillment stage. */}
+      {needsReviewCount > 0 && (
+        <button
+          type="button"
+          onClick={handleNeedsReviewToggle}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors w-full sm:w-auto",
+            needsReviewOnly
+              ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+              : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-500"
+          )}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          {needsReviewOnly ? "Showing: Needs Review" : "Needs Review"}
+          <Badge variant="outline" className="h-5 min-w-[20px] px-1 text-[10px] border-0 bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-300">
+            {needsReviewCount}
+          </Badge>
+          {needsReviewOnly && <X className="h-3.5 w-3.5 ml-1" />}
+        </button>
+      )}
 
       {/* Search + Filter Bar */}
       <div className="flex items-center gap-2">
