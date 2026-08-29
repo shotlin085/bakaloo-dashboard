@@ -15,6 +15,7 @@ import {
   rescheduleOrder,
   bulkUpdateStatus,
   downloadPackingSlip,
+  resyncOrderPayment,
 } from "@/services/orders.service"
 import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload } from "@/types"
 import { toast } from "sonner"
@@ -224,6 +225,26 @@ export function useCancelOrder() {
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Cancel failed"),
+  })
+}
+
+export function useResyncPayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderId: string) => resyncOrderPayment(orderId),
+    onSuccess: (data) => {
+      if (!data.captured) {
+        toast.info("Razorpay shows no captured payment for this order.")
+      } else if (data.needsManualReview) {
+        toast.warning(
+          "Payment was captured, but the order had already moved on — still flagged for manual review."
+        )
+      } else {
+        toast.success("Payment confirmed — order updated.")
+      }
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Re-check failed"),
   })
 }
 

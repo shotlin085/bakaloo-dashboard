@@ -141,6 +141,20 @@ export interface OrderPayment {
   status: string
   method: string
   created_at: string
+  // Razorpay's own decline-reason fields, captured on payment.failed —
+  // null for anything that never failed, and for payments that failed
+  // before this capture existed.
+  error_code?: string | null
+  error_description?: string | null
+  error_source?: string | null
+  error_step?: string | null
+  error_reason?: string | null
+  // Set when a payment was captured by Razorpay after its order had
+  // already moved on (almost always cancelled) — the backend deliberately
+  // does NOT auto-confirm this case (the order's stock may have already
+  // been restored to the shelf), so it needs a human to decide whether to
+  // re-confirm or refund. See PaymentsService.completeVerifiedPayment.
+  metadata?: { needs_manual_review?: boolean; reason?: string } | null
 }
 
 export interface DeliveryAssignment {

@@ -137,6 +137,19 @@ export async function cancelOrder(
   return data.data
 }
 
+/**
+ * Manually re-check an order's payment directly against Razorpay — for a
+ * payment stuck PENDING, or one flagged `needs_manual_review` (captured
+ * after the order had already moved on). Shares the same reconciliation
+ * path the backend's own webhook and safety-net worker use.
+ */
+export async function resyncOrderPayment(orderId: string) {
+  const { data } = await api.post<
+    ApiResponse<{ captured: boolean; needsManualReview: boolean; order: unknown }>
+  >(`/admin/orders/${orderId}/reconcile-payment`)
+  return data.data
+}
+
 /** Reschedule an order's delivery slot (admin mistake-correction action) */
 export async function rescheduleOrder(
   orderId: string,

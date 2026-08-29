@@ -54,10 +54,12 @@ import {
   User,
   CreditCard,
   RotateCcw,
+  RefreshCw,
   Ban,
   Printer,
   Navigation,
   CalendarClock,
+  AlertTriangle,
 } from "lucide-react"
 import {
   useOrderDetail,
@@ -69,6 +71,7 @@ import {
   useDownloadPackingSlip,
   useOrderNotes,
   useAddOrderNote,
+  useResyncPayment,
 } from "@/hooks/useOrders"
 import { useCustomerDetail } from "@/hooks/useCustomers"
 import { useShopContextStore } from "@/store/shop-context.store"
@@ -109,6 +112,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   const downloadInvoice = useDownloadInvoice()
   const refundOrder = useRefundOrder()
   const cancelOrder = useCancelOrder()
+  const resyncPayment = useResyncPayment()
   const rescheduleOrder = useRescheduleOrder()
   const downloadPacking = useDownloadPackingSlip()
   const { data: notes, isLoading: notesLoading } = useOrderNotes(orderId)
@@ -312,6 +316,34 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     </Button>
                   </div>
                 </div>
+
+                {/* Re-check with Razorpay — for a payment stuck PENDING, or one
+                    flagged needs_manual_review (captured after the order had
+                    already moved on, e.g. cancelled — the backend won't
+                    auto-confirm that case, since stock may already be back
+                    on the shelf). Shown regardless of order status, since a
+                    stuck payment can outlive whatever the order did. */}
+                {order.payment?.razorpay_order_id &&
+                  (order.payment.status === "PENDING" ||
+                    order.payment.metadata?.needs_manual_review) && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                        onClick={() => resyncPayment.mutate(order.id)}
+                        disabled={resyncPayment.isPending}
+                      >
+                        <RefreshCw
+                          className={cn(
+                            "h-3.5 w-3.5 mr-1",
+                            resyncPayment.isPending && "animate-spin"
+                          )}
+                        />
+                        Re-check with Razorpay
+                      </Button>
+                    </div>
+                  )}
 
                 {/* Refund / Cancel Actions */}
                 {order.status !== "CANCELLED" && order.status !== "REFUNDED" && (
@@ -624,6 +656,23 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                       {order.payment?.razorpay_payment_id &&
                         ` · ${order.payment.razorpay_payment_id}`}
                     </p>
+                    {order.payment?.status === "FAILED" &&
+                      (order.payment.error_reason || order.payment.error_description) && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Declined: {order.payment.error_reason ?? order.payment.error_description}
+                        </p>
+                      )}
+                    {order.payment?.metadata?.needs_manual_review && (
+                      <div className="flex items-start gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 p-2 mt-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Razorpay captured this payment after the order had already{" "}
+                          {order.status === "CANCELLED" ? "been cancelled" : "moved on"} — it
+                          was <strong>not</strong> auto-confirmed since stock may already be
+                          back on the shelf. Re-confirm manually if fulfillable, or refund.
+                        </p>
+                      </div>
+                    )}
                     {order.savings_total > 0 && (
                       <p className="text-xs text-success font-semibold mt-1">
                         Customer saved {formatINR(order.savings_total)} on this order
