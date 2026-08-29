@@ -129,24 +129,46 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: ["products"] })
     })
 
-    // Fired specifically when Razorpay captures a payment for an order that
-    // had already moved on (almost always cancelled) — the backend
-    // deliberately does NOT auto-confirm this case (stock may already be
-    // back on the shelf), so it needs a human to review it. Not fired for
-    // routine successful payments — those don't need anyone's attention.
+    // Fired in two situations, both meaning "the dashboard's picture of this
+    // payment was wrong and just self-corrected" — never for a routine
+    // successful payment, which doesn't need anyone's attention.
     s.on("dashboard:payment_received", (payment) => {
-      toast.warning(`🚨 Payment needs review — Order ${payment.orderNumber ?? payment.orderId}`, {
-        description: `₹${payment.amount} was captured after the order had already ${payment.orderStatus === "CANCELLED" ? "been cancelled" : "moved on"} — check Orders → Needs Review.`,
-      })
-      useNotificationStore.getState().addNotification({
-        id: `payment-review-${payment.orderId}-${Date.now()}`,
-        title: "Payment needs review",
-        body: `Order ${payment.orderNumber ?? payment.orderId} — ₹${payment.amount} captured after the order moved on`,
-        type: "PAYMENT_REVIEW",
-        read: false,
-        created_at: new Date().toISOString(),
-        data: { orderId: payment.orderId },
-      })
+      if (payment.recoveredFromFailed) {
+        // The order was shown as FAILED (customer saw a failure, support
+        // may have already told them so) but Razorpay has now confirmed
+        // the money actually arrived — usually a delayed bank-side
+        // settlement. The order auto-confirmed; this is purely a "we were
+        // wrong, here's the correction" alert.
+        toast.warning(`💳 Payment recovered — Order ${payment.orderNumber ?? payment.orderId}`, {
+          description: `Previously shown as failed — Razorpay now confirms ₹${payment.amount} was received. Order auto-confirmed.`,
+        })
+        useNotificationStore.getState().addNotification({
+          id: `payment-recovered-${payment.orderId}-${Date.now()}`,
+          title: "Payment recovered (was shown failed)",
+          body: `Order ${payment.orderNumber ?? payment.orderId} — ₹${payment.amount} confirmed by Razorpay after showing failed`,
+          type: "PAYMENT_REVIEW",
+          read: false,
+          created_at: new Date().toISOString(),
+          data: { orderId: payment.orderId },
+        })
+      } else {
+        // Razorpay captured a payment for an order that had already moved
+        // on (almost always cancelled) — the backend deliberately does NOT
+        // auto-confirm this case (stock may already be back on the shelf),
+        // so it needs a human to review it.
+        toast.warning(`🚨 Payment needs review — Order ${payment.orderNumber ?? payment.orderId}`, {
+          description: `₹${payment.amount} was captured after the order had already ${payment.orderStatus === "CANCELLED" ? "been cancelled" : "moved on"} — check Orders → Needs Review.`,
+        })
+        useNotificationStore.getState().addNotification({
+          id: `payment-review-${payment.orderId}-${Date.now()}`,
+          title: "Payment needs review",
+          body: `Order ${payment.orderNumber ?? payment.orderId} — ₹${payment.amount} captured after the order moved on`,
+          type: "PAYMENT_REVIEW",
+          read: false,
+          created_at: new Date().toISOString(),
+          data: { orderId: payment.orderId },
+        })
+      }
       const qc = getQueryClient()
       qc.invalidateQueries({ queryKey: ["dashboard-home"] })
       qc.invalidateQueries({ queryKey: ["orders"] })

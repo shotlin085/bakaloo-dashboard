@@ -17,6 +17,7 @@ import {
   downloadPackingSlip,
   resyncOrderPayment,
   getRazorpayDetails,
+  bulkReconcilePayments,
 } from "@/services/orders.service"
 import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload } from "@/types"
 import { toast } from "sonner"
@@ -259,6 +260,27 @@ export function useResyncPayment() {
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Re-check failed"),
+  })
+}
+
+export function useBulkReconcilePayments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderIds: string[]) => bulkReconcilePayments(orderIds),
+    onSuccess: (results) => {
+      const recovered = results.filter((r) => r.captured).length
+      const errored = results.filter((r) => r.error).length
+      if (recovered > 0) {
+        toast.success(`${recovered} of ${results.length} order(s) had a payment Razorpay confirms was captured`)
+      } else {
+        toast.info(`Checked ${results.length} order(s) — none show a captured payment on Razorpay`)
+      }
+      if (errored > 0) {
+        toast.warning(`${errored} order(s) couldn't be checked — try again in a moment`)
+      }
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Bulk re-check failed"),
   })
 }
 

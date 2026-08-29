@@ -39,7 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { useOrders, useOrderStatusCounts, useExportOrders, useBulkUpdateStatus, useBulkAssignRiders } from "@/hooks/useOrders"
+import { useOrders, useOrderStatusCounts, useExportOrders, useBulkUpdateStatus, useBulkAssignRiders, useBulkReconcilePayments } from "@/hooks/useOrders"
 import { useRiders } from "@/hooks/useRiders"
 import {
   Dialog,
@@ -144,6 +144,12 @@ function OrdersContent() {
   const [needsReviewOnly, setNeedsReviewOnly] = useState(
     () => searchParams.get("needsReview") === "true"
   )
+  const [recoveredOnly, setRecoveredOnly] = useState(
+    () => searchParams.get("recovered") === "true"
+  )
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState(
+    () => searchParams.get("paymentStatus") ?? ""
+  )
 
   // Merges the given filter values into the URL query string in a single
   // `router.replace` (shallow, no scroll/refetch of the rest of the app).
@@ -214,6 +220,26 @@ function OrdersContent() {
       return next
     })
   }, [updateQuery])
+
+  const handleRecoveredToggle = useCallback(() => {
+    setRecoveredOnly((prev) => {
+      const next = !prev
+      if (next) setStatusFilter("")
+      setPageState(1)
+      updateQuery({ recovered: next ? "true" : undefined, page: undefined })
+      return next
+    })
+  }, [updateQuery])
+
+  const handlePaymentStatusChange = useCallback(
+    (v: string) => {
+      const next = v === "all_payment_statuses" ? "" : v
+      setPaymentStatusFilter(next)
+      setPageState(1)
+      updateQuery({ paymentStatus: next, page: undefined })
+    },
+    [updateQuery],
+  )
 
   const handlePaymentChange = useCallback(
     (v: string) => {
@@ -326,6 +352,8 @@ function OrdersContent() {
     ...(riderFilter && { riderId: riderFilter }),
     ...(areaFilter && { area: areaFilter }),
     ...(needsReviewOnly && { needsPaymentReview: true }),
+    ...(recoveredOnly && { recoveredFromFailed: true }),
+    ...(paymentStatusFilter && { paymentStatus: paymentStatusFilter }),
   }
 
   const { data, isLoading } = useOrders(filters)
@@ -333,6 +361,7 @@ function OrdersContent() {
   const exportOrders = useExportOrders()
   const bulkUpdateStatus = useBulkUpdateStatus()
   const bulkAssignRiders = useBulkAssignRiders()
+  const bulkReconcilePayments = useBulkReconcilePayments()
   const { data: ridersData } = useRiders()
   const connStatus = useConnectionStatus()
   const { can } = usePermissions()
@@ -358,6 +387,8 @@ function OrdersContent() {
     setRiderFilter("")
     setAreaFilter("")
     setNeedsReviewOnly(false)
+    setRecoveredOnly(false)
+    setPaymentStatusFilter("")
     setPageState(1)
     setSelectedIds(new Set())
     updateQuery({
@@ -372,6 +403,8 @@ function OrdersContent() {
       rider: undefined,
       area: undefined,
       needsReview: undefined,
+      recovered: undefined,
+      paymentStatus: undefined,
       page: undefined,
     })
   }
@@ -393,8 +426,9 @@ function OrdersContent() {
     }
   }
 
-  const hasActiveFilters = search || statusFilter || paymentFilter || dateRange.from || minAmount || maxAmount || deliveryType || riderFilter || areaFilter || needsReviewOnly
+  const hasActiveFilters = search || statusFilter || paymentFilter || dateRange.from || minAmount || maxAmount || deliveryType || riderFilter || areaFilter || needsReviewOnly || recoveredOnly || paymentStatusFilter
   const needsReviewCount = statusCounts?.NEEDS_REVIEW ?? 0
+  const recoveredCount = statusCounts?.RECOVERED ?? 0
 
   return (
     <div className="space-y-4">
@@ -461,29 +495,51 @@ function OrdersContent() {
         </TabsList>
       </Tabs>
 
-      {/* Needs Review — orders where Razorpay captured a payment after the
-          order had already moved on (almost always cancelled). Kept
-          separate from the status tabs since this can happen to an order
-          in any status; it's a payment-reconciliation flag, not a
-          fulfillment stage. */}
-      {needsReviewCount > 0 && (
-        <button
-          type="button"
-          onClick={handleNeedsReviewToggle}
-          className={cn(
-            "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors w-full sm:w-auto",
-            needsReviewOnly
-              ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
-              : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-500"
+      {/* Needs Review / Recovered — both payment-reconciliation flags, kept
+          separate from the status tabs since either can happen to an order
+          in any fulfillment status. */}
+      {(needsReviewCount > 0 || recoveredCount > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {needsReviewCount > 0 && (
+            <button
+              type="button"
+              onClick={handleNeedsReviewToggle}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                needsReviewOnly
+                  ? "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                  : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-500"
+              )}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {needsReviewOnly ? "Showing: Needs Review" : "Needs Review"}
+              <Badge variant="outline" className="h-5 min-w-[20px] px-1 text-[10px] border-0 bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-300">
+                {needsReviewCount}
+              </Badge>
+              {needsReviewOnly && <X className="h-3.5 w-3.5 ml-1" />}
+            </button>
           )}
-        >
-          <AlertTriangle className="h-3.5 w-3.5" />
-          {needsReviewOnly ? "Showing: Needs Review" : "Needs Review"}
-          <Badge variant="outline" className="h-5 min-w-[20px] px-1 text-[10px] border-0 bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-300">
-            {needsReviewCount}
-          </Badge>
-          {needsReviewOnly && <X className="h-3.5 w-3.5 ml-1" />}
-        </button>
+          {recoveredCount > 0 && (
+            <button
+              type="button"
+              onClick={handleRecoveredToggle}
+              title="Orders where a payment previously shown FAILED was later confirmed captured by Razorpay"
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+                recoveredOnly
+                  ? "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400"
+                  : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-500"
+              )}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {recoveredOnly ? "Showing: Recovered" : "Recovered (shown failed, actually paid)"}
+              <Badge variant="outline" className="h-5 min-w-[20px] px-1 text-[10px] border-0 bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-300">
+                {recoveredCount}
+              </Badge>
+              {recoveredOnly && <X className="h-3.5 w-3.5 ml-1" />}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Search + Filter Bar */}
@@ -600,6 +656,23 @@ function OrdersContent() {
             onChange={(e) => handleAreaChange(e.target.value)}
             className="h-9 w-[140px] text-xs"
           />
+
+          {/* Payment Status — independent of order fulfillment status, e.g.
+              to find every FAILED-payment order for a historical bulk
+              re-check against Razorpay. */}
+          <Select value={paymentStatusFilter || "all_payment_statuses"} onValueChange={handlePaymentStatusChange}>
+            <SelectTrigger className="h-9 w-[160px]">
+              <SelectValue placeholder="Payment Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all_payment_statuses">Any Payment Status</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="PAID">Paid</SelectItem>
+              <SelectItem value="FAILED">Failed</SelectItem>
+              <SelectItem value="EXPIRED">Expired</SelectItem>
+              <SelectItem value="REFUNDED">Refunded</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -624,6 +697,17 @@ function OrdersContent() {
             >
               <Truck className="h-3.5 w-3.5 mr-1" />
               Assign Rider
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+              disabled={bulkReconcilePayments.isPending}
+              onClick={() => bulkReconcilePayments.mutate(Array.from(selectedIds))}
+              title="Re-verify each selected order's payment directly against Razorpay — the historical audit tool for old FAILED-payment orders"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1", bulkReconcilePayments.isPending && "animate-spin")} />
+              {bulkReconcilePayments.isPending ? "Checking…" : "Re-check Payments"}
             </Button>
             <Button
               variant="outline"
@@ -765,9 +849,26 @@ function OrdersContent() {
                       {formatINR(order.total_amount)}
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground">
-                        {PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          {PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method}
+                        </span>
+                        {/* Razorpay's own status, inline — so "did the money
+                            actually come through" is visible while scanning
+                            the list, not only after opening the order. */}
+                        {order.payment_method === "ONLINE" && order.payment_status && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-medium",
+                              order.payment_status === "PAID" && "text-success",
+                              order.payment_status === "PENDING" && "text-amber-600",
+                              (order.payment_status === "FAILED" || order.payment_status === "EXPIRED") && "text-destructive"
+                            )}
+                          >
+                            {order.payment_status === "PAID" ? "✓ Razorpay: Paid" : `Razorpay: ${order.payment_status}`}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge

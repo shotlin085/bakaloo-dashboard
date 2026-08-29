@@ -27,6 +27,12 @@ export async function getOrders(filters: OrderFilters = {}) {
   if (filters.endDate) params.endDate = filters.endDate
   if (filters.deliveryType) params.deliveryType = filters.deliveryType
   if (filters.needsPaymentReview) params.needsPaymentReview = "true"
+  if (filters.recoveredFromFailed) params.recoveredFromFailed = "true"
+  if (filters.paymentStatus) params.paymentStatus = filters.paymentStatus
+  if (filters.riderId) params.riderId = filters.riderId
+  if (filters.minAmount != null) params.minAmount = filters.minAmount
+  if (filters.maxAmount != null) params.maxAmount = filters.maxAmount
+  if (filters.area) params.area = filters.area
 
   const { data } = await api.get<
     ApiResponse<{
@@ -149,6 +155,16 @@ export async function resyncOrderPayment(orderId: string) {
   const { data } = await api.post<
     ApiResponse<{ captured: boolean; needsManualReview: boolean; order: unknown }>
   >(`/admin/orders/${orderId}/reconcile-payment`)
+  return data.data
+}
+
+/** Historical audit tool — select a batch of old orders (e.g. everything
+ *  filtered to payment status FAILED) and re-verify each directly against
+ *  Razorpay, recovering any that were actually captured. */
+export async function bulkReconcilePayments(orderIds: string[]) {
+  const { data } = await api.post<
+    ApiResponse<Array<{ orderId: string; captured?: boolean; needsManualReview?: boolean; error?: string }>>
+  >("/admin/orders/bulk-reconcile-payment", { orderIds })
   return data.data
 }
 

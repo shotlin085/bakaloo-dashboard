@@ -282,6 +282,15 @@ export interface OrderFilters {
    *  moved on (almost always cancelled) — flagged for manual review rather
    *  than auto-confirmed, since stock may already be back on the shelf. */
   needsPaymentReview?: boolean
+  /** Orders where a payment previously shown FAILED was later confirmed
+   *  captured by Razorpay (auto-recovered, or via manual re-check) — the
+   *  historical-audit filter for "we told the customer it failed and we
+   *  were wrong." */
+  recoveredFromFailed?: boolean
+  /** Filters on the order's payment_status column directly (PENDING / PAID
+   *  / FAILED / EXPIRED / REFUNDED) — e.g. to find all FAILED orders for a
+   *  historical bulk re-check, independent of order fulfillment status. */
+  paymentStatus?: string
 }
 
 /** Status update payload */
