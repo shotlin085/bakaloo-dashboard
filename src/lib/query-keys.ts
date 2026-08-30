@@ -101,6 +101,11 @@ export const qk = {
   abandonedCart: (id: string) => ["abandoned-carts", "detail", id] as const,
   abandonedCartsSummary: () => ["abandoned-carts", "summary"] as const,
 
+  // ── Refund Requests (platform-wide, NOT shop-scoped — an order's shop
+  //    isn't relevant to reviewing a customer's refund request) ───────────
+  refundRequests: (params: ListParams) => ["refund-requests", "list", params] as const,
+  refundRequest: (id: string) => ["refund-requests", "detail", id] as const,
+
   // ── Shops_Management_UI ──────────────────────────────────────────────────
   shops: (params: ListParams) => ["shops", "list", params] as const,
   shop: (id: string) => ["shops", "detail", id] as const,

@@ -41,6 +41,7 @@ import {
   Ticket,
   Timer,
   TrendingUp,
+  Undo2,
   Users,
   Users2,
   Wallet,
@@ -115,6 +116,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Ticket,
   Timer,
   TrendingUp,
+  Undo2,
   Users,
   Users2,
   Wallet,
@@ -131,6 +133,11 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
         href: "/orders",
         icon: "ClipboardList",
         badgeKey: "pendingOrders",
+      },
+      {
+        label: "Refund Requests",
+        href: "/refund-requests",
+        icon: "Undo2",
       },
       {
         id: "settings",
