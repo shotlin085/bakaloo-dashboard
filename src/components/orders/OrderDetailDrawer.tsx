@@ -389,6 +389,25 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                   </div>
                 )}
 
+                {/* Customer's own stated cancellation reason — populated
+                    only for customer self-cancellations (orders.cancelled_reason).
+                    Admin-initiated cancels store their reason separately in
+                    order_status_history.note instead, already shown below in
+                    the Status Timeline, so this intentionally shows "No
+                    reason provided" for those rather than being a bug. */}
+                {order.status === "CANCELLED" && (
+                  <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: "#FEF2F2" }}>
+                    <p className="font-medium" style={{ color: "#EF4444" }}>
+                      Cancellation reason
+                    </p>
+                    <p className="text-muted-foreground mt-0.5">
+                      {order.cancelled_reason
+                        ? order.cancelled_reason.replace(/^OTHER:\s*/, "")
+                        : "No reason provided"}
+                    </p>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground">
                   Placed {formatDateTime(order.created_at)} · {formatRelativeTime(order.created_at)}
                 </p>
