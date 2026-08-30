@@ -61,12 +61,14 @@ const STATUS_TABS: Array<{ value: RefundRequestStatus | "ALL"; label: string }> 
   { value: "PENDING", label: "Pending" },
   { value: "APPROVED", label: "Approved" },
   { value: "REJECTED", label: "Rejected" },
+  { value: "CANCELLED", label: "Cancelled" },
 ]
 
 const STATUS_BADGE: Record<RefundRequestStatus, { label: string; bg: string; text: string }> = {
   PENDING: { label: "Pending", bg: "#FFF8E1", text: "#F59E0B" },
   APPROVED: { label: "Approved", bg: "#ECFDF5", text: "#10B981" },
   REJECTED: { label: "Rejected", bg: "#FEF2F2", text: "#EF4444" },
+  CANCELLED: { label: "Cancelled", bg: "#F3F4F6", text: "#6B7280" },
 }
 
 const DEFAULT_LIMIT = 20
@@ -104,7 +106,7 @@ function RefundRequestsContent() {
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "")
   const [statusFilter, setStatusFilter] = useState<RefundRequestStatus | "">(() => {
     const v = searchParams.get("status")
-    return v === "PENDING" || v === "APPROVED" || v === "REJECTED" ? v : ""
+    return v === "PENDING" || v === "APPROVED" || v === "REJECTED" || v === "CANCELLED" ? v : ""
   })
   const [page, setPageState] = useState(() => {
     const fromUrl = Number(searchParams.get("page"))

@@ -1,6 +1,6 @@
 import type { ListParams } from "./common.types"
 
-export type RefundRequestStatus = "PENDING" | "APPROVED" | "REJECTED"
+export type RefundRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
 export type RefundRequestItemScope = "ALL" | "SPECIFIC"
 
 export interface RefundRequestItem {

@@ -118,6 +118,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
           },
           { label: "Delivery Timer", href: "/settings/delivery-timer", icon: "Timer" },
           { label: "Pincode Mapping", href: "/settings/pincode-mapping", icon: "MapPin" },
+          { label: "Maps", href: "/settings/maps", icon: "Map" },
           { label: "Store Hours", href: "/settings/store-hours", icon: "Clock" },
           { label: "Delivery Calendar", href: "/settings/delivery-calendar", icon: "CalendarDays" },
           { label: "App Version", href: "/settings/app-version", icon: "Smartphone" },
