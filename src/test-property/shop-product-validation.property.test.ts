@@ -21,12 +21,13 @@
  *     • Number.isInteger(max_order_qty)
  *         AND 1 <= max_order_qty <= 10000                    (Req 7.5)
  *
- * Other required fields (`product_id`, `cost_price`, `low_stock_threshold`,
- * `is_available`, `is_featured`) are stubbed with valid constants so the
- * property isolates the four numeric fields under test. `low_stock_threshold`,
- * `is_available`, and `is_featured` have schema defaults but we still pass
- * explicit valid values to keep the input fully deterministic and avoid
- * conflating default-application with validation.
+ * Other required fields (`product_id`, `cost_price`, `wholesale_price`,
+ * `low_stock_threshold`, `is_available`, `is_featured`,
+ * `bulk_order_eligible`) are stubbed with valid constants so the property
+ * isolates the four numeric fields under test. `low_stock_threshold`,
+ * `is_available`, `is_featured`, and `bulk_order_eligible` have schema
+ * defaults but we still pass explicit valid values to keep the input fully
+ * deterministic and avoid conflating default-application with validation.
  *
  * Rationale: Requirement 7.5 says the add and edit forms SHALL enforce
  * client-side that `sale_price < price`, `stock_quantity >= 0`, and
@@ -56,9 +57,12 @@ const STUB_REST = {
   // `cost_price` is `.nullable()` (must be present; null is the easy "absent"
   // value), so set it to `null` to keep it out of the property.
   cost_price: null as number | null,
+  // Same reasoning as `cost_price` — `.nullable()`, must be present.
+  wholesale_price: null as number | null,
   low_stock_threshold: 5,
   is_available: true,
   is_featured: false,
+  bulk_order_eligible: true,
 } as const
 
 // ─────────────────────────────────────────────────────────────────────────────

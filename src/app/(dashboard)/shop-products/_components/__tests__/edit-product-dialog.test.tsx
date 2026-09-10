@@ -151,11 +151,13 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
     price: 99.5,
     sale_price: 79.99,
     cost_price: 60,
+    wholesale_price: null,
     stock_quantity: 12,
     low_stock_threshold: 3,
     max_order_qty: 8,
     is_available: true,
     is_featured: false,
+    bulk_order_eligible: true,
     sold_out_at: null,
     restock_eta: null,
     product: {
@@ -163,7 +165,10 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
       name: "Atta 1kg",
       sku: "ATTA-1KG",
       image_url: "",
+      category_id: null,
+      category_name: null,
     },
+    shop_name: null,
   }
   return { ...base, ...partial }
 }

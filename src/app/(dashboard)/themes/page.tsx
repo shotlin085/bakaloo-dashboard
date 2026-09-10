@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Archive,
+  Building2,
   Clock,
   Copy,
   LayoutGrid,
@@ -63,6 +64,7 @@ import {
 import {
   useActivateTheme,
   useCancelSchedule,
+  useCopyB2CToB2B,
   useCreateTheme,
   useDeleteTheme,
   useScheduleTheme,
@@ -181,8 +183,10 @@ function ThemeListContent() {
   const scheduleThemeMutation = useScheduleTheme()
   const cancelScheduleMutation = useCancelSchedule()
   const deleteThemeMutation = useDeleteTheme()
+  const copyB2CToB2BMutation = useCopyB2CToB2B()
 
   const [themeToDelete, setThemeToDelete] = useState<Theme | null>(null)
+  const [showCopyToB2BDialog, setShowCopyToB2BDialog] = useState(false)
   const [scheduleDialogTheme, setScheduleDialogTheme] = useState<Theme | null>(
     null
   )
@@ -236,6 +240,34 @@ function ThemeListContent() {
         )
       })
   }, [storeFilter, statusFilter, tabFilter, audienceFilter, themes])
+
+  // Active B2C themes without an already-active B2B counterpart for the
+  // same tab + variant — exactly what "Copy B2C to B2B" would create.
+  // Themes with no tab_id (unlinked drafts) are excluded — there's no
+  // storefront tab for a B2B viewer to see them on.
+  const { copyableThemes, alreadyCoveredCount } = useMemo(() => {
+    const all = themes ?? []
+    const activeB2C = all.filter((t) => t.is_active && t.audience === "B2C" && t.tab_id)
+    const hasActiveB2BCounterpart = (theme: Theme) =>
+      all.some(
+        (t) =>
+          t.is_active &&
+          t.audience === "B2B" &&
+          t.tab_id === theme.tab_id &&
+          t.ab_variant === theme.ab_variant
+      )
+    const copyable = activeB2C.filter((t) => !hasActiveB2BCounterpart(t))
+    return {
+      copyableThemes: copyable,
+      alreadyCoveredCount: activeB2C.length - copyable.length,
+    }
+  }, [themes])
+
+  const handleConfirmCopyToB2B = () => {
+    copyB2CToB2BMutation.mutate(copyableThemes, {
+      onSuccess: () => setShowCopyToB2BDialog(false),
+    })
+  }
 
   const hasFilters =
     statusFilter !== "all" ||
@@ -439,6 +471,13 @@ function ThemeListContent() {
         subtitle="Manage your app's visual appearance. Create seasonal themes and activate them to push changes to all users instantly."
       >
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowCopyToB2BDialog(true)}
+          >
+            <Building2 className="mr-2 h-4 w-4" />
+            Copy B2C to B2B
+          </Button>
           <Button
             variant="outline"
             onClick={() => router.push("/themes/builder")}
@@ -781,6 +820,62 @@ function ThemeListContent() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
               Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showCopyToB2BDialog}
+        onOpenChange={(open) => !copyB2CToB2BMutation.isPending && setShowCopyToB2BDialog(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy B2C themes to B2B?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {copyableThemes.length === 0 ? (
+                  <p>
+                    Every active B2C tab already has an active B2B theme — nothing to copy.
+                  </p>
+                ) : (
+                  <p>
+                    This creates and activates a B2B copy of{" "}
+                    <strong className="text-foreground">
+                      {copyableThemes.length} active B2C theme
+                      {copyableThemes.length === 1 ? "" : "s"}
+                    </strong>{" "}
+                    — one per tab (and A/B variant), using the exact same layout. B2B viewers
+                    will see it immediately; edit it afterward from the theme list like any
+                    other theme.
+                  </p>
+                )}
+                {alreadyCoveredCount > 0 && (
+                  <p>
+                    {alreadyCoveredCount} tab{alreadyCoveredCount === 1 ? "" : "s"} already{" "}
+                    {alreadyCoveredCount === 1 ? "has" : "have"} an active B2B theme and will be
+                    left as-is.
+                  </p>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={copyB2CToB2BMutation.isPending}
+              onClick={() => setShowCopyToB2BDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={copyableThemes.length === 0 || copyB2CToB2BMutation.isPending}
+              onClick={handleConfirmCopyToB2B}
+            >
+              {copyB2CToB2BMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Copy {copyableThemes.length > 0 ? copyableThemes.length : ""} to B2B
             </Button>
           </DialogFooter>
         </DialogContent>

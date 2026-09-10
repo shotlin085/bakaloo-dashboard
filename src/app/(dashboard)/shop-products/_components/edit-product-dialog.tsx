@@ -114,11 +114,13 @@ function buildDefaultsFromProduct(product: ShopProduct): ShopProductInput {
     price: product.price,
     sale_price: product.sale_price,
     cost_price: product.cost_price,
+    wholesale_price: product.wholesale_price,
     stock_quantity: product.stock_quantity,
     low_stock_threshold: product.low_stock_threshold,
     max_order_qty: product.max_order_qty,
     is_available: product.is_available,
     is_featured: product.is_featured,
+    bulk_order_eligible: product.bulk_order_eligible,
   }
 }
 
@@ -185,10 +187,12 @@ export function EditProductDialog({
             price: values.price,
             sale_price: values.sale_price,
             cost_price: values.cost_price,
+            wholesale_price: values.wholesale_price,
             low_stock_threshold: values.low_stock_threshold,
             max_order_qty: values.max_order_qty,
             is_available: values.is_available,
             is_featured: values.is_featured,
+            bulk_order_eligible: values.bulk_order_eligible,
           },
         }),
       ]
@@ -286,6 +290,15 @@ export function EditProductDialog({
               name="cost_price"
               error={errors.cost_price?.message}
             />
+            <NullableNumberField
+              id="edit-product-wholesale-price"
+              label="Wholesale price (B2B)"
+              step="0.01"
+              min={0}
+              control={control}
+              name="wholesale_price"
+              error={errors.wholesale_price?.message}
+            />
           </div>
 
           {/* ── Inventory ─────────────────────────────────────────── */}
@@ -348,6 +361,19 @@ export function EditProductDialog({
                   checked={Boolean(field.value)}
                   onCheckedChange={field.onChange}
                   testId="edit-product-is-featured"
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="bulk_order_eligible"
+              render={({ field }) => (
+                <ToggleRow
+                  id="edit-product-bulk-order-eligible"
+                  label="Bulk order eligible"
+                  checked={Boolean(field.value)}
+                  onCheckedChange={field.onChange}
+                  testId="edit-product-bulk-order-eligible"
                 />
               )}
             />

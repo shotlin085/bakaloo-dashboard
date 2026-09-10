@@ -17,6 +17,7 @@ import type {
   CreateThemePayload,
   RollbackPayload,
   ScheduleThemePayload,
+  Theme,
   UpdateThemePayload,
 } from "@/types/theme.types"
 
@@ -72,6 +73,65 @@ export function useActivateTheme() {
       qc.invalidateQueries({ queryKey: ["themes"] })
     },
     onError: () => toast.error("Failed to activate theme"),
+  })
+}
+
+export interface CopyB2CToB2BResult {
+  copied: number
+  failed: Array<{ name: string; error: string }>
+}
+
+/**
+ * Copies a caller-supplied set of currently-active B2C themes into new,
+ * immediately-active B2B themes for the same tab/variant — so a B2B
+ * viewer sees the equivalent layout instead of the fallback/blank state,
+ * and the admin can then tweak it from there. Runs sequentially (not
+ * Promise.all) so each theme's create+activate pair completes before the
+ * next starts, avoiding any transient overlap with the activate
+ * endpoint's own sibling-deactivation logic. Calls the raw service
+ * functions directly (not useCreateTheme/useActivateTheme) so a bulk copy
+ * doesn't fire a toast per theme — just one summary at the end.
+ */
+export function useCopyB2CToB2B() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (sourceThemes: Theme[]): Promise<CopyB2CToB2BResult> => {
+      const result: CopyB2CToB2BResult = { copied: 0, failed: [] }
+      for (const theme of sourceThemes) {
+        try {
+          const created = await createTheme({
+            name: `${theme.name} (B2B)`,
+            theme_data: theme.theme_data,
+            tab_id: theme.tab_id ?? undefined,
+            status: "active",
+            ab_variant: theme.ab_variant,
+            ab_split_percent: theme.ab_split_percent,
+            audience: "B2B",
+          })
+          await activateTheme(created.id)
+          result.copied += 1
+        } catch (err) {
+          result.failed.push({
+            name: theme.name,
+            error: err instanceof Error ? err.message : "Unknown error",
+          })
+        }
+      }
+      return result
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["themes"] })
+      if (result.failed.length === 0) {
+        toast.success(
+          `Copied ${result.copied} theme${result.copied === 1 ? "" : "s"} to B2B`
+        )
+      } else {
+        toast.error(
+          `Copied ${result.copied}, ${result.failed.length} failed (${result.failed.map((f) => f.name).join(", ")})`
+        )
+      }
+    },
+    onError: () => toast.error("Failed to copy themes to B2B"),
   })
 }
 

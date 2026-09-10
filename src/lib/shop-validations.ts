@@ -312,6 +312,12 @@ export const shopProductSchema = z
       .number()
       .positive("Cost price must be greater than 0")
       .nullable(),
+    /** B2B wholesale override for this shop's listing — nullable, falls
+     *  back to the product's own wholesale price (then retail) when unset. */
+    wholesale_price: z
+      .number()
+      .positive("Wholesale price must be greater than 0")
+      .nullable(),
     stock_quantity: z
       .number()
       .int("Stock quantity must be an integer")
@@ -328,6 +334,10 @@ export const shopProductSchema = z
       .max(10000, "Max order quantity cannot exceed 10000"),
     is_available: z.boolean().default(true),
     is_featured: z.boolean().default(false),
+    /** Whether this listing can be included in a bulk order at this shop —
+     *  independent of is_available (sells normally, but excluded from bulk
+     *  purchasing). */
+    bulk_order_eligible: z.boolean().default(true),
   })
   /**
    * Sale price (when present) must be strictly less than the regular price.

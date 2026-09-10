@@ -26,6 +26,8 @@ export interface ProductPayload {
   price: number
   salePrice?: number
   costPrice?: number
+  /** B2B wholesale unit price — omit/null falls back to price/salePrice for wholesale-mode customers. */
+  wholesalePrice?: number | null
   stock: number
   unit: string
   sku?: string
@@ -94,6 +96,7 @@ export interface Product {
   mrp?: number           // kept for compat; same as price
   sale_price: number | null
   cost_price?: number | null
+  wholesale_price?: number | null
   gst_rate?: number
   hsn_code?: string | null
   uqc?: string | null

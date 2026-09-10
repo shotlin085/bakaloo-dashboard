@@ -40,11 +40,13 @@ export interface ShopProductCreateBody {
   price?: number | null
   sale_price?: number | null
   cost_price?: number | null
+  wholesale_price?: number | null
   stock_quantity?: number
   low_stock_threshold?: number
   max_order_qty?: number
   is_available?: boolean
   is_featured?: boolean
+  bulk_order_eligible?: boolean
 }
 
 /**
@@ -58,10 +60,12 @@ export interface ShopProductUpdateBody {
   price?: number | null
   sale_price?: number | null
   cost_price?: number | null
+  wholesale_price?: number | null
   low_stock_threshold?: number
   max_order_qty?: number
   is_available?: boolean
   is_featured?: boolean
+  bulk_order_eligible?: boolean
 }
 
 /**

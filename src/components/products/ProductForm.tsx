@@ -24,7 +24,7 @@ import {
   ChevronDown, ChevronUp, Sparkles, ShieldCheck, Store, Star,
   Tag, Package, IndianRupee, Boxes, Ruler, Info,
   Megaphone, ListChecks, Layers, ShoppingCart, ScanBarcode,
-  Hash, Scale, FileText, ToggleLeft, AlertTriangle, Gift,
+  Hash, Scale, FileText, ToggleLeft, AlertTriangle, Gift, Building2,
 } from "lucide-react"
 import { useProductDetail, useCreateProduct, useUpdateProduct } from "@/hooks/useProducts"
 import { useCategories, useCategoriesForProduct, useToggleCategoryMembership } from "@/hooks/useCategories"
@@ -82,6 +82,8 @@ interface FormData {
   price: string
   salePrice: string
   costPrice: string
+  /** B2B wholesale unit price — blank falls back to price/salePrice at checkout for wholesale-mode customers. */
+  wholesalePrice: string
   stock: string
   unit: string
   sku: string
@@ -171,6 +173,7 @@ const INITIAL: FormData = {
   price: "",
   salePrice: "",
   costPrice: "",
+  wholesalePrice: "",
   stock: "0",
   unit: "piece",
   sku: "",
@@ -283,6 +286,7 @@ export function ProductForm({
       price: (product.price ?? product.mrp ?? 0).toString(),
       salePrice: product.sale_price ? product.sale_price.toString() : "",
       costPrice: product.cost_price ? product.cost_price.toString() : "",
+      wholesalePrice: product.wholesale_price ? product.wholesale_price.toString() : "",
       stock: (product.stock_quantity ?? 0).toString(),
       unit: product.unit ?? "piece",
       sku: product.sku ?? "",
@@ -445,6 +449,7 @@ export function ProductForm({
       price: parseFloat(form.price),
       salePrice: form.salePrice ? parseFloat(form.salePrice) : undefined,
       costPrice: form.costPrice ? parseFloat(form.costPrice) : undefined,
+      wholesalePrice: form.wholesalePrice ? parseFloat(form.wholesalePrice) : undefined,
       stock: parseInt(form.stock, 10),
       unit: form.unit,
       sku: form.sku || undefined,
@@ -766,6 +771,20 @@ export function ProductForm({
                 {Math.round(((parseFloat(form.price) - parseFloat(form.salePrice)) / parseFloat(form.price)) * 100)}% off for shoppers
               </div>
             )}
+          </SectionCard>
+
+          <SectionCard
+            icon={<Building2 className="h-4 w-4" />}
+            title="B2B Wholesale Pricing"
+            description="What an approved, wholesale-enabled business account pays instead of MRP/Sale Price. Leave blank to charge those customers the regular price too — per-store wholesale price is set separately in Shop Products."
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <FieldLabel htmlFor="wholesalePrice">Wholesale Price (₹)</FieldLabel>
+                <Input id="wholesalePrice" type="number" step="0.01" min="0" value={form.wholesalePrice} onChange={(e) => set("wholesalePrice", e.target.value)} placeholder="0.00" />
+                <FieldHint>Only charged to customers browsing with B2B pricing switched on.</FieldHint>
+              </div>
+            </div>
           </SectionCard>
 
           <SectionCard

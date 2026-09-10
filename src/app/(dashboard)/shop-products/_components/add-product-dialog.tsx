@@ -117,9 +117,11 @@ function buildBlankDefaults(): Partial<ShopProductInput> {
     product_id: "",
     sale_price: null,
     cost_price: null,
+    wholesale_price: null,
     low_stock_threshold: 5,
     is_available: true,
     is_featured: false,
+    bulk_order_eligible: true,
   }
 }
 
@@ -140,6 +142,10 @@ function buildDefaultsFromProduct(
       typeof product.sale_price === "number" ? product.sale_price : null,
     cost_price:
       typeof product.cost_price === "number" ? product.cost_price : null,
+    wholesale_price:
+      typeof product.wholesale_price === "number"
+        ? product.wholesale_price
+        : null,
     low_stock_threshold:
       typeof product.low_stock_threshold === "number"
         ? product.low_stock_threshold
@@ -150,6 +156,7 @@ function buildDefaultsFromProduct(
         : undefined,
     is_available: true,
     is_featured: false,
+    bulk_order_eligible: true,
   }
 }
 
@@ -465,11 +472,13 @@ export function AddProductDialog({
         price: values.price,
         sale_price: values.sale_price,
         cost_price: values.cost_price,
+        wholesale_price: values.wholesale_price,
         stock_quantity: values.stock_quantity,
         low_stock_threshold: values.low_stock_threshold,
         max_order_qty: values.max_order_qty,
         is_available: values.is_available,
         is_featured: values.is_featured,
+        bulk_order_eligible: values.bulk_order_eligible,
       })
       onOpenChange(false)
     } catch (err) {
@@ -612,6 +621,15 @@ export function AddProductDialog({
                 name="cost_price"
                 error={errors.cost_price?.message}
               />
+              <NullableNumberField
+                id="add-product-wholesale-price"
+                label="Wholesale price (B2B)"
+                step="0.01"
+                min={0}
+                control={control}
+                name="wholesale_price"
+                error={errors.wholesale_price?.message}
+              />
             </div>
 
             {/* ── Inventory ─────────────────────────────────────────── */}
@@ -670,6 +688,19 @@ export function AddProductDialog({
                     checked={Boolean(field.value)}
                     onCheckedChange={field.onChange}
                     testId="add-product-is-featured"
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="bulk_order_eligible"
+                render={({ field }) => (
+                  <ToggleRow
+                    id="add-product-bulk-order-eligible"
+                    label="Bulk order eligible"
+                    checked={Boolean(field.value)}
+                    onCheckedChange={field.onChange}
+                    testId="add-product-bulk-order-eligible"
                   />
                 )}
               />

@@ -25,6 +25,9 @@ export interface ShopProduct {
   price: number
   sale_price: number | null
   cost_price: number | null
+  /** B2B wholesale override for this shop's listing — falls back to the
+   *  product's own wholesale price (then retail) when null. */
+  wholesale_price: number | null
 
   stock_quantity: number
   low_stock_threshold: number
@@ -32,6 +35,8 @@ export interface ShopProduct {
 
   is_available: boolean
   is_featured: boolean
+  /** Whether this listing can be included in a bulk order at this shop. */
+  bulk_order_eligible: boolean
 
   sold_out_at: string | null
   restock_eta: string | null
