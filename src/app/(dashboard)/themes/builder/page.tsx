@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   BadgePlus,
+  Building2,
   ChevronsLeft,
   ChevronsRight,
   Layers3,
@@ -41,6 +42,21 @@ import TabNavbar from "@/components/builder/TabNavbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   isExistingSectionDrag,
   isInsertSlotDrop,
   isLibrarySectionDrag,
@@ -57,6 +73,7 @@ import ThemePresetPicker from "@/components/builder/ThemePresetPicker"
 import { useUpdateTheme } from "@/hooks/useThemes"
 import {
   useAddSection,
+  useCopySectionsToB2B,
   useDeleteSection,
   useDuplicateSection,
   useReorderSections,
@@ -82,10 +99,16 @@ import type {
   SectionManifest,
   SectionType,
   Theme,
+  ThemeAudience,
   ThemeData,
   ThemeTab,
   UpdateSectionMerchPayload,
 } from "@/types/theme.types"
+
+const AUDIENCE_LABELS: Record<ThemeAudience, string> = {
+  B2C: "B2C (regular storefront)",
+  B2B: "B2B (wholesale storefront)",
+}
 import type { ChromeRegion } from "@/components/builder/chromeRegions"
 
 type BuilderStatus = "Draft" | "Live" | "Scheduled"
@@ -272,6 +295,10 @@ function ThemeBuilderPageContent() {
   const [requestedTabKey, setRequestedTabKey] = useState<string | null>(() =>
     searchParams.get("tab")
   )
+  const [audience, setAudienceState] = useState<ThemeAudience>(() =>
+    searchParams.get("audience") === "B2B" ? "B2B" : "B2C"
+  )
+  const [showCopyToB2BDialog, setShowCopyToB2BDialog] = useState(false)
 
   const { activeStoreKey, setActiveStoreKey, storeConfig } = useStoreContext()
   const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs({
@@ -325,8 +352,8 @@ function ThemeBuilderPageContent() {
     }
   }, [activeStoreKey])
 
-  const sectionsQuery = useSections(activeTabId)
-  const versionsQuery = useSectionVersions(activeTabId)
+  const sectionsQuery = useSections(activeTabId, audience)
+  const versionsQuery = useSectionVersions(activeTabId, audience)
 
   const addSectionMutation = useAddSection()
   const deleteSectionMutation = useDeleteSection()
@@ -335,6 +362,7 @@ function ThemeBuilderPageContent() {
   const updateSectionMerchMutation = useUpdateSectionMerch()
   const duplicateSectionMutation = useDuplicateSection()
   const scheduleSectionLayoutMutation = useScheduleSectionLayout()
+  const copySectionsToB2BMutation = useCopySectionsToB2B()
   const createThemeTabMutation = useCreateThemeTab()
   const updateThemeTabMutation = useUpdateThemeTab()
   const archiveThemeTabMutation = useArchiveThemeTab()
@@ -416,6 +444,7 @@ function ThemeBuilderPageContent() {
     const syncRequestedTabKeyFromHistory = () => {
       const params = new URLSearchParams(window.location.search)
       setRequestedTabKey(params.get("tab"))
+      setAudienceState(params.get("audience") === "B2B" ? "B2B" : "B2C")
     }
 
     window.addEventListener("popstate", syncRequestedTabKeyFromHistory)
@@ -520,13 +549,13 @@ function ThemeBuilderPageContent() {
       const nextTab = themeTabs.find((tab) => tab.id === tabId) ?? null
       const [nextSections, nextVersions] = await Promise.all([
         queryClient.fetchQuery({
-          queryKey: ["sections", tabId],
-          queryFn: () => getSections(tabId),
+          queryKey: ["sections", tabId, audience],
+          queryFn: () => getSections(tabId, audience),
           staleTime: 30_000,
         }),
         queryClient.fetchQuery({
-          queryKey: ["sections", tabId, "versions"],
-          queryFn: () => getSectionVersions(tabId),
+          queryKey: ["sections", tabId, audience, "versions"],
+          queryFn: () => getSectionVersions(tabId, audience),
           staleTime: 30_000,
         }),
       ])
@@ -543,6 +572,59 @@ function ThemeBuilderPageContent() {
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to switch tabs"
+      )
+    } finally {
+      setIsTabSwitching(false)
+    }
+  }
+
+  const handleAudienceChange = async (nextAudience: ThemeAudience) => {
+    if (nextAudience === audience || isTabSwitching) return
+
+    if (
+      isDirty &&
+      !window.confirm("Discard unsaved builder changes and switch audience?")
+    ) {
+      return
+    }
+
+    if (!activeTabId) {
+      setAudienceState(nextAudience)
+      const params = new URLSearchParams(window.location.search)
+      params.set("audience", nextAudience)
+      window.history.replaceState(window.history.state, "", `${pathname}?${params.toString()}`)
+      return
+    }
+
+    setIsTabSwitching(true)
+
+    try {
+      const [nextSections, nextVersions] = await Promise.all([
+        queryClient.fetchQuery({
+          queryKey: ["sections", activeTabId, nextAudience],
+          queryFn: () => getSections(activeTabId, nextAudience),
+          staleTime: 30_000,
+        }),
+        queryClient.fetchQuery({
+          queryKey: ["sections", activeTabId, nextAudience, "versions"],
+          queryFn: () => getSectionVersions(activeTabId, nextAudience),
+          staleTime: 30_000,
+        }),
+      ])
+
+      const params = new URLSearchParams(window.location.search)
+      params.set("audience", nextAudience)
+      window.history.replaceState(window.history.state, "", `${pathname}?${params.toString()}`)
+
+      setAudienceState(nextAudience)
+      resetLocalSections(normalizeBuilderSections(nextSections))
+      setSelectedSectionId(null)
+      setIsDirty(false)
+      setPersistedStatus(derivePersistedStatus(nextVersions[0] ?? null))
+      setVersionNumber(Math.max(1, nextVersions[0]?.version ?? 1))
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to switch audience"
       )
     } finally {
       setIsTabSwitching(false)
@@ -627,6 +709,7 @@ function ThemeBuilderPageContent() {
       visible: true,
       config: deepClone(defaultConfig),
       merch_binding: null,
+      audience,
       created_at: now,
       updated_at: now,
     }
@@ -672,6 +755,7 @@ function ThemeBuilderPageContent() {
       visible: true,
       config: deepClone(defaultConfig),
       merch_binding: null,
+      audience,
       created_at: now,
       updated_at: now,
     }
@@ -964,6 +1048,7 @@ function ThemeBuilderPageContent() {
         await reorderSectionsMutation.mutateAsync({
           tabId: activeTabId,
           payload: { order: finalOrder },
+          audience,
         })
       }
 
@@ -1025,6 +1110,7 @@ function ThemeBuilderPageContent() {
       const scheduledVersion = await scheduleSectionLayoutMutation.mutateAsync({
         tabId: activeTabId,
         payload,
+        audience,
       })
       await versionsQuery.refetch()
       setPersistedStatus("Scheduled")
@@ -1078,6 +1164,7 @@ function ThemeBuilderPageContent() {
           visible: true,
           config: { ...baseConfig, ...(entry.config ?? {}) },
           merch_binding: null,
+          audience,
           created_at: now,
           updated_at: now,
         }
@@ -1434,6 +1521,33 @@ function ThemeBuilderPageContent() {
                 <div className="text-sm font-semibold text-slate-900">
                   {activeTab?.label ?? "Section Builder"}
                 </div>
+                <Select
+                  value={audience}
+                  onValueChange={(value) => handleAudienceChange(value as ThemeAudience)}
+                >
+                  <SelectTrigger className="h-8 w-[220px] rounded-full border-slate-200 bg-slate-50 text-xs">
+                    <SelectValue placeholder="Select audience" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(AUDIENCE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {audience === "B2B" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-full text-xs"
+                    onClick={() => setShowCopyToB2BDialog(true)}
+                  >
+                    <Building2 className="mr-1.5 h-3.5 w-3.5" />
+                    Copy B2C to B2B
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
@@ -1532,6 +1646,59 @@ function ThemeBuilderPageContent() {
         onCreate={handleNewTabCreate}
       />
 
+      <Dialog
+        open={showCopyToB2BDialog}
+        onOpenChange={(open) => !copySectionsToB2BMutation.isPending && setShowCopyToB2BDialog(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy B2C sections to B2B?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  This copies the current B2C section layout for{" "}
+                  <strong className="text-foreground">
+                    {activeTab?.label ?? "this tab"}
+                  </strong>{" "}
+                  into its B2B layout. It only works if this tab has no B2B
+                  sections yet — edit them afterward from the builder like any
+                  other layout.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={copySectionsToB2BMutation.isPending}
+              onClick={() => setShowCopyToB2BDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!activeTabId || copySectionsToB2BMutation.isPending}
+              onClick={() => {
+                if (!activeTabId) return
+                copySectionsToB2BMutation.mutate(activeTabId, {
+                  onSuccess: (copiedSections) => {
+                    setShowCopyToB2BDialog(false)
+                    if (audience === "B2B") {
+                      resetLocalSections(normalizeBuilderSections(copiedSections))
+                      setIsDirty(false)
+                    }
+                  },
+                })
+              }}
+            >
+              {copySectionsToB2BMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Copy to B2B
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="z-40 px-3 pb-3 xl:pointer-events-none xl:absolute xl:inset-x-0 xl:bottom-0 xl:px-4 xl:pb-2">
         <div className="xl:pointer-events-auto">
           <TimelineBar
@@ -1568,6 +1735,7 @@ function ThemeBuilderPageContent() {
               updateSectionMerchMutation.isPending ||
               duplicateSectionMutation.isPending ||
               scheduleSectionLayoutMutation.isPending ||
+              copySectionsToB2BMutation.isPending ||
               updateThemeMutation.isPending
             }
           />

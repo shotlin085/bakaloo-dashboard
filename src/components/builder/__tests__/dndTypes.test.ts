@@ -22,6 +22,7 @@ const makeSection = (
   visible: true,
   config: {},
   merch_binding: null,
+  audience: "B2C",
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 })

@@ -271,6 +271,9 @@ export interface SectionManifest {
   visible: boolean
   config: Record<string, unknown>
   merch_binding: MerchBinding | null
+  /** Which storefront this section belongs to — each tab has an independent
+   *  B2C and B2B section list, edited separately in the Section Builder. */
+  audience: ThemeAudience
   created_at: string
   updated_at: string
 }
@@ -280,6 +283,7 @@ export interface CreateSectionPayload {
   config?: Record<string, unknown>
   visible?: boolean
   merch_binding?: MerchBinding
+  audience?: ThemeAudience
 }
 
 export interface UpdateSectionPayload {

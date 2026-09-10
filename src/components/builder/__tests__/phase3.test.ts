@@ -7,7 +7,7 @@ import type { SectionManifest, ThemeData } from "@/types/theme.types"
 
 const baseSection = (overrides: Partial<SectionManifest> = {}): SectionManifest => ({
   id: "s-1", tab_id: "tab-1", section_type: "spacer", sort_order: 0,
-  visible: true, config: {}, merch_binding: null,
+  visible: true, config: {}, merch_binding: null, audience: "B2C",
   created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
   ...overrides,
 })
