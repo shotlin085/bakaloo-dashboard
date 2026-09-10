@@ -963,6 +963,7 @@ function ThemeBuilderPageContent() {
                     section_type: draftSection.section_type,
                     config: localConfig,
                     visible: draftSection.visible,
+                    audience,
                     ...(localMerchBinding
                       ? { merch_binding: localMerchBinding }
                       : {}),
