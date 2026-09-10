@@ -40,6 +40,7 @@ const INITIAL: CreateBannerPayload & { isActive: boolean } = {
   startDate: "",
   endDate: "",
   triggerType: "ALWAYS",
+  audience: "B2C",
 }
 
 function sanitizeBannerImageUrl(value: string | null | undefined) {
@@ -79,6 +80,7 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
         startDate: banner.start_date ? banner.start_date.slice(0, 16) : "",
         endDate: banner.end_date ? banner.end_date.slice(0, 16) : "",
         triggerType: banner.trigger_type ?? "ALWAYS",
+        audience: banner.audience ?? "B2C",
       })
     } else {
       setForm(INITIAL)
@@ -100,6 +102,7 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
       startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
       endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
       triggerType: form.triggerType,
+      audience: form.audience,
     }
 
     if (isEdit && banner) {
@@ -155,23 +158,44 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
             </Select>
           </div>
 
-          {/* Show */}
-          <div className="space-y-1.5">
-            <Label>Show</Label>
-            <Select
-              value={form.triggerType ?? "ALWAYS"}
-              onValueChange={(v) =>
-                setForm({ ...form, triggerType: v as CreateBannerPayload["triggerType"] })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALWAYS">Always</SelectItem>
-                <SelectItem value="STORE_CLOSED">Only when store is closed</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Show + Audience */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Show</Label>
+              <Select
+                value={form.triggerType ?? "ALWAYS"}
+                onValueChange={(v) =>
+                  setForm({ ...form, triggerType: v as CreateBannerPayload["triggerType"] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALWAYS">Always</SelectItem>
+                  <SelectItem value="STORE_CLOSED">Only when store is closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Audience</Label>
+              <Select
+                value={form.audience ?? "B2C"}
+                onValueChange={(v) =>
+                  setForm({ ...form, audience: v as CreateBannerPayload["audience"] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B2C">B2C</SelectItem>
+                  <SelectItem value="B2B">B2B</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Banner Image */}

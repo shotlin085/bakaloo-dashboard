@@ -136,6 +136,14 @@ function SortableBannerCard({
                 When closed
               </Badge>
             )}
+            {banner.audience && banner.audience !== "B2C" && (
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-violet-50 border-violet-200 text-violet-700"
+              >
+                {banner.audience === "ALL" ? "B2C + B2B" : "B2B only"}
+              </Badge>
+            )}
           </div>
           {/* Drag handle + Actions overlay */}
           <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

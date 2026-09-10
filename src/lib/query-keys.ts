@@ -115,6 +115,17 @@ export const qk = {
   refundRequests: (params: ListParams) => ["refund-requests", "list", params] as const,
   refundRequest: (id: string) => ["refund-requests", "detail", id] as const,
 
+  // ── Business Accounts (platform-wide, NOT shop-scoped — a business
+  //    account belongs to a customer, not a shop) ─────────────────────────
+  businessAccounts: (params: ListParams) => ["business-accounts", "list", params] as const,
+  businessAccount: (id: string) => ["business-accounts", "detail", id] as const,
+
+  // ── B2B Ledger (platform-wide, NOT shop-scoped — a customer's credit
+  //    line is the same regardless of which shop is active) ───────────────
+  ledgerAccounts: (params: ListParams) => ["ledger", "list", params] as const,
+  ledgerAccount: (id: string) => ["ledger", "detail", id] as const,
+  ledgerCycles: (id: string, params: ListParams) => ["ledger", "cycles", id, params] as const,
+
   // ── Shops_Management_UI ──────────────────────────────────────────────────
   shops: (params: ListParams) => ["shops", "list", params] as const,
   shop: (id: string) => ["shops", "detail", id] as const,

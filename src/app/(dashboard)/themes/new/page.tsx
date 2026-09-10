@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Layers3, Loader2, Sparkles } from "lucide-react"
+import { ArrowLeft, Building2, Layers3, Loader2, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ import {
 import { DEFAULT_THEME_DATA, cloneThemeData } from "@/components/themes/ThemeEditorForm"
 import { useThemeTabs } from "@/hooks/useThemeTabs"
 import { useCreateTheme } from "@/hooks/useThemes"
-import type { ABVariant, ThemeStoreKey, ThemeTab } from "@/types/theme.types"
+import type { ABVariant, ThemeAudience, ThemeStoreKey, ThemeTab } from "@/types/theme.types"
 import { PageHeader } from "@/components/shared/PageHeader"
 
 const STORE_LABELS: Record<ThemeStoreKey, string> = {
@@ -33,6 +33,11 @@ const STORE_LABELS: Record<ThemeStoreKey, string> = {
   off_zone: "50% OFF ZONE",
   super_mall: "Super Mall",
   cafe: "Cafe",
+}
+
+const AUDIENCE_LABELS: Record<ThemeAudience, string> = {
+  B2C: "B2C (regular storefront)",
+  B2B: "B2B (wholesale storefront)",
 }
 
 export default function NewThemePage() {
@@ -45,6 +50,7 @@ export default function NewThemePage() {
   const [tabId, setTabId] = useState<string | null>(null)
   const [abVariant, setAbVariant] = useState<ABVariant>("A")
   const [abSplitPercent, setAbSplitPercent] = useState(100)
+  const [audience, setAudience] = useState<ThemeAudience>("B2C")
 
   const filteredTabs = useMemo(
     () =>
@@ -73,6 +79,7 @@ export default function NewThemePage() {
         status: "draft",
         ab_variant: abVariant,
         ab_split_percent: abSplitPercent,
+        audience,
       },
       {
         onSuccess: (created) => {
@@ -215,6 +222,44 @@ export default function NewThemePage() {
               </Link>
               .
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Audience Card */}
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Audience</CardTitle>
+                <CardDescription className="text-xs">
+                  Which storefront sees this theme — B2C and B2B can each have
+                  their own active theme for the same tab
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Audience</Label>
+              <Select
+                value={audience}
+                onValueChange={(value) => setAudience(value as ThemeAudience)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(AUDIENCE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 

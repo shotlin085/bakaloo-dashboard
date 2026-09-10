@@ -1,3 +1,6 @@
+/** Which storefront audience sees a banner. 'ALL' shows to everyone. */
+export type BannerAudience = "B2C" | "B2B" | "ALL"
+
 /** Banner entity — snake_case (backend returns raw DB rows) */
 export interface Banner {
   id: string
@@ -12,6 +15,7 @@ export interface Banner {
   end_date: string | null
   /** 'ALWAYS' (default) shows regardless of store status; 'STORE_CLOSED' shows only while the store is closed. */
   trigger_type: "ALWAYS" | "STORE_CLOSED"
+  audience: BannerAudience
   created_at: string
   updated_at: string
 }
@@ -27,6 +31,7 @@ export interface CreateBannerPayload {
   startDate?: string
   endDate?: string
   triggerType?: "ALWAYS" | "STORE_CLOSED"
+  audience?: BannerAudience
 }
 
 /** Update banner payload */

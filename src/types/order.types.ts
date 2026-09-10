@@ -91,6 +91,11 @@ export interface Order {
   scheduled_delivery_at?: string | null
   /** Derived server-side from delivery_mode + quick_delivery_selected. */
   order_type?: OrderType
+  /** Snapshotted at checkout whenever the ordering customer had an APPROVED
+   *  business account — independent of whether this particular order priced
+   *  at wholesale. Null for a B2C order. */
+  buyer_gstin?: string | null
+  buyer_company_name?: string | null
 }
 
 /** An internal, staff-only note on an order — a running CRM-style thread. */
@@ -291,6 +296,9 @@ export interface OrderFilters {
    *  / FAILED / EXPIRED / REFUNDED) — e.g. to find all FAILED orders for a
    *  historical bulk re-check, independent of order fulfillment status. */
   paymentStatus?: string
+  /** Orders that snapshotted a buyer GSTIN at checkout (an approved B2B
+   *  customer) — the B2B Orders / GST & Invoices page's filter. */
+  isB2B?: boolean
 }
 
 /** Status update payload */

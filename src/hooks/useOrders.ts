@@ -15,6 +15,7 @@ import {
   rescheduleOrder,
   bulkUpdateStatus,
   downloadPackingSlip,
+  downloadTaxInvoice,
   resyncOrderPayment,
   getRazorpayDetails,
   bulkReconcilePayments,
@@ -322,5 +323,20 @@ export function useDownloadPackingSlip() {
       URL.revokeObjectURL(url)
     },
     onError: () => toast.error("Failed to download packing slip"),
+  })
+}
+
+export function useDownloadTaxInvoice() {
+  return useMutation({
+    mutationFn: (orderId: string) => downloadTaxInvoice(orderId),
+    onSuccess: (blob, orderId) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `tax-invoice-${orderId}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: () => toast.error("Failed to download tax invoice"),
   })
 }

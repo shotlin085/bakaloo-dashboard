@@ -73,6 +73,7 @@ import { useThemeTabs } from "@/hooks/useThemeTabs"
 import { formatDateTime, formatRelativeTime } from "@/lib/utils"
 import type {
   Theme,
+  ThemeAudience,
   ThemeStatus,
   ThemeStoreKey,
 } from "@/types/theme.types"
@@ -112,6 +113,17 @@ const storeLabelMap: Record<ThemeStoreKey, string> = {
   off_zone: "50% OFF Zone",
   super_mall: "Super Mall",
   cafe: "Cafe",
+}
+
+const audienceOptions: Array<{ value: "all" | ThemeAudience; label: string }> = [
+  { value: "all", label: "All audiences" },
+  { value: "B2C", label: "B2C" },
+  { value: "B2B", label: "B2B" },
+]
+
+const audienceLabelMap: Record<ThemeAudience, string> = {
+  B2C: "B2C",
+  B2B: "B2B",
 }
 
 function formatDateTimeLocalValue(value: string | null) {
@@ -178,6 +190,7 @@ function ThemeListContent() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [storeFilter, setStoreFilter] = useState<"all" | ThemeStoreKey>("all")
   const [tabFilter, setTabFilter] = useState("all")
+  const [audienceFilter, setAudienceFilter] = useState<"all" | ThemeAudience>("all")
 
   const tabOptions = useMemo(() => {
     const visibleTabs = (themeTabs ?? [])
@@ -203,6 +216,7 @@ function ThemeListContent() {
         if (storeFilter !== "all" && theme.store_key !== storeFilter) return false
         if (statusFilter !== "all" && theme.status !== statusFilter) return false
         if (tabFilter !== "all" && theme.tab_id !== tabFilter) return false
+        if (audienceFilter !== "all" && theme.audience !== audienceFilter) return false
         return true
       })
       .sort((a, b) => {
@@ -221,10 +235,13 @@ function ThemeListContent() {
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         )
       })
-  }, [storeFilter, statusFilter, tabFilter, themes])
+  }, [storeFilter, statusFilter, tabFilter, audienceFilter, themes])
 
   const hasFilters =
-    statusFilter !== "all" || tabFilter !== "all" || storeFilter !== "all"
+    statusFilter !== "all" ||
+    tabFilter !== "all" ||
+    storeFilter !== "all" ||
+    audienceFilter !== "all"
 
   const handleActivate = (theme: Theme) => {
     if (theme.is_active) return
@@ -265,6 +282,7 @@ function ThemeListContent() {
         ab_variant: "B",
         ab_split_percent:
           theme.ab_split_percent >= 100 ? 50 : theme.ab_split_percent,
+        audience: theme.audience,
       },
       {
         onSuccess: (createdTheme) => router.push(`/themes/${createdTheme.id}`),
@@ -292,6 +310,7 @@ function ThemeListContent() {
     setStatusFilter("all")
     setStoreFilter("all")
     setTabFilter("all")
+    setAudienceFilter("all")
   }
 
   const handleStoreFilterChange = (value: "all" | ThemeStoreKey) => {
@@ -486,6 +505,22 @@ function ThemeListContent() {
                       )
                     })}
                   </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {audienceOptions.map((option) => {
+                      const active = audienceFilter === option.value
+                      return (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          variant={active ? "default" : "outline"}
+                          onClick={() => setAudienceFilter(option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -521,6 +556,7 @@ function ThemeListContent() {
                           <TableRow>
                             <TableHead>Name</TableHead>
                             <TableHead>Store</TableHead>
+                            <TableHead>Audience</TableHead>
                             <TableHead>Tab</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Version</TableHead>
@@ -565,6 +601,18 @@ function ThemeListContent() {
                                     -
                                   </span>
                                 )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    theme.audience === "B2B"
+                                      ? "border-violet-200 bg-violet-50 text-violet-700"
+                                      : undefined
+                                  }
+                                >
+                                  {audienceLabelMap[theme.audience ?? "B2C"]}
+                                </Badge>
                               </TableCell>
                               <TableCell>
                                 {theme.tab_key ? (
@@ -644,6 +692,16 @@ function ThemeListContent() {
                               ) : (
                                 <Badge variant="outline">No store</Badge>
                               )}
+                              <Badge
+                                variant="outline"
+                                className={
+                                  theme.audience === "B2B"
+                                    ? "border-violet-200 bg-violet-50 text-violet-700"
+                                    : undefined
+                                }
+                              >
+                                {audienceLabelMap[theme.audience ?? "B2C"]}
+                              </Badge>
                               {theme.tab_key ? (
                                 <Badge variant="outline" className="capitalize">
                                   {theme.tab_label ?? theme.tab_key}

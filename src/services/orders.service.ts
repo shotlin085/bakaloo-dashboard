@@ -33,6 +33,7 @@ export async function getOrders(filters: OrderFilters = {}) {
   if (filters.minAmount != null) params.minAmount = filters.minAmount
   if (filters.maxAmount != null) params.maxAmount = filters.maxAmount
   if (filters.area) params.area = filters.area
+  if (filters.isB2B) params.isB2B = "true"
 
   const { data } = await api.get<
     ApiResponse<{
@@ -203,6 +204,14 @@ export async function bulkUpdateStatus(
 /** Download packing slip PDF */
 export async function downloadPackingSlip(orderId: string) {
   const response = await api.get(`/admin/orders/${orderId}/packing-slip`, {
+    responseType: "blob",
+  })
+  return response.data
+}
+
+/** Download A4 GST tax invoice PDF (buyer GSTIN/company snapshotted at checkout) */
+export async function downloadTaxInvoice(orderId: string) {
+  const response = await api.get(`/admin/orders/${orderId}/tax-invoice`, {
     responseType: "blob",
   })
   return response.data

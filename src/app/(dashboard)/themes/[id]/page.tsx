@@ -49,6 +49,7 @@ import {
 } from "@/hooks/useThemes"
 import type {
   ABVariant,
+  ThemeAudience,
   ThemeStatus,
   ThemeStoreKey,
   ThemeTab,
@@ -60,6 +61,11 @@ const STORE_LABELS: Record<ThemeStoreKey, string> = {
   off_zone: "50% OFF ZONE",
   super_mall: "Super Mall",
   cafe: "Cafe",
+}
+
+const AUDIENCE_LABELS: Record<ThemeAudience, string> = {
+  B2C: "B2C (regular storefront)",
+  B2B: "B2B (wholesale storefront)",
 }
 
 const STATUS_LABELS: Record<ThemeStatus, string> = {
@@ -112,6 +118,7 @@ function EditThemePageContent() {
   const [status, setStatus] = useState<ThemeStatus>("draft")
   const [abVariant, setAbVariant] = useState<ABVariant>("A")
   const [abSplitPercent, setAbSplitPercent] = useState(100)
+  const [audience, setAudience] = useState<ThemeAudience>("B2C")
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
@@ -125,6 +132,7 @@ function EditThemePageContent() {
     setStatus(theme.status)
     setAbVariant(theme.ab_variant)
     setAbSplitPercent(theme.ab_split_percent)
+    setAudience(theme.audience ?? "B2C")
     setScheduledAt(theme.scheduled_at)
     setExpiresAt(theme.expires_at)
     setIsDirty(false)
@@ -159,6 +167,7 @@ function EditThemePageContent() {
       expires_at: expiresAt,
       ab_variant: abVariant,
       ab_split_percent: abSplitPercent,
+      audience,
     }
     updateThemeMutation.mutate(
       { id: themeId, payload },
@@ -327,6 +336,28 @@ function EditThemePageContent() {
                   {filteredTabs.map((tab: ThemeTab) => (
                     <SelectItem key={tab.id} value={tab.id}>
                       {tab.label} ({tab.key})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Audience</Label>
+              <Select
+                value={audience}
+                onValueChange={(value) => {
+                  setAudience(value as ThemeAudience)
+                  markDirty()
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(AUDIENCE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -87,6 +87,8 @@ export type ThemeStatus = "draft" | "active" | "scheduled" | "archived"
 export type ABVariant = "A" | "B"
 export type ThemeStoreKey = "zepto" | "off_zone" | "super_mall" | "cafe"
 export type ThemeTabStatus = "active" | "archived"
+/** B2C/B2B storefront split — one active theme per audience, per (tab, variant). */
+export type ThemeAudience = "B2C" | "B2B"
 
 export interface MerchSectionConfig {
   category_ids: string[]
@@ -152,6 +154,7 @@ export interface Theme {
   base_theme_id: string | null
   ab_variant: ABVariant
   ab_split_percent: number
+  audience: ThemeAudience
   version: number
   etag: string | null
   created_at: string
@@ -169,6 +172,7 @@ export interface CreateThemePayload {
   status?: ThemeStatus
   ab_variant?: ABVariant
   ab_split_percent?: number
+  audience?: ThemeAudience
 }
 
 export interface UpdateThemePayload {
@@ -184,6 +188,7 @@ export interface UpdateThemePayload {
   expires_at?: string | null
   ab_variant?: ABVariant
   ab_split_percent?: number
+  audience?: ThemeAudience
 }
 
 export interface ThemeVersion {

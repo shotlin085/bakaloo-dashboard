@@ -63,6 +63,7 @@ import {
   ChevronDown,
   ChevronUp,
   Landmark,
+  Receipt,
 } from "lucide-react"
 import {
   useOrderDetail,
@@ -72,6 +73,7 @@ import {
   useCancelOrder,
   useRescheduleOrder,
   useDownloadPackingSlip,
+  useDownloadTaxInvoice,
   useOrderNotes,
   useAddOrderNote,
   useResyncPayment,
@@ -125,6 +127,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   } = useRazorpayDetails(order?.id ?? null, showRazorpayDetails)
   const rescheduleOrder = useRescheduleOrder()
   const downloadPacking = useDownloadPackingSlip()
+  const downloadTaxInvoice = useDownloadTaxInvoice()
   const { data: notes, isLoading: notesLoading } = useOrderNotes(orderId)
   const addOrderNote = useAddOrderNote()
   const [noteDraft, setNoteDraft] = useState("")
@@ -323,6 +326,16 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     >
                       <FileText className="h-3.5 w-3.5 mr-1" />
                       Invoice
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => downloadTaxInvoice.mutate(order.id)}
+                      disabled={downloadTaxInvoice.isPending}
+                    >
+                      <Receipt className="h-3.5 w-3.5 mr-1" />
+                      Tax Invoice
                     </Button>
                   </div>
                 </div>
