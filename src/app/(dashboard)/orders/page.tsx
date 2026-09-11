@@ -828,7 +828,18 @@ function OrdersContent() {
                       />
                     </TableCell>
                     <TableCell className="font-medium text-sm">
-                      #{order.order_number}
+                      <div className="flex items-center gap-1.5">
+                        #{order.order_number}
+                        {order.buyer_gstin && (
+                          <Badge
+                            variant="secondary"
+                            className="rounded-full bg-violet-100 px-1.5 py-0 text-[10px] font-semibold text-violet-700 hover:bg-violet-100"
+                            title={order.buyer_company_name ?? undefined}
+                          >
+                            B2B
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div>
