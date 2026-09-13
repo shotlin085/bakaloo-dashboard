@@ -100,7 +100,7 @@ export default function B2BOrdersPage() {
             </TableHeader>
             <TableBody>
               {orders.map((order) => {
-                const settled = order.b2b_amount_settled ?? 0
+                const settled = Number(order.b2b_amount_settled ?? 0)
                 const isPending = order.b2b_approval_status === "PENDING"
                 return (
                   <TableRow

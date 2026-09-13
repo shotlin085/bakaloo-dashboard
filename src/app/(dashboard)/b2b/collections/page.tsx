@@ -79,7 +79,7 @@ export default function B2BCollectionsPage() {
             <TableBody>
               {orders.map((order) => {
                 const total = Number(order.total_amount)
-                const settled = order.b2b_amount_settled ?? 0
+                const settled = Number(order.b2b_amount_settled ?? 0)
                 const pending = Math.max(0, total - settled)
                 return (
                   <TableRow key={order.id}>
@@ -123,7 +123,7 @@ export default function B2BCollectionsPage() {
 
 function CollectDialog({ order, onClose }: { order: B2BOrder | null; onClose: () => void }) {
   const total = order ? Number(order.total_amount) : 0
-  const settled = order?.b2b_amount_settled ?? 0
+  const settled = Number(order?.b2b_amount_settled ?? 0)
   const remaining = Math.max(0, total - settled)
 
   return (

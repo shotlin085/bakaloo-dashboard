@@ -42,8 +42,8 @@ export function B2BApprovalSection({ order }: { order: OrderDetail }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const isPending = order.b2b_approval_status === "PENDING"
-  const totalAmount = order.total_amount
-  const settled = order.b2b_amount_settled ?? 0
+  const totalAmount = Number(order.total_amount)
+  const settled = Number(order.b2b_amount_settled ?? 0)
   const remaining = Math.max(0, totalAmount - settled)
   const isFullySettled = remaining <= 0.01
 
