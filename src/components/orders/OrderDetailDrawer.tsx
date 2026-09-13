@@ -281,7 +281,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
             ) : (
               <>
                 {/* Status + Actions */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     variant="outline"
                     className="text-xs px-2.5 py-1 border-0 font-medium"
@@ -312,7 +312,7 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     </Select>
                   )}
 
-                  <div className="ml-auto flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <Button
                       variant="outline"
                       size="sm"
