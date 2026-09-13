@@ -8,15 +8,6 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -33,9 +24,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { useB2BOrders, useRecordB2BSettlement } from "@/hooks/useOrders"
+import { useB2BOrders } from "@/hooks/useOrders"
 import { formatDateTime } from "@/lib/utils"
-import type { B2BOrder, B2BSettlementMethod } from "@/types"
+import { B2BSettlementEntryForm } from "@/components/orders/B2BSettlementEntryForm"
+import { B2BPaymentDueDateField } from "@/components/orders/B2BPaymentDueDateField"
+import type { B2BOrder } from "@/types"
 
 /**
  * B2B Collections — every APPROVED "Place Order" credit order that still
@@ -78,6 +71,7 @@ export default function B2BCollectionsPage() {
                 <TableHead>Order Total</TableHead>
                 <TableHead>Collected</TableHead>
                 <TableHead>Pending</TableHead>
+                <TableHead>Payment Due</TableHead>
                 <TableHead>Placed</TableHead>
                 <TableHead className="w-[1%]" />
               </TableRow>
@@ -102,6 +96,9 @@ export default function B2BCollectionsPage() {
                         ₹{pending.toFixed(2)} pending
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-xs">
+                      <B2BPaymentDueDateField orderId={order.id} dueDate={order.b2b_payment_due_date} compact />
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(order.created_at)}
                     </TableCell>
@@ -125,41 +122,9 @@ export default function B2BCollectionsPage() {
 }
 
 function CollectDialog({ order, onClose }: { order: B2BOrder | null; onClose: () => void }) {
-  const recordSettlement = useRecordB2BSettlement()
-  const [method, setMethod] = useState<B2BSettlementMethod>("CASH")
-  const [amount, setAmount] = useState("")
-  const [note, setNote] = useState("")
-
   const total = order ? Number(order.total_amount) : 0
   const settled = order?.b2b_amount_settled ?? 0
   const remaining = Math.max(0, total - settled)
-
-  const parsedAmount = Number(amount)
-  const canSubmit =
-    !!order &&
-    Number.isFinite(parsedAmount) &&
-    parsedAmount > 0 &&
-    parsedAmount <= remaining + 0.01 &&
-    !recordSettlement.isPending
-
-  const reset = () => {
-    setMethod("CASH")
-    setAmount("")
-    setNote("")
-  }
-
-  const handleSubmit = () => {
-    if (!order || !canSubmit) return
-    recordSettlement.mutate(
-      { orderId: order.id, payload: { method, amount: parsedAmount, note: note.trim() || undefined } },
-      {
-        onSuccess: () => {
-          reset()
-          onClose()
-        },
-      }
-    )
-  }
 
   return (
     <Dialog open={!!order} onOpenChange={(open) => !open && onClose()}>
@@ -167,53 +132,16 @@ function CollectDialog({ order, onClose }: { order: B2BOrder | null; onClose: ()
         <DialogHeader>
           <DialogTitle>Record collection — {order?.order_number}</DialogTitle>
           <DialogDescription>
-            ₹{remaining.toFixed(2)} pending of ₹{total.toFixed(2)} order total.
-            You can record this across multiple visits — e.g. part cash, part online.
+            ₹{remaining.toFixed(2)} pending of ₹{total.toFixed(2)} order total. You can split this
+            across methods (e.g. part UPI, part cash) — add another row for each.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={method} onValueChange={(v) => setMethod(v as B2BSettlementMethod)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="ONLINE">Online</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Amount (₹)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={remaining}
-                step="0.01"
-                placeholder={`Up to ₹${remaining.toFixed(2)}`}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Note (optional)</Label>
-            <Input
-              placeholder="e.g. UPI reference"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-        </div>
+        {order && (
+          <B2BSettlementEntryForm orderId={order.id} remaining={remaining} onSuccess={onClose} />
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
-          </Button>
-          <Button disabled={!canSubmit} onClick={handleSubmit}>
-            {recordSettlement.isPending ? "Recording..." : "Record Collection"}
           </Button>
         </DialogFooter>
       </DialogContent>

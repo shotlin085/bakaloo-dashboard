@@ -54,7 +54,6 @@ export interface Order {
   created_at: string
   updated_at: string
   wallet_amount_used?: number
-  ledger_amount_used?: number
   /**
    * Set only for a "Place Order" B2B credit order (payment_method
    * 'B2B_CREDIT') — null for every other order. 'PENDING' until an admin
@@ -67,6 +66,8 @@ export interface Order {
   b2b_approved_at?: string | null
   /** Running total of order_b2b_settlements recorded against this order. */
   b2b_amount_settled?: number
+  /** Date the customer promised to pay by (admin-set, purely informational). */
+  b2b_payment_due_date?: string | null
   // Joined fields from list API
   customer_name?: string
   customer_phone?: string
@@ -360,15 +361,13 @@ export interface BulkStatusPayload {
 // ── B2B "Place Order" ────────────────────────────────────────────────
 
 /** A B2B credit order as listed on the /b2b/orders page — Order plus the
- *  customer's ledger account fields, joined server-side. */
+ *  customer's company name, joined server-side. Place Order has no credit
+ *  limit/balance concept, so there's nothing else to show here. */
 export interface B2BOrder extends Order {
   company_name: string | null
-  monthly_credit_limit: number | null
-  hard_limit: number | null
-  current_balance: number | null
 }
 
-export type B2BSettlementMethod = "CASH" | "ONLINE" | "OTHER"
+export type B2BSettlementMethod = "CASH" | "UPI" | "RAZORPAY" | "OTHER"
 
 /** One manually-recorded payment-collection entry against a B2B order. */
 export interface B2BSettlement {
@@ -384,12 +383,19 @@ export interface B2BSettlement {
 
 export interface B2BOrderDetail extends OrderDetail {
   settlements: B2BSettlement[]
+  company_name: string | null
+  gst_number: string | null
 }
 
 export interface RecordB2BSettlementPayload {
   method: B2BSettlementMethod
   amount: number
   note?: string
+}
+
+export interface SetB2BPaymentDueDatePayload {
+  /** ISO date string (YYYY-MM-DD), or null to clear it. */
+  dueDate: string | null
 }
 
 export interface B2BOrderFilters {

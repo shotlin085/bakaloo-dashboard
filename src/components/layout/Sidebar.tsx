@@ -248,7 +248,6 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { label: "Applications", href: "/b2b/applications", icon: "Briefcase" },
       { label: "Orders", href: "/b2b/orders", icon: "ClipboardList" },
       { label: "Collections", href: "/b2b/collections", icon: "Receipt" },
-      { label: "Financial", href: "/b2b/financial", icon: "Landmark" },
       { label: "GST & Invoices", href: "/b2b/gst", icon: "FileSpreadsheet" },
     ],
   },

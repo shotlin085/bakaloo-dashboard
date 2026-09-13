@@ -23,8 +23,9 @@ import {
   getB2BOrderDetail,
   approveB2BOrder,
   recordB2BSettlement,
+  setB2BPaymentDueDate,
 } from "@/services/orders.service"
-import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload, B2BOrderFilters, RecordB2BSettlementPayload } from "@/types"
+import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload, B2BOrderFilters, RecordB2BSettlementPayload, SetB2BPaymentDueDatePayload } from "@/types"
 import { toast } from "sonner"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
@@ -387,5 +388,18 @@ export function useRecordB2BSettlement() {
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (err: Error) => toast.error(err.message || "Failed to record settlement"),
+  })
+}
+
+export function useSetB2BPaymentDueDate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, payload }: { orderId: string; payload: SetB2BPaymentDueDatePayload }) =>
+      setB2BPaymentDueDate(orderId, payload),
+    onSuccess: (_data, variables) => {
+      toast.success(variables.payload.dueDate ? "Payment due date set" : "Payment due date cleared")
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to update payment due date"),
   })
 }

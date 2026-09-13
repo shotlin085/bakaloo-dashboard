@@ -56,6 +56,7 @@ export type {
   B2BSettlementMethod,
   B2BOrderDetail,
   RecordB2BSettlementPayload,
+  SetB2BPaymentDueDatePayload,
   B2BOrderFilters,
 } from "./order.types"
 export type {

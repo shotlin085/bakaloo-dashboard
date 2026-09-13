@@ -17,6 +17,7 @@ import type {
   B2BOrderDetail,
   B2BOrderFilters,
   RecordB2BSettlementPayload,
+  SetB2BPaymentDueDatePayload,
 } from "@/types"
 
 /** List orders with filters + pagination */
@@ -259,6 +260,18 @@ export async function recordB2BSettlement(
 ): Promise<OrderDetail> {
   const { data } = await api.post<ApiResponse<OrderDetail>>(
     `/admin/orders/b2b/${orderId}/settlements`,
+    payload
+  )
+  return data.data
+}
+
+/** Set (or clear, passing dueDate: null) the date a B2B customer promised to pay by */
+export async function setB2BPaymentDueDate(
+  orderId: string,
+  payload: SetB2BPaymentDueDatePayload
+): Promise<OrderDetail> {
+  const { data } = await api.put<ApiResponse<OrderDetail>>(
+    `/admin/orders/b2b/${orderId}/due-date`,
     payload
   )
   return data.data

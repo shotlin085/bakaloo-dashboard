@@ -88,14 +88,14 @@ const TOGGLES: ToggleConfig[] = [
   {
     key: "ledger_enabled",
     icon: Landmark,
-    label: "B2B Ledger",
-    description: "B2B credit line — the ledger toggle and “Place Order” button on B2B checkout.",
-    enableTitle: "Enable B2B Ledger?",
+    label: "B2B Place Order",
+    description: "Lets approved B2B customers place an order on credit, with no order-size limit.",
+    enableTitle: "Enable B2B Place Order?",
     enableBody:
-      "B2B customers with an active credit line will see the ledger toggle and “Place Order” button at checkout again.",
-    disableTitle: "Disable B2B Ledger?",
+      "Approved, B2B-enabled customers will see the “Place Order” button at checkout again.",
+    disableTitle: "Disable B2B Place Order?",
     disableBody:
-      "The ledger toggle and “Place Order” button will be hidden from every B2B customer's checkout immediately, regardless of their individual credit line status. They'll need to pay online instead.",
+      "The “Place Order” button will be hidden from every B2B customer's checkout immediately, regardless of their individual account approval. They'll need to pay online instead.",
   },
 ]
 

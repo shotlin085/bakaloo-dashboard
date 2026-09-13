@@ -84,8 +84,7 @@ const VALID_LIMITS = [20, 50, 100]
 function estimateRefundAmount(request: RefundRequest): number {
   const paidAmount =
     Number(request.total_amount) -
-    Number(request.wallet_amount_used || 0) -
-    Number(request.ledger_amount_used || 0)
+    Number(request.wallet_amount_used || 0)
   if (request.item_scope === "ALL") {
     return paidAmount
   }
