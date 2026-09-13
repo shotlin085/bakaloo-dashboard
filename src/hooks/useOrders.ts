@@ -19,8 +19,12 @@ import {
   resyncOrderPayment,
   getRazorpayDetails,
   bulkReconcilePayments,
+  getB2BOrders,
+  getB2BOrderDetail,
+  approveB2BOrder,
+  recordB2BSettlement,
 } from "@/services/orders.service"
-import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload } from "@/types"
+import type { OrderFilters, UpdateOrderStatusPayload, AssignRiderPayload, RefundOrderPayload, CancelOrderPayload, RescheduleOrderPayload, BulkStatusPayload, B2BOrderFilters, RecordB2BSettlementPayload } from "@/types"
 import { toast } from "sonner"
 import { useShopContext } from "@/hooks/useShopContext"
 import { qk } from "@/lib/query-keys"
@@ -338,5 +342,50 @@ export function useDownloadTaxInvoice() {
       URL.revokeObjectURL(url)
     },
     onError: () => toast.error("Failed to download tax invoice"),
+  })
+}
+
+// ── B2B "Place Order" ────────────────────────────────────────────────
+
+export function useB2BOrders(filters: B2BOrderFilters) {
+  return useQuery({
+    queryKey: ["orders", "b2b", filters],
+    queryFn: () => getB2BOrders(filters),
+    staleTime: 15 * 1000,
+    placeholderData: (prev) => prev,
+  })
+}
+
+export function useB2BOrderDetail(orderId: string | null) {
+  return useQuery({
+    queryKey: ["orders", "b2b", "detail", orderId],
+    queryFn: () => getB2BOrderDetail(orderId!),
+    enabled: !!orderId,
+    staleTime: 10 * 1000,
+  })
+}
+
+export function useApproveB2BOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderId: string) => approveB2BOrder(orderId),
+    onSuccess: () => {
+      toast.success("Order approved — stock deducted and order confirmed")
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to approve order"),
+  })
+}
+
+export function useRecordB2BSettlement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, payload }: { orderId: string; payload: RecordB2BSettlementPayload }) =>
+      recordB2BSettlement(orderId, payload),
+    onSuccess: () => {
+      toast.success("Settlement recorded")
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (err: Error) => toast.error(err.message || "Failed to record settlement"),
   })
 }

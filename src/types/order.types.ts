@@ -53,6 +53,20 @@ export interface Order {
   delivered_at: string | null
   created_at: string
   updated_at: string
+  wallet_amount_used?: number
+  ledger_amount_used?: number
+  /**
+   * Set only for a "Place Order" B2B credit order (payment_method
+   * 'B2B_CREDIT') — null for every other order. 'PENDING' until an admin
+   * approves it (stock deduction and rider assignment are both deferred
+   * until then), 'APPROVED' after. See the dedicated B2B Orders page
+   * (/b2b/orders) for the approval/settlement UI.
+   */
+  b2b_approval_status?: 'PENDING' | 'APPROVED' | null
+  b2b_approved_by?: string | null
+  b2b_approved_at?: string | null
+  /** Running total of order_b2b_settlements recorded against this order. */
+  b2b_amount_settled?: number
   // Joined fields from list API
   customer_name?: string
   customer_phone?: string
@@ -341,4 +355,45 @@ export interface BulkStatusPayload {
   orderIds: string[]
   status: OrderStatus
   note?: string
+}
+
+// ── B2B "Place Order" ────────────────────────────────────────────────
+
+/** A B2B credit order as listed on the /b2b/orders page — Order plus the
+ *  customer's ledger account fields, joined server-side. */
+export interface B2BOrder extends Order {
+  company_name: string | null
+  monthly_credit_limit: number | null
+  hard_limit: number | null
+  current_balance: number | null
+}
+
+export type B2BSettlementMethod = "CASH" | "ONLINE" | "OTHER"
+
+/** One manually-recorded payment-collection entry against a B2B order. */
+export interface B2BSettlement {
+  id: string
+  order_id: string
+  method: B2BSettlementMethod
+  amount: number
+  note: string | null
+  recorded_by: string | null
+  recorded_by_name: string | null
+  created_at: string
+}
+
+export interface B2BOrderDetail extends OrderDetail {
+  settlements: B2BSettlement[]
+}
+
+export interface RecordB2BSettlementPayload {
+  method: B2BSettlementMethod
+  amount: number
+  note?: string
+}
+
+export interface B2BOrderFilters {
+  page?: number
+  limit?: number
+  status?: "PENDING" | "APPROVED"
 }

@@ -40,13 +40,15 @@ export const ORDER_TYPE_CONFIG: Record<
   STANDARD: { label: "Standard", bg: "#E0F2FE", text: "#0284C7", icon: "●" },
 }
 
-export const PAYMENT_METHODS = ["COD", "ONLINE", "WALLET", "MANUAL"] as const
+export const PAYMENT_METHODS = ["COD", "ONLINE", "WALLET", "LEDGER", "B2B_CREDIT", "MANUAL"] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   COD: "Cash on Delivery",
   ONLINE: "Online (Razorpay)",
   WALLET: "Wallet",
+  LEDGER: "B2B Ledger",
+  B2B_CREDIT: "Place Order (B2B Credit)",
   MANUAL: "Manual",
 }
 

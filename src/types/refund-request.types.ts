@@ -29,6 +29,7 @@ export interface RefundRequest {
   refund_to: "wallet" | "original" | null
   total_amount: number
   wallet_amount_used: number
+  ledger_amount_used: number
   created_at: string
   updated_at: string
 }

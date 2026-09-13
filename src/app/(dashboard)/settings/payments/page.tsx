@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, Banknote, CreditCard, Loader2, QrCode, Save, Wallet } from "lucide-react"
+import { AlertTriangle, Banknote, CreditCard, Landmark, Loader2, QrCode, Save, Wallet } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog"
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings"
 
-type ToggleKey = "cod_enabled" | "razorpay_enabled" | "wallet_enabled"
+type ToggleKey = "cod_enabled" | "razorpay_enabled" | "wallet_enabled" | "ledger_enabled"
 
 interface ToggleConfig {
   key: ToggleKey
@@ -84,6 +84,18 @@ const TOGGLES: ToggleConfig[] = [
     disableTitle: "Disable Wallet Payment?",
     disableBody:
       "Wallet payment will be hidden from checkout immediately. Customers will need to pay with COD or online instead.",
+  },
+  {
+    key: "ledger_enabled",
+    icon: Landmark,
+    label: "B2B Ledger",
+    description: "B2B credit line — the ledger toggle and “Place Order” button on B2B checkout.",
+    enableTitle: "Enable B2B Ledger?",
+    enableBody:
+      "B2B customers with an active credit line will see the ledger toggle and “Place Order” button at checkout again.",
+    disableTitle: "Disable B2B Ledger?",
+    disableBody:
+      "The ledger toggle and “Place Order” button will be hidden from every B2B customer's checkout immediately, regardless of their individual credit line status. They'll need to pay online instead.",
   },
 ]
 
@@ -146,8 +158,15 @@ export default function PaymentsSettingsPage() {
     updateMutation.mutate(payload, { onSuccess: () => setDirty(false) })
   }
 
-  function getBoolValue(key: string): boolean {
+  // Every payment-method toggle defaults to enabled on the backend
+  // (PaymentSettingsService's DEFAULTS) when the key has never been saved
+  // to app_settings — a fresh install, or a newly-added toggle like
+  // ledger_enabled. Defaulting to `true` here too keeps this page's
+  // display honest about what's actually enforced instead of showing
+  // every never-touched toggle as OFF.
+  function getBoolValue(key: string, defaultValue = true): boolean {
     const v = draft[key] ?? settings?.[key]?.value
+    if (v === undefined) return defaultValue
     return v === true || v === "true"
   }
 

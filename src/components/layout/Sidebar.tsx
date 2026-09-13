@@ -246,6 +246,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     section: "B2B",
     items: [
       { label: "Applications", href: "/b2b/applications", icon: "Briefcase" },
+      { label: "Orders", href: "/b2b/orders", icon: "ClipboardList" },
       { label: "Financial", href: "/b2b/financial", icon: "Landmark" },
       { label: "GST & Invoices", href: "/b2b/gst", icon: "FileSpreadsheet" },
     ],

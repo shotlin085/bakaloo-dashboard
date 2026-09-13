@@ -51,6 +51,12 @@ export type {
   RescheduleOrderPayload,
   BulkStatusPayload,
   RazorpayPaymentDetail,
+  B2BOrder,
+  B2BSettlement,
+  B2BSettlementMethod,
+  B2BOrderDetail,
+  RecordB2BSettlementPayload,
+  B2BOrderFilters,
 } from "./order.types"
 export type {
   Product,

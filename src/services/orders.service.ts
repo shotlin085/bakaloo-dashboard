@@ -13,6 +13,10 @@ import type {
   RescheduleOrderPayload,
   BulkStatusPayload,
   RazorpayPaymentDetail,
+  B2BOrder,
+  B2BOrderDetail,
+  B2BOrderFilters,
+  RecordB2BSettlementPayload,
 } from "@/types"
 
 /** List orders with filters + pagination */
@@ -215,4 +219,46 @@ export async function downloadTaxInvoice(orderId: string) {
     responseType: "blob",
   })
   return response.data
+}
+
+// ── B2B "Place Order" ────────────────────────────────────────────────
+
+/** List B2B credit orders (payment_method 'B2B_CREDIT') for the /b2b/orders page */
+export async function getB2BOrders(filters: B2BOrderFilters = {}) {
+  const params: Record<string, string | number> = {}
+  if (filters.page) params.page = filters.page
+  if (filters.limit) params.limit = filters.limit
+  if (filters.status) params.status = filters.status
+
+  const { data } = await api.get<
+    ApiResponse<{
+      orders: B2BOrder[]
+      pagination: { page: number; limit: number; total: number; totalPages: number }
+    }>
+  >("/admin/orders/b2b", { params })
+  return data.data
+}
+
+/** B2B credit order detail, including its settlement history */
+export async function getB2BOrderDetail(orderId: string): Promise<B2BOrderDetail> {
+  const { data } = await api.get<ApiResponse<B2BOrderDetail>>(`/admin/orders/b2b/${orderId}`)
+  return data.data
+}
+
+/** Approve a pending B2B credit order — deducts stock and confirms it */
+export async function approveB2BOrder(orderId: string): Promise<OrderDetail> {
+  const { data } = await api.post<ApiResponse<OrderDetail>>(`/admin/orders/b2b/${orderId}/approve`)
+  return data.data
+}
+
+/** Record a manual payment-collection entry against a B2B credit order */
+export async function recordB2BSettlement(
+  orderId: string,
+  payload: RecordB2BSettlementPayload
+): Promise<OrderDetail> {
+  const { data } = await api.post<ApiResponse<OrderDetail>>(
+    `/admin/orders/b2b/${orderId}/settlements`,
+    payload
+  )
+  return data.data
 }

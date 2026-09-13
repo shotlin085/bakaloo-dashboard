@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RiderAssignmentSection } from "@/components/orders/RiderAssignmentSection"
+import { B2BApprovalSection } from "@/components/orders/B2BApprovalSection"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -429,8 +430,14 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
                     buried below Status Timeline/Notes/Customer/Items, so
                     it's the first thing an admin sees on a Packed order
                     that still needs a rider picked. Editable once Packed,
-                    read-only chip otherwise. */}
-                {order.status === "PACKED" ? (
+                    read-only chip otherwise. Hidden entirely for B2B
+                    "Place Order" credit orders — those are distributed
+                    manually by an admin outside the rider-assignment
+                    system, so this section (and the whole concept of a
+                    rider) is never applicable to them. */}
+                {order.b2b_approval_status ? (
+                  <B2BApprovalSection order={order} />
+                ) : order.status === "PACKED" ? (
                   <RiderAssignmentSection order={order} />
                 ) : (
                   order.rider_name && (
