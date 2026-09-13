@@ -76,10 +76,16 @@ import type { Category, Product } from "@/types"
 import type {
   CategoryRailConfig,
   MerchSectionConfig,
+  ThemeAudience,
   ThemeStoreKey,
   ThemeTab,
   ThemeTabMerchConfig,
 } from "@/types/theme.types"
+
+const AUDIENCE_OPTIONS: Array<{ value: ThemeAudience; label: string }> = [
+  { value: "B2C", label: "B2C (regular storefront)" },
+  { value: "B2B", label: "B2B (wholesale storefront)" },
+]
 
 const STORE_OPTIONS: Array<{ value: ThemeStoreKey; label: string }> = [
   { value: "zepto", label: "Zepto" },
@@ -116,9 +122,14 @@ interface ThemeTabFormData {
   status: ThemeTab["status"]
   is_default: boolean
   merch_config: ThemeTabMerchConfig
+  /** Immutable after creation — see the disabled Select in the dialog. */
+  audience: ThemeAudience
 }
 
-function createEmptyForm(storeKey: ThemeStoreKey = "zepto"): ThemeTabFormData {
+function createEmptyForm(
+  storeKey: ThemeStoreKey = "zepto",
+  audience: ThemeAudience = "B2C"
+): ThemeTabFormData {
   return {
     store_key: storeKey,
     key: "",
@@ -129,6 +140,7 @@ function createEmptyForm(storeKey: ThemeStoreKey = "zepto"): ThemeTabFormData {
     status: "active",
     is_default: false,
     merch_config: defaultMerchConfig(),
+    audience,
   }
 }
 
@@ -143,6 +155,7 @@ function buildFormFromTab(tab: ThemeTab): ThemeTabFormData {
     status: tab.status,
     is_default: tab.is_default,
     merch_config: mergeMerchConfig(tab.merch_config),
+    audience: tab.audience,
   }
 }
 
@@ -210,6 +223,10 @@ function productLookup(products: Product[] | undefined) {
 export default function ThemeTabsPage() {
   const [storeFilter, setStoreFilter] = useState<"all" | ThemeStoreKey>("all")
   const [statusFilter, setStatusFilter] = useState<"all" | ThemeTab["status"]>("all")
+  // Tabs are audience-scoped rows (B2C and B2B each own an independent tab
+  // list) — this page only ever shows one audience at a time so reordering
+  // and "default tab" logic below never mixes the two lists together.
+  const [audienceFilter, setAudienceFilter] = useState<ThemeAudience>("B2C")
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTab, setEditingTab] = useState<ThemeTab | null>(null)
@@ -218,6 +235,7 @@ export default function ThemeTabsPage() {
   const { data: themeTabs, isLoading } = useThemeTabs({
     ...(storeFilter !== "all" ? { store_key: storeFilter } : {}),
     ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+    audience: audienceFilter,
   })
   const { data: categories } = useCategories()
   const { data: productPage } = useQuery({
@@ -278,7 +296,7 @@ export default function ThemeTabsPage() {
 
   const openCreate = () => {
     setEditingTab(null)
-    setForm(createEmptyForm(storeFilter === "all" ? "zepto" : storeFilter))
+    setForm(createEmptyForm(storeFilter === "all" ? "zepto" : storeFilter, audienceFilter))
     setDialogOpen(true)
   }
 
@@ -365,6 +383,8 @@ export default function ThemeTabsPage() {
       status: form.status,
       is_default: form.is_default,
       merch_config: form.merch_config,
+      // Audience is immutable after creation — only sent when creating.
+      ...(editingTab ? {} : { audience: form.audience }),
     }
 
     if (editingTab) {
@@ -472,6 +492,21 @@ export default function ThemeTabsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={audienceFilter}
+            onValueChange={(value) => setAudienceFilter(value as ThemeAudience)}
+          >
+            <SelectTrigger className="w-[220px]">
+              <SelectValue placeholder="Audience" />
+            </SelectTrigger>
+            <SelectContent>
+              {AUDIENCE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -492,6 +527,7 @@ export default function ThemeTabsPage() {
               <TableRow>
                 <TableHead>Tab</TableHead>
                 <TableHead>Store</TableHead>
+                <TableHead>Audience</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Order</TableHead>
                 <TableHead>Linked Themes</TableHead>
@@ -551,6 +587,18 @@ export default function ThemeTabsPage() {
                     <Badge variant="secondary">
                       {STORE_OPTIONS.find((store) => store.value === tab.store_key)?.label ??
                         tab.store_key}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        tab.audience === "B2B"
+                          ? "border-violet-200 bg-violet-500/15 text-violet-700"
+                          : "border-sky-200 bg-sky-500/15 text-sky-700"
+                      }
+                    >
+                      {tab.audience}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -716,6 +764,33 @@ export default function ThemeTabsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Audience</Label>
+                    <Select
+                      value={form.audience}
+                      disabled={!!editingTab}
+                      onValueChange={(value) =>
+                        updateForm("audience", value as ThemeAudience)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an audience" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AUDIENCE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {editingTab ? (
+                      <p className="text-xs text-muted-foreground">
+                        Audience can&apos;t be changed after a tab is created.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">

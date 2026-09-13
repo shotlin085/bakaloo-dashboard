@@ -129,6 +129,10 @@ export interface ThemeTab {
   status: ThemeTabStatus
   is_default: boolean
   merch_config: ThemeTabMerchConfig
+  /** Which storefront's tab bar this tab belongs to — B2C and B2B each own
+   *  a fully independent tab list (own rows, own ids); creating/archiving
+   *  a tab under one audience never touches the other's tab bar. */
+  audience: ThemeAudience
   archived_at: string | null
   created_at: string
   updated_at: string
@@ -209,6 +213,7 @@ export interface RollbackPayload {
 export interface ThemeTabFilters {
   store_key?: ThemeStoreKey
   status?: ThemeTabStatus
+  audience?: ThemeAudience
 }
 
 export interface CreateThemeTabPayload {
@@ -221,6 +226,8 @@ export interface CreateThemeTabPayload {
   status?: ThemeTabStatus
   is_default?: boolean
   merch_config?: Partial<ThemeTabMerchConfig>
+  /** Immutable after creation — a tab can't move between B2C and B2B. */
+  audience?: ThemeAudience
 }
 
 export interface UpdateThemeTabPayload {

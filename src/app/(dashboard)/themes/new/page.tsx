@@ -43,7 +43,6 @@ const AUDIENCE_LABELS: Record<ThemeAudience, string> = {
 export default function NewThemePage() {
   const router = useRouter()
   const createThemeMutation = useCreateTheme()
-  const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs()
 
   const [name, setName] = useState("")
   const [storeKey, setStoreKey] = useState<ThemeStoreKey>("zepto")
@@ -51,6 +50,13 @@ export default function NewThemePage() {
   const [abVariant, setAbVariant] = useState<ABVariant>("A")
   const [abSplitPercent, setAbSplitPercent] = useState(100)
   const [audience, setAudience] = useState<ThemeAudience>("B2C")
+
+  // The tab picker must only offer tabs that belong to the audience being
+  // themed — B2C and B2B each own an independent tab list (own rows, own
+  // ids), so a tab_id from the wrong audience would silently never be
+  // picked up by any storefront (see public.controller.js's audience-
+  // scoped tab lookups).
+  const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs({ audience })
 
   const filteredTabs = useMemo(
     () =>
@@ -235,8 +241,9 @@ export default function NewThemePage() {
               <div>
                 <CardTitle className="text-base">Audience</CardTitle>
                 <CardDescription className="text-xs">
-                  Which storefront sees this theme — B2C and B2B can each have
-                  their own active theme for the same tab
+                  Which storefront sees this theme — B2C and B2B each have
+                  their own independent tab list, so switching audience
+                  clears the tab picker above
                 </CardDescription>
               </div>
             </div>
@@ -246,7 +253,10 @@ export default function NewThemePage() {
               <Label>Audience</Label>
               <Select
                 value={audience}
-                onValueChange={(value) => setAudience(value as ThemeAudience)}
+                onValueChange={(value) => {
+                  setAudience(value as ThemeAudience)
+                  setTabId(null)
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select audience" />

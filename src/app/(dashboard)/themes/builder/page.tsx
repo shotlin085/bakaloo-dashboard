@@ -93,6 +93,7 @@ import { useTabThemes } from "@/hooks/useThemes"
 import { useArchiveThemeTab, useCreateThemeTab, useThemeTabs, useUpdateThemeTab } from "@/hooks/useThemeTabs"
 import { useStoreContext } from "@/contexts/StoreContext"
 import { getSections, getSectionVersions } from "@/services/sections.service"
+import { getThemeTabs } from "@/services/theme-tabs.service"
 import type {
   MerchBinding,
   ScheduleSectionLayoutPayload,
@@ -304,6 +305,7 @@ function ThemeBuilderPageContent() {
   const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs({
     store_key: activeStoreKey,
     status: "active",
+    audience,
   })
   const { data: tabThemes = [] } = useTabThemes()
 
@@ -588,7 +590,9 @@ function ThemeBuilderPageContent() {
       return
     }
 
-    if (!activeTabId) {
+    const currentTab = themeTabs.find((tab) => tab.id === activeTabId) ?? null
+
+    if (!currentTab) {
       setAudienceState(nextAudience)
       const params = new URLSearchParams(window.location.search)
       params.set("audience", nextAudience)
@@ -599,24 +603,44 @@ function ThemeBuilderPageContent() {
     setIsTabSwitching(true)
 
     try {
-      const [nextSections, nextVersions] = await Promise.all([
-        queryClient.fetchQuery({
-          queryKey: ["sections", activeTabId, nextAudience],
-          queryFn: () => getSections(activeTabId, nextAudience),
-          staleTime: 30_000,
-        }),
-        queryClient.fetchQuery({
-          queryKey: ["sections", activeTabId, nextAudience, "versions"],
-          queryFn: () => getSectionVersions(activeTabId, nextAudience),
-          staleTime: 30_000,
-        }),
-      ])
+      // B2C and B2B tabs are independent rows with their own ids (a tab's
+      // key, e.g. "fresh", can exist under a different id per audience) —
+      // re-resolve which tab to land on in the new audience's tab list
+      // rather than reusing activeTabId, which belongs to the audience
+      // we're leaving.
+      const nextTabFilters = { store_key: activeStoreKey, status: "active" as const, audience: nextAudience }
+      const nextTabs = await queryClient.fetchQuery({
+        queryKey: ["theme-tabs", nextTabFilters],
+        queryFn: () => getThemeTabs(nextTabFilters),
+        staleTime: 30_000,
+      })
+
+      const matchedTab =
+        nextTabs.find((tab) => tab.key === currentTab.key) ?? nextTabs[0] ?? null
+
+      const [nextSections, nextVersions] = matchedTab
+        ? await Promise.all([
+            queryClient.fetchQuery({
+              queryKey: ["sections", matchedTab.id, nextAudience],
+              queryFn: () => getSections(matchedTab.id, nextAudience),
+              staleTime: 30_000,
+            }),
+            queryClient.fetchQuery({
+              queryKey: ["sections", matchedTab.id, nextAudience, "versions"],
+              queryFn: () => getSectionVersions(matchedTab.id, nextAudience),
+              staleTime: 30_000,
+            }),
+          ])
+        : [[], []]
 
       const params = new URLSearchParams(window.location.search)
       params.set("audience", nextAudience)
+      if (matchedTab) params.set("tab", matchedTab.key)
       window.history.replaceState(window.history.state, "", `${pathname}?${params.toString()}`)
 
       setAudienceState(nextAudience)
+      setActiveTabId(matchedTab?.id ?? null)
+      if (matchedTab) setRequestedTabKey(matchedTab.key)
       resetLocalSections(normalizeBuilderSections(nextSections))
       setSelectedSectionId(null)
       setIsDirty(false)
@@ -647,6 +671,7 @@ function ThemeBuilderPageContent() {
         label: params.label,
         sort_order: themeTabs.length,
         status: "active",
+        audience,
       },
       {
         onSuccess: (createdTab) => {

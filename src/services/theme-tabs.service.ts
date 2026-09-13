@@ -2,6 +2,7 @@ import api from "@/lib/api"
 import type { ApiResponse } from "@/types"
 import type {
   CreateThemeTabPayload,
+  ThemeAudience,
   ThemeLinkSummary,
   ThemeTab,
   ThemeTabFilters,
@@ -20,6 +21,7 @@ type RawThemeTab = {
   status: ThemeTab["status"]
   is_default: boolean
   merch_config: ThemeTabMerchConfig | null
+  audience: ThemeAudience
   archived_at: string | null
   created_at: string
   updated_at: string
@@ -81,6 +83,7 @@ function normalizeThemeTab(raw: RawThemeTab): ThemeTab {
     status: raw.status,
     is_default: raw.is_default,
     merch_config: raw.merch_config ?? defaultMerchConfig(),
+    audience: raw.audience ?? "B2C",
     archived_at: raw.archived_at,
     created_at: raw.created_at,
     updated_at: raw.updated_at,

@@ -13,11 +13,13 @@ import {
   scheduleTheme,
   updateTheme,
 } from "@/services/themes.service"
+import { getThemeTabs } from "@/services/theme-tabs.service"
 import type {
   CreateThemePayload,
   RollbackPayload,
   ScheduleThemePayload,
   Theme,
+  ThemeTab,
   UpdateThemePayload,
 } from "@/types/theme.types"
 
@@ -91,18 +93,52 @@ export interface CopyB2CToB2BResult {
  * endpoint's own sibling-deactivation logic. Calls the raw service
  * functions directly (not useCreateTheme/useActivateTheme) so a bulk copy
  * doesn't fire a toast per theme — just one summary at the end.
+ *
+ * B2C and B2B tabs are independent rows sharing only (store_key, key) —
+ * see backend migration 126 — so the new theme can't just reuse the
+ * source's tab_id; it has to be re-resolved against the B2B tab list. A
+ * theme whose tab has no B2B counterpart yet is reported as failed rather
+ * than silently created unlinked.
  */
 export function useCopyB2CToB2B() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (sourceThemes: Theme[]): Promise<CopyB2CToB2BResult> => {
       const result: CopyB2CToB2BResult = { copied: 0, failed: [] }
+      const b2bTabsByStore = new Map<string, Promise<ThemeTab[]>>()
+
+      const getB2BTabs = (storeKey: string) => {
+        if (!b2bTabsByStore.has(storeKey)) {
+          b2bTabsByStore.set(
+            storeKey,
+            getThemeTabs({ store_key: storeKey as ThemeTab["store_key"], audience: "B2B" })
+          )
+        }
+        return b2bTabsByStore.get(storeKey)!
+      }
+
       for (const theme of sourceThemes) {
         try {
+          let b2bTabId: string | undefined
+
+          if (theme.tab_id) {
+            if (!theme.store_key || !theme.tab_key) {
+              throw new Error("Theme is missing its store/tab key — re-link it before copying")
+            }
+            const b2bTabs = await getB2BTabs(theme.store_key)
+            const matchedTab = b2bTabs.find((tab) => tab.key === theme.tab_key)
+            if (!matchedTab) {
+              throw new Error(
+                `No B2B tab exists yet for "${theme.tab_key}" — create it in Theme Tabs first`
+              )
+            }
+            b2bTabId = matchedTab.id
+          }
+
           const created = await createTheme({
             name: `${theme.name} (B2B)`,
             theme_data: theme.theme_data,
-            tab_id: theme.tab_id ?? undefined,
+            tab_id: b2bTabId,
             status: "active",
             ab_variant: theme.ab_variant,
             ab_split_percent: theme.ab_split_percent,

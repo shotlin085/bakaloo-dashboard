@@ -176,7 +176,16 @@ function StatusBadge({
 function ThemeListContent() {
   const router = useRouter()
   const { data: themes, isLoading } = useThemes()
-  const { data: themeTabs } = useThemeTabs({ status: "active" })
+  // This list mixes themes from both audiences (see audienceFilter's "all"
+  // default below), and B2C/B2B each own an independent tab list — fetch
+  // both so the tab lookup/filter dropdown covers every theme's tab_id,
+  // not just B2C's.
+  const { data: b2cThemeTabs } = useThemeTabs({ status: "active", audience: "B2C" })
+  const { data: b2bThemeTabs } = useThemeTabs({ status: "active", audience: "B2B" })
+  const themeTabs = useMemo(
+    () => [...(b2cThemeTabs ?? []), ...(b2bThemeTabs ?? [])],
+    [b2cThemeTabs, b2bThemeTabs]
+  )
   const activateThemeMutation = useActivateTheme()
   const createThemeMutation = useCreateTheme()
   const updateThemeMutation = useUpdateTheme()
@@ -199,20 +208,28 @@ function ThemeListContent() {
   const tabOptions = useMemo(() => {
     const visibleTabs = (themeTabs ?? [])
       .filter(
-        (tab) => storeFilter === "all" || tab.store_key === storeFilter
+        (tab) =>
+          (storeFilter === "all" || tab.store_key === storeFilter) &&
+          (audienceFilter === "all" || tab.audience === audienceFilter)
       )
       .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label))
 
     const dynamicOptions = visibleTabs.map((tab) => ({
       value: tab.id,
-      label: `${tab.label} (${storeLabelMap[tab.store_key]})`,
+      // B2C and B2B can share a label/key (e.g. two independent "Fresh"
+      // tabs) — the audience suffix keeps otherwise-identical options
+      // distinguishable in the "all audiences" view.
+      label:
+        audienceFilter === "all"
+          ? `${tab.label} (${storeLabelMap[tab.store_key]} · ${tab.audience})`
+          : `${tab.label} (${storeLabelMap[tab.store_key]})`,
     }))
 
     return [
       { value: "all", label: "All tabs" },
       ...dynamicOptions,
     ]
-  }, [storeFilter, themeTabs])
+  }, [audienceFilter, storeFilter, themeTabs])
 
   const filteredThemes = useMemo(() => {
     return [...(themes ?? [])]
@@ -245,6 +262,11 @@ function ThemeListContent() {
   // same tab + variant — exactly what "Copy B2C to B2B" would create.
   // Themes with no tab_id (unlinked drafts) are excluded — there's no
   // storefront tab for a B2B viewer to see them on.
+  //
+  // B2C and B2B tabs are independent rows (own ids) sharing only
+  // (store_key, tab_key) — see backend migration 126 — so a real B2B
+  // counterpart is matched by that shared identity, never by comparing
+  // tab_id directly (those never match across audiences).
   const { copyableThemes, alreadyCoveredCount } = useMemo(() => {
     const all = themes ?? []
     const activeB2C = all.filter((t) => t.is_active && t.audience === "B2C" && t.tab_id)
@@ -253,7 +275,8 @@ function ThemeListContent() {
         (t) =>
           t.is_active &&
           t.audience === "B2B" &&
-          t.tab_id === theme.tab_id &&
+          t.store_key === theme.store_key &&
+          t.tab_key === theme.tab_key &&
           t.ab_variant === theme.ab_variant
       )
     const copyable = activeB2C.filter((t) => !hasActiveB2BCounterpart(t))

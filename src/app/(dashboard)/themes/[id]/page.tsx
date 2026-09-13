@@ -104,7 +104,6 @@ function EditThemePageContent() {
   const themeId = typeof params.id === "string" ? params.id : null
 
   const { data: theme, isLoading } = useTheme(themeId)
-  const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs()
   const { data: versions } = useThemeVersions(themeId)
   const updateThemeMutation = useUpdateTheme()
   const scheduleThemeMutation = useScheduleTheme()
@@ -122,6 +121,12 @@ function EditThemePageContent() {
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
+
+  // The tab picker must only offer tabs that belong to the theme's own
+  // audience — B2C and B2B each own an independent tab list (own rows, own
+  // ids). Re-syncs automatically once the effect below loads the theme's
+  // real audience.
+  const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs({ audience })
 
   // Sync from server data
   useEffect(() => {
@@ -348,6 +353,10 @@ function EditThemePageContent() {
                 value={audience}
                 onValueChange={(value) => {
                   setAudience(value as ThemeAudience)
+                  // B2C and B2B are independent tab lists — the previously
+                  // selected tab almost certainly doesn't exist for the
+                  // newly chosen audience.
+                  setTabId(null)
                   markDirty()
                 }}
               >
