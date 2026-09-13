@@ -396,4 +396,6 @@ export interface B2BOrderFilters {
   page?: number
   limit?: number
   status?: "PENDING" | "APPROVED"
+  /** The B2B Collections page's filter — approved orders with money still owed. */
+  hasPendingCollection?: boolean
 }

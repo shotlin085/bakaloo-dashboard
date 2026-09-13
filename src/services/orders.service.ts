@@ -225,10 +225,11 @@ export async function downloadTaxInvoice(orderId: string) {
 
 /** List B2B credit orders (payment_method 'B2B_CREDIT') for the /b2b/orders page */
 export async function getB2BOrders(filters: B2BOrderFilters = {}) {
-  const params: Record<string, string | number> = {}
+  const params: Record<string, string | number | boolean> = {}
   if (filters.page) params.page = filters.page
   if (filters.limit) params.limit = filters.limit
   if (filters.status) params.status = filters.status
+  if (filters.hasPendingCollection) params.hasPendingCollection = true
 
   const { data } = await api.get<
     ApiResponse<{

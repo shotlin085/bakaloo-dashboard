@@ -169,7 +169,12 @@ export function OrderDetailDrawer({ orderId, open, onClose }: OrderDetailDrawerP
   // back to the placeholder when a pending cancel is declined.
   const [statusSelectResetKey, setStatusSelectResetKey] = useState(0)
 
-  const allowedTransitions = order
+  // A B2B credit order awaiting admin approval must never be moved by the
+  // generic status dropdown — the dedicated Approve action (B2BApprovalSection
+  // below) is the only door out of PENDING, since that's what actually
+  // deducts stock (re-checked fresh at that moment). The backend rejects
+  // this too; hiding the options here just avoids a round-trip error.
+  const allowedTransitions = order && order.b2b_approval_status !== "PENDING"
     ? STATUS_TRANSITIONS[order.status] ?? []
     : []
 
