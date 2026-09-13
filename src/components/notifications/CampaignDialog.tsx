@@ -27,6 +27,7 @@ import type { CampaignSegment, NotificationTemplate } from "@/types/notification
 
 const SEGMENTS: { value: CampaignSegment; label: string; description: string; needsValue?: boolean; valuePlaceholder?: string; comingSoon?: boolean }[] = [
   { value: "all_customers", label: "All Customers", description: "Every active customer with FCM token" },
+  { value: "b2b_customers", label: "B2B Customers", description: "Approved business accounts with B2B ordering turned on — never reaches regular customers" },
   { value: "custom_segment", label: "Customer Segment", description: "An admin-defined segment (see Customer Segments)", needsValue: true },
   { value: "inactive_customers", label: "Inactive Customers", description: "No orders in 30 days" },
   { value: "high_value", label: "High Value", description: "₹5,000+ total orders" },
