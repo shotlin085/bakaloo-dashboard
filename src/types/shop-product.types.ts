@@ -37,6 +37,15 @@ export interface ShopProduct {
   is_featured: boolean
   /** Whether this listing can be included in a bulk order at this shop. */
   bulk_order_eligible: boolean
+  /** Minimum quantity of this listing a bulk-order line must request to
+   *  qualify — on top of bulk_orders' own whole-order minimums. Null means
+   *  no per-listing minimum. */
+  bulk_min_quantity: number | null
+  /** Optional bulk-sale window (ISO date-time) — either side null means
+   *  unbounded on that side; both null means always eligible whenever
+   *  bulk_order_eligible is on. */
+  bulk_sale_start_at: string | null
+  bulk_sale_end_at: string | null
 
   sold_out_at: string | null
   restock_eta: string | null

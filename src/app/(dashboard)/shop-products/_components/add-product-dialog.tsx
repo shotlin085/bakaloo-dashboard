@@ -39,7 +39,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Controller, useForm, type Resolver } from "react-hook-form"
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AlertTriangle, ChevronLeft, Loader2, Package, Plus, Search } from "lucide-react"
 import Image from "next/image"
@@ -75,6 +75,7 @@ import { cn } from "@/lib/utils"
 import type { Product } from "@/types"
 
 import {
+  NullableDateTimeField,
   NullableNumberField,
   NumberField,
   ToggleRow,
@@ -122,6 +123,9 @@ function buildBlankDefaults(): Partial<ShopProductInput> {
     is_available: true,
     is_featured: false,
     bulk_order_eligible: true,
+    bulk_min_quantity: null,
+    bulk_sale_start_at: null,
+    bulk_sale_end_at: null,
   }
 }
 
@@ -157,6 +161,9 @@ function buildDefaultsFromProduct(
     is_available: true,
     is_featured: false,
     bulk_order_eligible: true,
+    bulk_min_quantity: null,
+    bulk_sale_start_at: null,
+    bulk_sale_end_at: null,
   }
 }
 
@@ -441,6 +448,10 @@ export function AddProductDialog({
     reset(buildBlankDefaults() as ShopProductInput)
   }, [open, reset])
 
+  // Greys out the minimum-quantity/sale-window fields when the eligibility
+  // toggle itself is off — they're meaningless without it.
+  const bulkOrderEligible = useWatch({ control, name: "bulk_order_eligible" })
+
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   function handlePick(product: Product) {
@@ -479,6 +490,16 @@ export function AddProductDialog({
         is_available: values.is_available,
         is_featured: values.is_featured,
         bulk_order_eligible: values.bulk_order_eligible,
+        bulk_min_quantity: values.bulk_min_quantity,
+        // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) —
+        // the backend requires a full RFC3339 date-time (see
+        // CouponDialog.tsx's identical conversion).
+        bulk_sale_start_at: values.bulk_sale_start_at
+          ? new Date(values.bulk_sale_start_at).toISOString()
+          : null,
+        bulk_sale_end_at: values.bulk_sale_end_at
+          ? new Date(values.bulk_sale_end_at).toISOString()
+          : null,
       })
       onOpenChange(false)
     } catch (err) {
@@ -705,6 +726,44 @@ export function AddProductDialog({
                 )}
               />
             </div>
+
+            {/* ── Bulk Order Settings ─────────────────────────────── */}
+            {bulkOrderEligible ? (
+              <div className="space-y-3 rounded-md border p-3">
+                <p className="text-sm font-medium">Bulk Order Settings</p>
+                <NullableNumberField
+                  id="add-product-bulk-min-quantity"
+                  label="Minimum bulk quantity"
+                  step="1"
+                  min={1}
+                  max={10000}
+                  control={control}
+                  name="bulk_min_quantity"
+                  error={errors.bulk_min_quantity?.message}
+                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <NullableDateTimeField
+                    id="add-product-bulk-sale-start"
+                    label="Bulk sale starts (optional)"
+                    control={control}
+                    name="bulk_sale_start_at"
+                    error={errors.bulk_sale_start_at?.message}
+                  />
+                  <NullableDateTimeField
+                    id="add-product-bulk-sale-end"
+                    label="Bulk sale ends (optional)"
+                    control={control}
+                    name="bulk_sale_end_at"
+                    error={errors.bulk_sale_end_at?.message}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Leave the minimum blank for no per-listing minimum, and the
+                  window blank to keep bulk ordering open whenever the toggle
+                  above is on.
+                </p>
+              </div>
+            ) : null}
 
             {/* `product_id` is set via reset() when the operator picks a
                 catalog row. Surface its validation error here for safety

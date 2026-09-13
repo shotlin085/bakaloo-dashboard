@@ -338,6 +338,20 @@ export const shopProductSchema = z
      *  independent of is_available (sells normally, but excluded from bulk
      *  purchasing). */
     bulk_order_eligible: z.boolean().default(true),
+    /** Minimum quantity of this listing a bulk-order line must request to
+     *  qualify — on top of bulk_orders' own whole-order minimums (>=5 items,
+     *  >=3 distinct products). Null means no per-listing minimum. */
+    bulk_min_quantity: z
+      .number()
+      .int("Minimum bulk quantity must be an integer")
+      .min(1, "Minimum bulk quantity must be at least 1")
+      .max(10000, "Minimum bulk quantity cannot exceed 10000")
+      .nullable(),
+    /** Optional bulk-sale window (datetime-local strings, "YYYY-MM-DDTHH:mm")
+     *  — either side null means unbounded on that side; both null means
+     *  always eligible whenever bulk_order_eligible is on. */
+    bulk_sale_start_at: z.string().nullable(),
+    bulk_sale_end_at: z.string().nullable(),
   })
   /**
    * Sale price (when present) must be strictly less than the regular price.
@@ -349,6 +363,16 @@ export const shopProductSchema = z
     {
       message: "Sale price must be less than the regular price",
       path: ["sale_price"],
+    },
+  )
+  .refine(
+    (data) =>
+      !data.bulk_sale_start_at ||
+      !data.bulk_sale_end_at ||
+      new Date(data.bulk_sale_end_at) > new Date(data.bulk_sale_start_at),
+    {
+      message: "Bulk sale end must be after the start",
+      path: ["bulk_sale_end_at"],
     },
   )
 

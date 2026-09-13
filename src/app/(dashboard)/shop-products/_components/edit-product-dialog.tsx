@@ -50,7 +50,7 @@
  */
 
 import { useEffect } from "react"
-import { Controller, useForm, type Resolver } from "react-hook-form"
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, Package } from "lucide-react"
 import Image from "next/image"
@@ -78,6 +78,7 @@ import {
 import type { ShopProduct } from "@/types"
 
 import {
+  NullableDateTimeField,
   NullableNumberField,
   NumberField,
   ToggleRow,
@@ -121,7 +122,16 @@ function buildDefaultsFromProduct(product: ShopProduct): ShopProductInput {
     is_available: product.is_available,
     is_featured: product.is_featured,
     bulk_order_eligible: product.bulk_order_eligible,
+    bulk_min_quantity: product.bulk_min_quantity,
+    bulk_sale_start_at: toDateTimeLocal(product.bulk_sale_start_at),
+    bulk_sale_end_at: toDateTimeLocal(product.bulk_sale_end_at),
   }
+}
+
+/** ISO date-time -> "YYYY-MM-DDTHH:mm" for a datetime-local input's value,
+ *  same truncation convention as CouponDialog.tsx. */
+function toDateTimeLocal(iso: string | null): string | null {
+  return iso ? iso.slice(0, 16) : null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +184,10 @@ export function EditProductDialog({
     reset(buildDefaultsFromProduct(product))
   }, [open, product, reset])
 
+  // Greys out the minimum-quantity/sale-window fields when the eligibility
+  // toggle itself is off — they're meaningless without it.
+  const bulkOrderEligible = useWatch({ control, name: "bulk_order_eligible" })
+
   // ─── Submit handler ──────────────────────────────────────────────────────
 
   async function onSubmit(values: ShopProductInput) {
@@ -193,6 +207,16 @@ export function EditProductDialog({
             is_available: values.is_available,
             is_featured: values.is_featured,
             bulk_order_eligible: values.bulk_order_eligible,
+            bulk_min_quantity: values.bulk_min_quantity,
+            // datetime-local gives "2026-07-13T15:53" (no seconds/timezone)
+            // — the backend requires a full RFC3339 date-time (see
+            // CouponDialog.tsx's identical conversion).
+            bulk_sale_start_at: values.bulk_sale_start_at
+              ? new Date(values.bulk_sale_start_at).toISOString()
+              : null,
+            bulk_sale_end_at: values.bulk_sale_end_at
+              ? new Date(values.bulk_sale_end_at).toISOString()
+              : null,
           },
         }),
       ]
@@ -378,6 +402,44 @@ export function EditProductDialog({
               )}
             />
           </div>
+
+          {/* ── Bulk Order Settings ───────────────────────────────── */}
+          {bulkOrderEligible ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <p className="text-sm font-medium">Bulk Order Settings</p>
+              <NullableNumberField
+                id="edit-product-bulk-min-quantity"
+                label="Minimum bulk quantity"
+                step="1"
+                min={1}
+                max={10000}
+                control={control}
+                name="bulk_min_quantity"
+                error={errors.bulk_min_quantity?.message}
+              />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <NullableDateTimeField
+                  id="edit-product-bulk-sale-start"
+                  label="Bulk sale starts (optional)"
+                  control={control}
+                  name="bulk_sale_start_at"
+                  error={errors.bulk_sale_start_at?.message}
+                />
+                <NullableDateTimeField
+                  id="edit-product-bulk-sale-end"
+                  label="Bulk sale ends (optional)"
+                  control={control}
+                  name="bulk_sale_end_at"
+                  error={errors.bulk_sale_end_at?.message}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave the minimum blank for no per-listing minimum, and the
+                window blank to keep bulk ordering open whenever the toggle
+                above is on.
+              </p>
+            </div>
+          ) : null}
 
           <DialogFooter className="gap-2">
             <Button

@@ -104,7 +104,7 @@ export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
  */
 export type NullableNumberFieldName = Extract<
   FieldPath<ShopProductInput>,
-  "sale_price" | "cost_price" | "wholesale_price"
+  "sale_price" | "cost_price" | "wholesale_price" | "bulk_min_quantity"
 >
 
 export interface NullableNumberFieldProps {
@@ -182,6 +182,75 @@ export function NullableNumberField({
           </div>
         )
       }}
+    />
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NullableDateTimeField — nullable datetime-local input (RHF `Controller`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Subset of `ShopProductInput` paths that are nullable datetime-local strings. */
+export type NullableDateTimeFieldName = Extract<
+  FieldPath<ShopProductInput>,
+  "bulk_sale_start_at" | "bulk_sale_end_at"
+>
+
+export interface NullableDateTimeFieldProps {
+  id: string
+  label: string
+  error?: string
+  control: Control<ShopProductInput>
+  name: NullableDateTimeFieldName
+  /** Disables the input without clearing its value — used to grey out the
+   *  bulk-sale window fields when "Bulk order eligible" is off. */
+  disabled?: boolean
+}
+
+/**
+ * Nullable `<input type="datetime-local">` wired via RHF `Controller`, same
+ * empty-string-means-null convention as `NullableNumberField`. The stored
+ * value is the raw "YYYY-MM-DDTHH:mm" the input produces — the host dialog
+ * converts it to a full ISO string (via `new Date(value).toISOString()`) at
+ * submit time, matching the existing convention in `CouponDialog.tsx`.
+ */
+export function NullableDateTimeField({
+  id,
+  label,
+  error,
+  control,
+  name,
+  disabled,
+}: NullableDateTimeFieldProps) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <div className="space-y-1.5">
+          <Label htmlFor={id}>{label}</Label>
+          <Input
+            id={id}
+            type="datetime-local"
+            value={field.value ?? ""}
+            disabled={disabled}
+            onChange={(e) => field.onChange(e.target.value || null)}
+            onBlur={field.onBlur}
+            ref={field.ref}
+            aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+          />
+          {error ? (
+            <p
+              id={`${id}-error`}
+              className="text-xs text-destructive"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+        </div>
+      )}
     />
   )
 }
