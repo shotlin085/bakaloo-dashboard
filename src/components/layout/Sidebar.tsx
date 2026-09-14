@@ -258,7 +258,13 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
   {
     section: "SYSTEM",
     items: [
-      { label: "Banners", href: "/banners", icon: "Image" },
+      // The general Home-screen Banners module (carousel/popup/announcement
+      // + a placement selector) is temporarily hidden from navigation —
+      // confusing to manage alongside Profile banners in one place. The
+      // page and backend API are untouched; only this menu entry is gone.
+      // Restore by uncommenting once the two are split more thoroughly.
+      // { label: "Banners", href: "/banners", icon: "Image" },
+      { label: "Profile Banner", href: "/profile-banners", icon: "Image" },
       { label: "Tutorials", href: "/tutorials", icon: "Youtube" },
       { label: "Activity Log", href: "/activity-log", icon: "Activity" },
       { label: "Customer Activity", href: "/customer-activity", icon: "History" },

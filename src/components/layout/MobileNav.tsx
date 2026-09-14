@@ -183,7 +183,9 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
   {
     section: "SYSTEM",
     items: [
-      { label: "Banners", href: "/banners", icon: "Image" },
+      // Temporarily hidden — see the matching comment in Sidebar.tsx.
+      // { label: "Banners", href: "/banners", icon: "Image" },
+      { label: "Profile Banner", href: "/profile-banners", icon: "Image" },
       { label: "General Settings", href: "/settings", icon: "Settings" },
     ],
   },
