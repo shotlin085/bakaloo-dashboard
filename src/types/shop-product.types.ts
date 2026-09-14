@@ -14,9 +14,13 @@ export interface ShopProductCatalogRef {
   category_id: string | null
   /** Human-readable category name (joined from categories table). */
   category_name: string | null
-  /** Master-catalog unit label (e.g. "kg", "gm", "piece") — used to make
-   *  bulk-quantity fields unambiguous across products with different units. */
+  /** Master-catalog unit-of-measure keyword (e.g. "kg", "gm", "piece") —
+   *  NOT a package size on its own; see net_quantity for that. */
   unit: string | null
+  /** Package size as set at product-creation time (e.g. "250 gm", "1 kg") —
+   *  shown for context so bulk-quantity fields (a plain count of this exact
+   *  listing) aren't mistaken for a raw weight. */
+  net_quantity: string | null
 }
 
 /** Full shop-product record. */

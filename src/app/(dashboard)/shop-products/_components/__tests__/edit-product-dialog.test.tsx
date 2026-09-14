@@ -172,6 +172,7 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
       category_id: null,
       category_name: null,
       unit: "piece",
+      net_quantity: null,
     },
     shop_name: null,
   }

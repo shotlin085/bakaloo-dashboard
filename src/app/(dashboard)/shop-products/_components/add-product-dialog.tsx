@@ -454,11 +454,16 @@ export function AddProductDialog({
   // toggle itself is off — they're meaningless without it.
   const bulkOrderEligible = useWatch({ control, name: "bulk_order_eligible" })
 
-  // Bulk-quantity fields are a raw count of the catalog product's own unit
-  // (kg, gm, piece, ...) — surfacing it in the label is the difference
-  // between "min qty: 5" (ambiguous — 5 what?) and "min qty: 5 (piece)",
-  // which matters once more than one operator adds products.
-  const unitLabel = picked?.unit?.trim() || "unit"
+  // The product's package size as set at creation time (e.g. "250 gm") —
+  // shown near the top of the form for reference so a bulk-quantity count
+  // (below) is never mistaken for a raw weight. `unit` alone is a bare
+  // keyword ("gm", "piece"), not a size, so it's only the last-resort
+  // fallback when no actual package-size field came back.
+  const packageSize =
+    picked?.net_quantity?.trim() ||
+    (picked as { netQuantity?: string } | null)?.netQuantity?.trim() ||
+    picked?.unit?.trim() ||
+    null
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -603,11 +608,14 @@ export function AddProductDialog({
                   <span className="truncate text-sm font-medium">
                     {picked.name}
                   </span>
-                  {picked.sku ? (
-                    <span className="truncate text-xs text-muted-foreground">
-                      SKU {picked.sku}
-                    </span>
-                  ) : null}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {[
+                      packageSize ? `Package size: ${packageSize}` : null,
+                      picked.sku ? `SKU ${picked.sku}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
                 </div>
                 <Button
                   type="button"
@@ -739,7 +747,7 @@ export function AddProductDialog({
                 <div className="space-y-3">
                   <NullableNumberField
                     id="add-product-wholesale-price"
-                    label="Wholesale price (per unit)"
+                    label="Wholesale price"
                     step="0.01"
                     min={0}
                     control={control}
@@ -749,7 +757,7 @@ export function AddProductDialog({
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <NullableNumberField
                       id="add-product-bulk-min-quantity"
-                      label={`Minimum bulk quantity (${unitLabel})`}
+                      label="Minimum bulk quantity"
                       step="1"
                       min={1}
                       max={10000}
@@ -759,7 +767,7 @@ export function AddProductDialog({
                     />
                     <NullableNumberField
                       id="add-product-bulk-max-quantity"
-                      label={`Maximum bulk quantity (${unitLabel})`}
+                      label="Maximum bulk quantity"
                       step="1"
                       min={1}
                       max={10000}
@@ -785,14 +793,13 @@ export function AddProductDialog({
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Leave wholesale price blank to fall back to the retail
-                    price above for B2B customers. Leave the minimum/maximum
-                    blank for no per-listing limit, and the window blank to
-                    keep bulk ordering open whenever the toggle above is on.
-                    Quantities are counted in the product&apos;s own unit —
-                    {" "}
-                    <span className="font-medium">{unitLabel}</span> for this
-                    product.
+                    Wholesale price is per listing — this product&apos;s
+                    package size is shown above, next to its name. Minimum
+                    and maximum bulk quantity are a plain count of how many
+                    of that same package a bulk order line must request (not
+                    a weight): leave either blank for no per-listing limit,
+                    and the window blank to keep bulk ordering open whenever
+                    the toggle above is on.
                   </p>
                 </div>
               ) : null}
