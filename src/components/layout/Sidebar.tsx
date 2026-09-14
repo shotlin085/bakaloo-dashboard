@@ -24,6 +24,7 @@ import {
   Image,
   Landmark,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Map,
   MapPin,
@@ -104,6 +105,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Image,
   Landmark,
   LayoutDashboard,
+  LayoutGrid,
   Map,
   MapPin,
   MapPinned,
@@ -265,6 +267,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       // Restore by uncommenting once the two are split more thoroughly.
       // { label: "Banners", href: "/banners", icon: "Image" },
       { label: "Profile Banner", href: "/profile-banners", icon: "Image" },
+      { label: "Nav Button", href: "/nav-button", icon: "LayoutGrid" },
       { label: "Tutorials", href: "/tutorials", icon: "Youtube" },
       { label: "Activity Log", href: "/activity-log", icon: "Activity" },
       { label: "Customer Activity", href: "/customer-activity", icon: "History" },

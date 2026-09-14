@@ -16,6 +16,7 @@ import {
   Gift,
   Image,
   LayoutDashboard,
+  LayoutGrid,
   Map,
   MapPin,
   MapPinned,
@@ -73,6 +74,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Gift,
   Image,
   LayoutDashboard,
+  LayoutGrid,
   Map,
   MapPin,
   MapPinned,
@@ -186,6 +188,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       // Temporarily hidden — see the matching comment in Sidebar.tsx.
       // { label: "Banners", href: "/banners", icon: "Image" },
       { label: "Profile Banner", href: "/profile-banners", icon: "Image" },
+      { label: "Nav Button", href: "/nav-button", icon: "LayoutGrid" },
       { label: "General Settings", href: "/settings", icon: "Settings" },
     ],
   },
