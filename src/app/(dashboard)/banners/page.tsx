@@ -144,6 +144,22 @@ function SortableBannerCard({
                 {banner.audience === "ALL" ? "B2C + B2B" : "B2B only"}
               </Badge>
             )}
+            {banner.placement === "PROFILE" && (
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-sky-50 border-sky-200 text-sky-700"
+              >
+                Profile
+              </Badge>
+            )}
+            {banner.target_segment_id && (
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-amber-50 border-amber-200 text-amber-700"
+              >
+                Segment
+              </Badge>
+            )}
           </div>
           {/* Drag handle + Actions overlay */}
           <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

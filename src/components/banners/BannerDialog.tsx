@@ -22,7 +22,20 @@ import {
 import { ImageUpload } from "@/components/products/ImageUpload"
 import { useCreateBanner, useUpdateBanner } from "@/hooks/useBanners"
 import { useCategories, useBundles } from "@/hooks/useCategories"
+import { useCustomerSegments } from "@/hooks/useCustomerSegments"
 import type { Banner, CreateBannerPayload } from "@/types/banner.types"
+
+/** Declared width x height for each placement's slot, shown as a guide next
+ * to the dimension inputs — not enforced server-side, just what the
+ * screen's layout actually expects so an admin can size/crop before
+ * publishing instead of finding out live in the app. */
+const PLACEMENT_GUIDE: Record<
+  NonNullable<CreateBannerPayload["placement"]>,
+  { label: string; suggested: string }
+> = {
+  HOME: { label: "Home screen", suggested: "1080 × 480 (9:4 wide carousel)" },
+  PROFILE: { label: "Profile screen", suggested: "1080 × 360 (3:1 wide strip)" },
+}
 
 interface BannerDialogProps {
   open: boolean
@@ -41,6 +54,87 @@ const INITIAL: CreateBannerPayload & { isActive: boolean } = {
   endDate: "",
   triggerType: "ALWAYS",
   audience: "B2C",
+  placement: "HOME",
+  targetSegmentId: undefined,
+  imageWidth: undefined,
+  imageHeight: undefined,
+}
+
+/** Loads the uploaded image and reports its natural pixel size back, so the
+ * form can warn when it doesn't match what the admin declared — the actual
+ * "test multiple banners and check it's properly working before publishing"
+ * step, done inline instead of only discoverable after it's already live in
+ * the app. */
+function BannerSizeCheck({
+  imageUrl,
+  declaredWidth,
+  declaredHeight,
+  placement,
+}: {
+  imageUrl: string
+  declaredWidth?: number
+  declaredHeight?: number
+  placement: NonNullable<CreateBannerPayload["placement"]>
+}) {
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setNatural(null)
+    setFailed(false)
+    if (!imageUrl) return
+    const img = new window.Image()
+    img.onload = () => setNatural({ w: img.naturalWidth, h: img.naturalHeight })
+    img.onerror = () => setFailed(true)
+    img.src = imageUrl
+  }, [imageUrl])
+
+  if (!imageUrl) return null
+  if (failed) {
+    return <p className="text-xs text-destructive">Couldn&apos;t load this image URL to check its size.</p>
+  }
+  if (!natural) {
+    return <p className="text-xs text-muted-foreground">Checking image size…</p>
+  }
+
+  const declared = declaredWidth && declaredHeight ? { w: declaredWidth, h: declaredHeight } : null
+  const naturalRatio = natural.w / natural.h
+  const declaredRatio = declared ? declared.w / declared.h : null
+  // >8% off the declared aspect ratio is enough to visibly crop or letterbox
+  // on the actual screen — anything tighter than that is normal
+  // compression/export noise, not a real mismatch.
+  const ratioMismatch =
+    declaredRatio !== null && Math.abs(naturalRatio - declaredRatio) / declaredRatio > 0.08
+
+  return (
+    <div className="rounded-md border bg-muted/30 p-2.5 space-y-2">
+      <div
+        className="w-full overflow-hidden rounded bg-muted"
+        style={{ aspectRatio: `${natural.w} / ${natural.h}`, maxHeight: 140 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt="Banner preview" className="w-full h-full object-cover" />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Uploaded image is {natural.w} × {natural.h}px for {PLACEMENT_GUIDE[placement].label}.
+      </p>
+      {declared && ratioMismatch && (
+        <p className="text-xs text-amber-600">
+          This doesn&apos;t match the declared {declared.w} × {declared.h}px — the app will crop or
+          letterbox it to fit. Re-export at that size, or update the width/height above.
+        </p>
+      )}
+      {declared && !ratioMismatch && (
+        <p className="text-xs text-emerald-600">Matches the declared size — safe to publish.</p>
+      )}
+      {!declared && (
+        <p className="text-xs text-muted-foreground">
+          Set width/height above to check this image against the {PLACEMENT_GUIDE[placement].label}
+          {" "}slot before publishing.
+        </p>
+      )}
+    </div>
+  )
 }
 
 function sanitizeBannerImageUrl(value: string | null | undefined) {
@@ -67,6 +161,7 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
   const isEdit = !!banner
   const { data: categories } = useCategories()
   const { data: bundles } = useBundles()
+  const { data: segments } = useCustomerSegments()
 
   useEffect(() => {
     if (banner) {
@@ -81,6 +176,10 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
         endDate: banner.end_date ? banner.end_date.slice(0, 16) : "",
         triggerType: banner.trigger_type ?? "ALWAYS",
         audience: banner.audience ?? "B2C",
+        placement: banner.placement ?? "HOME",
+        targetSegmentId: banner.target_segment_id ?? undefined,
+        imageWidth: banner.image_width ?? undefined,
+        imageHeight: banner.image_height ?? undefined,
       })
     } else {
       setForm(INITIAL)
@@ -103,6 +202,10 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
       endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
       triggerType: form.triggerType,
       audience: form.audience,
+      placement: form.placement,
+      targetSegmentId: form.targetSegmentId || undefined,
+      imageWidth: form.imageWidth || undefined,
+      imageHeight: form.imageHeight || undefined,
     }
 
     if (isEdit && banner) {
@@ -198,6 +301,93 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
             </div>
           </div>
 
+          {/* Placement + Target segment */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Placement</Label>
+              <Select
+                value={form.placement ?? "HOME"}
+                onValueChange={(v) =>
+                  setForm({ ...form, placement: v as CreateBannerPayload["placement"] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HOME">Home screen</SelectItem>
+                  <SelectItem value="PROFILE">Profile screen</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Suggested size: {PLACEMENT_GUIDE[form.placement ?? "HOME"].suggested}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Target segment</Label>
+              <Select
+                value={form.targetSegmentId ?? "__all__"}
+                onValueChange={(v) =>
+                  setForm({ ...form, targetSegmentId: v === "__all__" ? undefined : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Everyone in the audience" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Everyone (no segment)</SelectItem>
+                  {(segments ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.member_count})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.targetSegmentId && (
+                <p className="text-xs text-muted-foreground">
+                  Only signed-in members of this segment see this banner — combined with Audience above.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Declared banner dimensions */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="imageWidth">Width (px)</Label>
+              <Input
+                id="imageWidth"
+                type="number"
+                min={1}
+                placeholder="e.g. 1080"
+                value={form.imageWidth ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    imageWidth: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="imageHeight">Height (px)</Label>
+              <Input
+                id="imageHeight"
+                type="number"
+                min={1}
+                placeholder="e.g. 480"
+                value={form.imageHeight ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    imageHeight: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+              />
+            </div>
+          </div>
+
           {/* Banner Image */}
           <div className="space-y-2">
             <Label>Banner Image *</Label>
@@ -225,6 +415,13 @@ export function BannerDialog({ open, onClose, banner }: BannerDialogProps) {
                 required
               />
             </div>
+
+            <BannerSizeCheck
+              imageUrl={form.imageUrl}
+              declaredWidth={form.imageWidth ?? undefined}
+              declaredHeight={form.imageHeight ?? undefined}
+              placement={form.placement ?? "HOME"}
+            />
           </div>
 
           {/* Link Type + Value */}

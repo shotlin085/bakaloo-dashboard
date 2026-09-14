@@ -1,6 +1,9 @@
 /** Which storefront audience sees a banner. 'ALL' shows to everyone. */
 export type BannerAudience = "B2C" | "B2B" | "ALL"
 
+/** Which screen this banner renders on. */
+export type BannerPlacement = "HOME" | "PROFILE"
+
 /** Banner entity — snake_case (backend returns raw DB rows) */
 export interface Banner {
   id: string
@@ -16,6 +19,12 @@ export interface Banner {
   /** 'ALWAYS' (default) shows regardless of store status; 'STORE_CLOSED' shows only while the store is closed. */
   trigger_type: "ALWAYS" | "STORE_CLOSED"
   audience: BannerAudience
+  placement: BannerPlacement
+  /** null = shown to the whole resolved audience, not restricted to one customer segment. */
+  target_segment_id: string | null
+  /** Declared px dimensions for this banner's slot — null means undeclared (legacy rows). */
+  image_width: number | null
+  image_height: number | null
   created_at: string
   updated_at: string
 }
@@ -32,6 +41,10 @@ export interface CreateBannerPayload {
   endDate?: string
   triggerType?: "ALWAYS" | "STORE_CLOSED"
   audience?: BannerAudience
+  placement?: BannerPlacement
+  targetSegmentId?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
 }
 
 /** Update banner payload */
