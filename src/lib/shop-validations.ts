@@ -347,6 +347,13 @@ export const shopProductSchema = z
       .min(1, "Minimum bulk quantity must be at least 1")
       .max(10000, "Minimum bulk quantity cannot exceed 10000")
       .nullable(),
+    /** Ceiling for the same line. Null means no per-listing maximum. */
+    bulk_max_quantity: z
+      .number()
+      .int("Maximum bulk quantity must be an integer")
+      .min(1, "Maximum bulk quantity must be at least 1")
+      .max(10000, "Maximum bulk quantity cannot exceed 10000")
+      .nullable(),
     /** Optional bulk-sale window (datetime-local strings, "YYYY-MM-DDTHH:mm")
      *  — either side null means unbounded on that side; both null means
      *  always eligible whenever bulk_order_eligible is on. */
@@ -373,6 +380,16 @@ export const shopProductSchema = z
     {
       message: "Bulk sale end must be after the start",
       path: ["bulk_sale_end_at"],
+    },
+  )
+  .refine(
+    (data) =>
+      data.bulk_min_quantity === null ||
+      data.bulk_max_quantity === null ||
+      data.bulk_max_quantity >= data.bulk_min_quantity,
+    {
+      message: "Maximum bulk quantity must be at least the minimum",
+      path: ["bulk_max_quantity"],
     },
   )
 

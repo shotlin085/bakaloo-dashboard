@@ -123,6 +123,7 @@ function buildDefaultsFromProduct(product: ShopProduct): ShopProductInput {
     is_featured: product.is_featured,
     bulk_order_eligible: product.bulk_order_eligible,
     bulk_min_quantity: product.bulk_min_quantity,
+    bulk_max_quantity: product.bulk_max_quantity,
     bulk_sale_start_at: toDateTimeLocal(product.bulk_sale_start_at),
     bulk_sale_end_at: toDateTimeLocal(product.bulk_sale_end_at),
   }
@@ -188,6 +189,12 @@ export function EditProductDialog({
   // toggle itself is off — they're meaningless without it.
   const bulkOrderEligible = useWatch({ control, name: "bulk_order_eligible" })
 
+  // Bulk-quantity fields are a raw count of the catalog product's own unit
+  // (kg, gm, piece, ...) — surfacing it in the label is the difference
+  // between "min qty: 5" (ambiguous — 5 what?) and "min qty: 5 (piece)",
+  // which matters once more than one operator adds products.
+  const unitLabel = product.product?.unit?.trim() || "unit"
+
   // ─── Submit handler ──────────────────────────────────────────────────────
 
   async function onSubmit(values: ShopProductInput) {
@@ -208,6 +215,7 @@ export function EditProductDialog({
             is_featured: values.is_featured,
             bulk_order_eligible: values.bulk_order_eligible,
             bulk_min_quantity: values.bulk_min_quantity,
+            bulk_max_quantity: values.bulk_max_quantity,
             // datetime-local gives "2026-07-13T15:53" (no seconds/timezone)
             // — the backend requires a full RFC3339 date-time (see
             // CouponDialog.tsx's identical conversion).
@@ -285,47 +293,51 @@ export function EditProductDialog({
             </div>
           </div>
 
-          {/* ── Pricing ───────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <NumberField
-              id="edit-product-price"
-              label={t("shopProducts.list.column.price")}
-              step="0.01"
-              min={0}
-              required
-              error={errors.price?.message}
-              {...register("price", { valueAsNumber: true })}
-            />
-            <NullableNumberField
-              id="edit-product-sale-price"
-              label={t("shopProducts.list.column.salePrice")}
-              step="0.01"
-              min={0}
-              control={control}
-              name="sale_price"
-              error={errors.sale_price?.message}
-            />
-            <NullableNumberField
-              id="edit-product-cost-price"
-              label="Cost price"
-              step="0.01"
-              min={0}
-              control={control}
-              name="cost_price"
-              error={errors.cost_price?.message}
-            />
-            <NullableNumberField
-              id="edit-product-wholesale-price"
-              label="Wholesale price (B2B)"
-              step="0.01"
-              min={0}
-              control={control}
-              name="wholesale_price"
-              error={errors.wholesale_price?.message}
-            />
+          {/* ── B2C · Retail ──────────────────────────────────────── */}
+          <div className="space-y-3 rounded-md border p-3">
+            <p className="text-sm font-semibold">B2C · Retail</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <NumberField
+                id="edit-product-price"
+                label={t("shopProducts.list.column.price")}
+                step="0.01"
+                min={0}
+                required
+                error={errors.price?.message}
+                {...register("price", { valueAsNumber: true })}
+              />
+              <NullableNumberField
+                id="edit-product-sale-price"
+                label={t("shopProducts.list.column.salePrice")}
+                step="0.01"
+                min={0}
+                control={control}
+                name="sale_price"
+                error={errors.sale_price?.message}
+              />
+              <NullableNumberField
+                id="edit-product-cost-price"
+                label="Cost price"
+                step="0.01"
+                min={0}
+                control={control}
+                name="cost_price"
+                error={errors.cost_price?.message}
+              />
+              <NumberField
+                id="edit-product-max-qty"
+                label="Max order qty (retail)"
+                step="1"
+                min={1}
+                max={10000}
+                required
+                error={errors.max_order_qty?.message}
+                {...register("max_order_qty", { valueAsNumber: true })}
+              />
+            </div>
           </div>
 
-          {/* ── Inventory ─────────────────────────────────────────── */}
+          {/* ── Inventory (shared stock pool — not channel-specific) ─ */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <NumberField
               id="edit-product-stock"
@@ -348,19 +360,9 @@ export function EditProductDialog({
               error={errors.low_stock_threshold?.message}
               {...register("low_stock_threshold", { valueAsNumber: true })}
             />
-            <NumberField
-              id="edit-product-max-qty"
-              label={t("shopProducts.list.column.maxOrderQty")}
-              step="1"
-              min={1}
-              max={10000}
-              required
-              error={errors.max_order_qty?.message}
-              {...register("max_order_qty", { valueAsNumber: true })}
-            />
           </div>
 
-          {/* ── Toggles ───────────────────────────────────────────── */}
+          {/* ── Toggles (retail) ──────────────────────────────────── */}
           <div className="space-y-2">
             <Controller
               control={control}
@@ -388,58 +390,88 @@ export function EditProductDialog({
                 />
               )}
             />
+          </div>
+
+          {/* ── B2B · Wholesale ───────────────────────────────────── */}
+          <div className="space-y-3 rounded-md border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-900 dark:bg-violet-950/20">
+            <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">
+              B2B · Wholesale
+            </p>
             <Controller
               control={control}
               name="bulk_order_eligible"
               render={({ field }) => (
                 <ToggleRow
                   id="edit-product-bulk-order-eligible"
-                  label="Bulk order eligible"
+                  label="Enable B2B / bulk ordering for this listing"
                   checked={Boolean(field.value)}
                   onCheckedChange={field.onChange}
                   testId="edit-product-bulk-order-eligible"
                 />
               )}
             />
-          </div>
-
-          {/* ── Bulk Order Settings ───────────────────────────────── */}
-          {bulkOrderEligible ? (
-            <div className="space-y-3 rounded-md border p-3">
-              <p className="text-sm font-medium">Bulk Order Settings</p>
-              <NullableNumberField
-                id="edit-product-bulk-min-quantity"
-                label="Minimum bulk quantity"
-                step="1"
-                min={1}
-                max={10000}
-                control={control}
-                name="bulk_min_quantity"
-                error={errors.bulk_min_quantity?.message}
-              />
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <NullableDateTimeField
-                  id="edit-product-bulk-sale-start"
-                  label="Bulk sale starts (optional)"
+            {bulkOrderEligible ? (
+              <div className="space-y-3">
+                <NullableNumberField
+                  id="edit-product-wholesale-price"
+                  label="Wholesale price (per unit)"
+                  step="0.01"
+                  min={0}
                   control={control}
-                  name="bulk_sale_start_at"
-                  error={errors.bulk_sale_start_at?.message}
+                  name="wholesale_price"
+                  error={errors.wholesale_price?.message}
                 />
-                <NullableDateTimeField
-                  id="edit-product-bulk-sale-end"
-                  label="Bulk sale ends (optional)"
-                  control={control}
-                  name="bulk_sale_end_at"
-                  error={errors.bulk_sale_end_at?.message}
-                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <NullableNumberField
+                    id="edit-product-bulk-min-quantity"
+                    label={`Minimum bulk quantity (${unitLabel})`}
+                    step="1"
+                    min={1}
+                    max={10000}
+                    control={control}
+                    name="bulk_min_quantity"
+                    error={errors.bulk_min_quantity?.message}
+                  />
+                  <NullableNumberField
+                    id="edit-product-bulk-max-quantity"
+                    label={`Maximum bulk quantity (${unitLabel})`}
+                    step="1"
+                    min={1}
+                    max={10000}
+                    control={control}
+                    name="bulk_max_quantity"
+                    error={errors.bulk_max_quantity?.message}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <NullableDateTimeField
+                    id="edit-product-bulk-sale-start"
+                    label="Bulk sale starts (optional)"
+                    control={control}
+                    name="bulk_sale_start_at"
+                    error={errors.bulk_sale_start_at?.message}
+                  />
+                  <NullableDateTimeField
+                    id="edit-product-bulk-sale-end"
+                    label="Bulk sale ends (optional)"
+                    control={control}
+                    name="bulk_sale_end_at"
+                    error={errors.bulk_sale_end_at?.message}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Leave wholesale price blank to fall back to the retail
+                  price above for B2B customers. Leave the minimum/maximum
+                  blank for no per-listing limit, and the window blank to
+                  keep bulk ordering open whenever the toggle above is on.
+                  Quantities are counted in the product&apos;s own unit —
+                  {" "}
+                  <span className="font-medium">{unitLabel}</span> for this
+                  product.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Leave the minimum blank for no per-listing minimum, and the
-                window blank to keep bulk ordering open whenever the toggle
-                above is on.
-              </p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
           <DialogFooter className="gap-2">
             <Button

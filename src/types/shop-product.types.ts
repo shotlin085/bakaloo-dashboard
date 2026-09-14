@@ -14,6 +14,9 @@ export interface ShopProductCatalogRef {
   category_id: string | null
   /** Human-readable category name (joined from categories table). */
   category_name: string | null
+  /** Master-catalog unit label (e.g. "kg", "gm", "piece") — used to make
+   *  bulk-quantity fields unambiguous across products with different units. */
+  unit: string | null
 }
 
 /** Full shop-product record. */
@@ -41,6 +44,8 @@ export interface ShopProduct {
    *  qualify — on top of bulk_orders' own whole-order minimums. Null means
    *  no per-listing minimum. */
   bulk_min_quantity: number | null
+  /** Ceiling for the same line. Null means no per-listing maximum. */
+  bulk_max_quantity: number | null
   /** Optional bulk-sale window (ISO date-time) — either side null means
    *  unbounded on that side; both null means always eligible whenever
    *  bulk_order_eligible is on. */

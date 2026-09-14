@@ -104,7 +104,11 @@ export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
  */
 export type NullableNumberFieldName = Extract<
   FieldPath<ShopProductInput>,
-  "sale_price" | "cost_price" | "wholesale_price" | "bulk_min_quantity"
+  | "sale_price"
+  | "cost_price"
+  | "wholesale_price"
+  | "bulk_min_quantity"
+  | "bulk_max_quantity"
 >
 
 export interface NullableNumberFieldProps {

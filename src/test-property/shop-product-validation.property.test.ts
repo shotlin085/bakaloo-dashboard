@@ -23,8 +23,8 @@
  *
  * Other required fields (`product_id`, `cost_price`, `wholesale_price`,
  * `low_stock_threshold`, `is_available`, `is_featured`,
- * `bulk_order_eligible`, `bulk_min_quantity`, `bulk_sale_start_at`,
- * `bulk_sale_end_at`) are stubbed with valid constants so the property
+ * `bulk_order_eligible`, `bulk_min_quantity`, `bulk_max_quantity`,
+ * `bulk_sale_start_at`, `bulk_sale_end_at`) are stubbed with valid constants so the property
  * isolates the four numeric fields under test. `low_stock_threshold`,
  * `is_available`, `is_featured`, and `bulk_order_eligible` have schema
  * defaults but we still pass explicit valid values to keep the input fully
@@ -66,6 +66,7 @@ const STUB_REST = {
   bulk_order_eligible: true,
   // Same reasoning as `cost_price` — `.nullable()`, must be present.
   bulk_min_quantity: null as number | null,
+  bulk_max_quantity: null as number | null,
   bulk_sale_start_at: null as string | null,
   bulk_sale_end_at: null as string | null,
 } as const

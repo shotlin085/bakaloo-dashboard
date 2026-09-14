@@ -159,6 +159,7 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
     is_featured: false,
     bulk_order_eligible: true,
     bulk_min_quantity: null,
+    bulk_max_quantity: null,
     bulk_sale_start_at: null,
     bulk_sale_end_at: null,
     sold_out_at: null,
@@ -170,6 +171,7 @@ function makeShopProduct(partial: Partial<ShopProduct> = {}): ShopProduct {
       image_url: "",
       category_id: null,
       category_name: null,
+      unit: "piece",
     },
     shop_name: null,
   }

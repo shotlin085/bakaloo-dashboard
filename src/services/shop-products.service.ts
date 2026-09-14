@@ -48,6 +48,7 @@ export interface ShopProductCreateBody {
   is_featured?: boolean
   bulk_order_eligible?: boolean
   bulk_min_quantity?: number | null
+  bulk_max_quantity?: number | null
   bulk_sale_start_at?: string | null
   bulk_sale_end_at?: string | null
 }
@@ -70,6 +71,7 @@ export interface ShopProductUpdateBody {
   is_featured?: boolean
   bulk_order_eligible?: boolean
   bulk_min_quantity?: number | null
+  bulk_max_quantity?: number | null
   bulk_sale_start_at?: string | null
   bulk_sale_end_at?: string | null
 }
