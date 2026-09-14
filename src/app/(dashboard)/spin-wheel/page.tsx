@@ -48,6 +48,7 @@ import {
 import { SpinPrizeDialog, SPIN_PRIZE_TYPE_LABELS } from "@/components/spin-wheel/SpinPrizeDialog"
 import { SpinMilestoneRuleDialog } from "@/components/spin-wheel/SpinMilestoneRuleDialog"
 import { GrantSpinsDialog } from "@/components/spin-wheel/GrantSpinsDialog"
+import { SpinAppearanceCard, type SpinAppearanceDraft } from "@/components/spin-wheel/SpinAppearanceCard"
 
 import {
   useSpinPrizes,
@@ -403,23 +404,48 @@ function MilestonesTab() {
 // Settings tab
 // ═══════════════════════════════════════════════════════════════════════
 
+interface SettingsDraft extends SpinAppearanceDraft {
+  dailyFreeSpins: number
+  triggerMode: SpinTriggerMode
+}
+
+const DEFAULT_SETTINGS_DRAFT: SettingsDraft = {
+  dailyFreeSpins: 1,
+  triggerMode: "ALWAYS_ON_LOGIN",
+  backgroundImageUrl: null,
+  backgroundImagePublicId: null,
+  bannerTitle: "Win up to ₹100 off",
+  bannerSubtitle: "on your next order",
+  bannerTagline: "Good Deals\nEveryday!",
+}
+
 function SettingsTab() {
   const { data: settings, isLoading } = useSpinWheelSettings()
   const updateMutation = useUpdateSpinWheelSettings()
   const { can } = usePermissions()
   const canManage = can("spin-wheel.manage")
 
-  const [draft, setDraft] = useState<{ dailyFreeSpins: number; triggerMode: SpinTriggerMode }>({
-    dailyFreeSpins: 1,
-    triggerMode: "ALWAYS_ON_LOGIN",
-  })
+  const [draft, setDraft] = useState<SettingsDraft>(DEFAULT_SETTINGS_DRAFT)
   const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
     if (!settings) return
-    setDraft({ dailyFreeSpins: settings.dailyFreeSpins, triggerMode: settings.triggerMode })
+    setDraft({
+      dailyFreeSpins: settings.dailyFreeSpins,
+      triggerMode: settings.triggerMode,
+      backgroundImageUrl: settings.backgroundImageUrl,
+      backgroundImagePublicId: settings.backgroundImagePublicId,
+      bannerTitle: settings.bannerTitle,
+      bannerSubtitle: settings.bannerSubtitle,
+      bannerTagline: settings.bannerTagline,
+    })
     setIsDirty(false)
   }, [settings])
+
+  const patchDraft = (patch: Partial<SettingsDraft>) => {
+    setDraft((d) => ({ ...d, ...patch }))
+    setIsDirty(true)
+  }
 
   const handleSave = () => {
     updateMutation.mutate(draft, { onSuccess: () => setIsDirty(false) })
@@ -430,71 +456,79 @@ function SettingsTab() {
   }
 
   return (
-    <Card className="max-w-lg">
-      <CardHeader>
-        <CardTitle className="text-base">Wheel Settings</CardTitle>
-        <CardDescription>
-          How many spins customers get automatically, and where the popup shows itself.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="space-y-1.5">
-          <Label htmlFor="sw-daily">Daily Free Spins per User</Label>
-          <Input
-            id="sw-daily"
-            type="number"
-            min={0}
-            value={draft.dailyFreeSpins}
-            onChange={(e) => {
-              setDraft((d) => ({ ...d, dailyFreeSpins: parseInt(e.target.value) || 0 }))
-              setIsDirty(true)
-            }}
-          />
-          <p className="text-xs text-muted-foreground">
-            Granted automatically the first time each customer opens the wheel each day. Set to 0
-            to rely entirely on milestone/manual grants. Unused spins roll over — they don&apos;t
-            expire at midnight, and stack with milestone or manually-granted spins.
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Popup Trigger</Label>
-          <Select
-            value={draft.triggerMode}
-            onValueChange={(v) => {
-              setDraft((d) => ({ ...d, triggerMode: v as SpinTriggerMode }))
-              setIsDirty(true)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALWAYS_ON_LOGIN">Always — once per session for every logged-in user</SelectItem>
-              <SelectItem value="MILESTONE_ONLY">Only when a spin is actually available</SelectItem>
-              <SelectItem value="MANUAL_ONLY">Never — Profile menu only</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            The &quot;Spin &amp; Win&quot; tile in the customer&apos;s Profile always opens the wheel
-            on demand regardless of this setting — this only controls the automatic popup.
-          </p>
-        </div>
-
-        {canManage && (
-          <div className="flex justify-end pt-2 border-t">
-            <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending} className="min-w-[140px]">
-              {updateMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Settings
-            </Button>
+    <div className="space-y-6 max-w-3xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Wheel Settings</CardTitle>
+          <CardDescription>
+            How many spins customers get automatically, and where the popup shows itself.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="sw-daily">Daily Free Spins per User</Label>
+            <Input
+              id="sw-daily"
+              type="number"
+              min={0}
+              value={draft.dailyFreeSpins}
+              onChange={(e) => patchDraft({ dailyFreeSpins: parseInt(e.target.value) || 0 })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Granted automatically the first time each customer opens the wheel each day. Set to 0
+              to rely entirely on milestone/manual grants. Unused spins roll over — they don&apos;t
+              expire at midnight, and stack with milestone or manually-granted spins.
+            </p>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          <div className="space-y-1.5">
+            <Label>Popup Trigger</Label>
+            <Select
+              value={draft.triggerMode}
+              onValueChange={(v) => patchDraft({ triggerMode: v as SpinTriggerMode })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALWAYS_ON_LOGIN">Always — once per session for every logged-in user</SelectItem>
+                <SelectItem value="MILESTONE_ONLY">Only when a spin is actually available</SelectItem>
+                <SelectItem value="MANUAL_ONLY">Never — Profile menu only</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The &quot;Spin &amp; Win&quot; tile in the customer&apos;s Profile always opens the wheel
+              on demand regardless of this setting — this only controls the automatic popup.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Popup Appearance</CardTitle>
+          <CardDescription>
+            The background image and banner-box copy shown on the Spin &amp; Win popup itself.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SpinAppearanceCard draft={draft} onChange={patchDraft} canManage={canManage} />
+        </CardContent>
+      </Card>
+
+      {canManage && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending} className="min-w-[140px]">
+            {updateMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Settings
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 

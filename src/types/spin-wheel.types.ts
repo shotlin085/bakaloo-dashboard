@@ -51,12 +51,22 @@ export interface SpinWheelSettings {
   id: string
   dailyFreeSpins: number
   triggerMode: SpinTriggerMode
+  backgroundImageUrl: string | null
+  backgroundImagePublicId: string | null
+  bannerTitle: string
+  bannerSubtitle: string
+  bannerTagline: string
   updatedAt: string
 }
 
 export interface UpdateSpinWheelSettingsPayload {
   dailyFreeSpins?: number
   triggerMode?: SpinTriggerMode
+  backgroundImageUrl?: string | null
+  backgroundImagePublicId?: string | null
+  bannerTitle?: string
+  bannerSubtitle?: string
+  bannerTagline?: string
 }
 
 export interface SpinMilestoneRule {
