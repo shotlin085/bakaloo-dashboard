@@ -115,7 +115,13 @@ function SortableNavButtonCard({
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
 
-        <NavButtonIconPreview iconKey={navButton.icon_key} accentColor={navButton.accent_color} size={20} />
+        <NavButtonIconPreview
+          iconType={navButton.icon_type}
+          iconKey={navButton.icon_key}
+          accentColor={navButton.accent_color}
+          customIconUrl={navButton.custom_icon_active_url}
+          size={20}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -124,6 +130,11 @@ function SortableNavButtonCard({
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
             <span>{DESTINATION_LABEL[navButton.destination_type]}</span>
+            {navButton.icon_type === "CUSTOM" && (
+              <Badge variant="outline" className="text-[10px] bg-emerald-50 border-emerald-200 text-emerald-700">
+                Custom icon
+              </Badge>
+            )}
             {navButton.audience !== "ALL" && (
               <Badge variant="outline" className="text-[10px] bg-violet-50 border-violet-200 text-violet-700">
                 {navButton.audience}

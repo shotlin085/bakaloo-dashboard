@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LinkValuePicker } from "@/components/builder/LinkPicker"
+import { ImageUpload } from "@/components/products/ImageUpload"
 import { IconPicker, NavButtonIconPreview } from "@/components/nav-buttons/IconPicker"
 import { useCreateNavButton, useUpdateNavButton } from "@/hooks/useNavButtons"
 import { useCustomerSegments } from "@/hooks/useCustomerSegments"
@@ -28,6 +29,7 @@ import type {
   CreateNavButtonPayload,
   NavButtonDestinationType,
   NavButtonIconKey,
+  NavButtonIconType,
 } from "@/types/nav-button.types"
 
 interface NavButtonDialogProps {
@@ -41,6 +43,11 @@ interface NavButtonDialogProps {
  * it here. Extend this list (and the matching one in app_bottom_nav.dart)
  * when a new destination screen is needed. */
 const APP_ROUTE_OPTIONS = [
+  // Not a real go_router path — Spin & Win opens as a dialog from inside
+  // the Profile screen today, not a named route. The app recognizes this
+  // exact sentinel value and opens that same existing dialog directly,
+  // same feature, just reachable from a second place.
+  { value: "spin_wheel", label: "Spin & Win" },
   { value: "/profile/wishlist", label: "Wishlist" },
   { value: "/profile/wallet", label: "Wallet" },
   { value: "/orders", label: "Orders" },
@@ -63,8 +70,11 @@ const DESTINATION_TYPE_LABELS: Record<NavButtonDestinationType, string> = {
 
 const INITIAL: CreateNavButtonPayload & { isActive: boolean } = {
   label: "",
+  iconType: "PRESET",
   iconKey: "gift",
   accentColor: "#7C3AED",
+  customIconActiveUrl: undefined,
+  customIconInactiveUrl: undefined,
   destinationType: "APP_ROUTE",
   destinationValue: APP_ROUTE_OPTIONS[0].value,
   passIdentity: false,
@@ -86,8 +96,11 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
     if (navButton) {
       setForm({
         label: navButton.label,
-        iconKey: navButton.icon_key,
+        iconType: navButton.icon_type,
+        iconKey: navButton.icon_key ?? "gift",
         accentColor: navButton.accent_color ?? "#7C3AED",
+        customIconActiveUrl: navButton.custom_icon_active_url ?? undefined,
+        customIconInactiveUrl: navButton.custom_icon_inactive_url ?? undefined,
         destinationType: navButton.destination_type,
         destinationValue: navButton.destination_value,
         passIdentity: navButton.pass_identity,
@@ -115,8 +128,11 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
     e.preventDefault()
     const payload: CreateNavButtonPayload = {
       label: form.label.trim(),
-      iconKey: form.iconKey,
-      accentColor: form.accentColor || undefined,
+      iconType: form.iconType,
+      iconKey: form.iconType === "PRESET" ? form.iconKey : undefined,
+      accentColor: form.iconType === "PRESET" ? form.accentColor || undefined : undefined,
+      customIconActiveUrl: form.iconType === "CUSTOM" ? form.customIconActiveUrl || undefined : undefined,
+      customIconInactiveUrl: form.iconType === "CUSTOM" ? form.customIconInactiveUrl || undefined : undefined,
       destinationType: form.destinationType,
       destinationValue: form.destinationValue.trim(),
       passIdentity: form.destinationType === "WEBVIEW" ? !!form.passIdentity : false,
@@ -135,8 +151,10 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending
+  const iconReady =
+    form.iconType === "CUSTOM" ? !!form.customIconActiveUrl : !!form.iconKey
   const canSubmit =
-    form.label.trim().length > 0 && form.destinationValue.trim().length > 0
+    form.label.trim().length > 0 && form.destinationValue.trim().length > 0 && iconReady
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -147,10 +165,20 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
-            <NavButtonIconPreview iconKey={form.iconKey} accentColor={form.accentColor} size={22} />
+            <NavButtonIconPreview
+              iconType={form.iconType}
+              iconKey={form.iconKey}
+              accentColor={form.accentColor}
+              customIconUrl={form.customIconActiveUrl}
+              size={22}
+            />
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{form.label || "Button label"}</p>
-              <p className="text-xs text-muted-foreground">This is the 5th bottom-nav slot</p>
+              <p className="text-xs text-muted-foreground">
+                {form.iconType === "CUSTOM"
+                  ? "Rendered as-is, no colored badge — same as the app's own 4 tab icons"
+                  : "This is the 5th bottom-nav slot"}
+              </p>
             </div>
           </div>
 
@@ -166,34 +194,79 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Icon</Label>
-              <IconPicker
-                value={form.iconKey}
-                accentColor={form.accentColor}
-                onChange={(iconKey) => setForm({ ...form, iconKey: iconKey as NavButtonIconKey })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="accentColor">Badge color</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="accentColor"
-                  type="color"
-                  value={form.accentColor || "#7C3AED"}
-                  onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
-                  className="h-9 w-11 rounded border cursor-pointer shrink-0"
+          {/* Icon source */}
+          <div className="space-y-1.5">
+            <Label>Icon</Label>
+            <Select
+              value={form.iconType ?? "PRESET"}
+              onValueChange={(v) => setForm({ ...form, iconType: v as NavButtonIconType })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PRESET">Choose from built-in icons</SelectItem>
+                <SelectItem value="CUSTOM">Upload my own icon</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {form.iconType === "CUSTOM" ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Icon image *</Label>
+                <ImageUpload
+                  value={form.customIconActiveUrl || null}
+                  onChange={(url) => setForm({ ...form, customIconActiveUrl: url ?? undefined })}
+                  label="Upload icon"
+                  helperText={
+                    <div className="flex flex-col gap-0.5">
+                      <span>• <strong>Recommended:</strong> square, transparent PNG, ~192×192px</span>
+                      <span>• Rendered exactly as uploaded — no colored circle behind it</span>
+                    </div>
+                  }
                 />
-                <Input
-                  value={form.accentColor || ""}
-                  onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
-                  placeholder="#7C3AED"
-                  maxLength={9}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Outline variant (optional)</Label>
+                <ImageUpload
+                  value={form.customIconInactiveUrl || null}
+                  onChange={(url) => setForm({ ...form, customIconInactiveUrl: url ?? undefined })}
+                  label="Upload outline icon"
+                  helperText="Falls back to the icon image above if not set."
                 />
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Choose icon</Label>
+                <IconPicker
+                  value={form.iconKey ?? "gift"}
+                  accentColor={form.accentColor}
+                  onChange={(iconKey) => setForm({ ...form, iconKey: iconKey as NavButtonIconKey })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="accentColor">Badge color</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={form.accentColor || "#7C3AED"}
+                    onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                    className="h-9 w-11 rounded border cursor-pointer shrink-0"
+                  />
+                  <Input
+                    value={form.accentColor || ""}
+                    onChange={(e) => setForm({ ...form, accentColor: e.target.value })}
+                    placeholder="#7C3AED"
+                    maxLength={9}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Destination */}
           <div className="space-y-1.5">

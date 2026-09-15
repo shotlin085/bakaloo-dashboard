@@ -44,15 +44,43 @@ const ICON_LABELS: Record<NavButtonIconKey, string> = {
 }
 
 export function NavButtonIconPreview({
+  iconType = "PRESET",
   iconKey,
   accentColor,
+  customIconUrl,
   size = 20,
 }: {
-  iconKey: NavButtonIconKey
+  iconType?: "PRESET" | "CUSTOM"
+  iconKey?: NavButtonIconKey | null
   accentColor?: string | null
+  customIconUrl?: string | null
   size?: number
 }) {
-  const Icon = ICON_COMPONENTS[iconKey]
+  // CUSTOM renders the uploaded image directly, no badge/circle behind
+  // it — a real brand icon or logo loses its own shape and colors if
+  // forced into a colored circle the way a PRESET vector glyph needs.
+  if (iconType === "CUSTOM") {
+    if (!customIconUrl) {
+      return (
+        <div
+          className="flex items-center justify-center rounded-md border border-dashed text-muted-foreground"
+          style={{ width: size * 1.8, height: size * 1.8, fontSize: size * 0.5 }}
+        >
+          ?
+        </div>
+      )
+    }
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={customIconUrl}
+        alt=""
+        style={{ width: size * 1.8, height: size * 1.8, objectFit: "contain" }}
+      />
+    )
+  }
+
+  const Icon = iconKey ? ICON_COMPONENTS[iconKey] : null
   if (!Icon) return null
   return (
     <div

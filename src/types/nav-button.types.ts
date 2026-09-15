@@ -14,12 +14,19 @@ export type NavButtonIconKey = (typeof NAV_BUTTON_ICON_KEYS)[number]
 
 export type NavButtonDestinationType = "APP_ROUTE" | "CATEGORY" | "PRODUCT" | "WEBVIEW"
 export type NavButtonAudience = "B2C" | "B2B" | "ALL"
+export type NavButtonIconType = "PRESET" | "CUSTOM"
 
 export interface NavButton {
   id: string
   label: string
-  icon_key: NavButtonIconKey
+  icon_type: NavButtonIconType
+  icon_key: NavButtonIconKey | null
   accent_color: string | null
+  /** Required when icon_type is CUSTOM — rendered as-is with no colored
+   * badge behind it, unlike a PRESET icon. */
+  custom_icon_active_url: string | null
+  /** Optional CUSTOM counterpart; falls back to custom_icon_active_url. */
+  custom_icon_inactive_url: string | null
   destination_type: NavButtonDestinationType
   destination_value: string
   pass_identity: boolean
@@ -35,8 +42,11 @@ export interface NavButton {
 
 export interface CreateNavButtonPayload {
   label: string
-  iconKey: NavButtonIconKey
+  iconType?: NavButtonIconType
+  iconKey?: NavButtonIconKey | null
   accentColor?: string | null
+  customIconActiveUrl?: string | null
+  customIconInactiveUrl?: string | null
   destinationType: NavButtonDestinationType
   destinationValue: string
   passIdentity?: boolean
