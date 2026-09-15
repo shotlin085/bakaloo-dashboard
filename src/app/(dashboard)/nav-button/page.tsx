@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/shared/EmptyState"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,7 @@ import {
   useUpdateNavButton,
   useReorderNavButtons,
 } from "@/hooks/useNavButtons"
-import type { NavButton, NavButtonDestinationType } from "@/types/nav-button.types"
+import type { NavButton, NavButtonDestinationType, NavButtonPlacement } from "@/types/nav-button.types"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useShopContext, useIsSuperAdmin } from "@/hooks/useShopContext"
 import { EmptyShopState } from "@/components/shared/empty-shop-state"
@@ -191,6 +192,7 @@ function SortableNavButtonCard({
 function NavButtonContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<NavButton | null>(null)
+  const [placementTab, setPlacementTab] = useState<NavButtonPlacement>("BOTTOM_NAV")
 
   const { mode } = useShopContext()
   const isSuperAdmin = useIsSuperAdmin()
@@ -204,8 +206,10 @@ function NavButtonContent() {
 
   const sorted = useMemo(() => {
     if (!navButtons) return []
-    return [...navButtons].sort((a, b) => a.sort_order - b.sort_order)
-  }, [navButtons])
+    return navButtons
+      .filter((b) => b.placement === placementTab)
+      .sort((a, b) => a.sort_order - b.sort_order)
+  }, [navButtons, placementTab])
 
   const openCreate = () => {
     setEditing(null)
@@ -255,15 +259,27 @@ function NavButtonContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Nav Button"
-        subtitle="Configure the app's 5th bottom-navigation button — icon, destination, and who sees it"
+        title="Nav & Menu Buttons"
+        subtitle="Admin-configured buttons — icon, destination, and who sees each one"
       >
         {canManage && (
           <Button onClick={openCreate} size="sm">
-            <Plus className="h-4 w-4 mr-1.5" /> Add Nav Button
+            <Plus className="h-4 w-4 mr-1.5" /> Add Button
           </Button>
         )}
       </PageHeader>
+
+      <Tabs value={placementTab} onValueChange={(v) => setPlacementTab(v as NavButtonPlacement)}>
+        <TabsList>
+          <TabsTrigger value="BOTTOM_NAV">5th Bottom-Nav Slot</TabsTrigger>
+          <TabsTrigger value="PROFILE_MENU">Profile Menu</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <p className="text-xs text-muted-foreground -mt-4">
+        {placementTab === "BOTTOM_NAV"
+          ? "Only one of these shows at a time — each customer resolves to at most one, by audience/segment."
+          : "Shown as a list in the app's Profile screen (Business Transaction, Games, and any others you add here) — any number can be active at once."}
+      </p>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -276,8 +292,12 @@ function NavButtonContent() {
       ) : sorted.length === 0 ? (
         <EmptyState
           icon={<Plus className="h-6 w-6 text-muted-foreground" />}
-          title="No nav button configured"
-          description="The app currently shows only Home, Orders, Categories, and Profile. Add one to enable the 5th slot."
+          title={placementTab === "BOTTOM_NAV" ? "No nav button configured" : "No profile menu buttons configured"}
+          description={
+            placementTab === "BOTTOM_NAV"
+              ? "The app currently shows only Home, Orders, Categories, and Profile. Add one to enable the 5th slot."
+              : "Add a button — e.g. Business Transaction or Games — to show it in the app's Profile screen."
+          }
         />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -297,7 +317,12 @@ function NavButtonContent() {
         </DndContext>
       )}
 
-      <NavButtonDialog open={dialogOpen} onClose={() => setDialogOpen(false)} navButton={editing} />
+      <NavButtonDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        navButton={editing}
+        defaultPlacement={placementTab}
+      />
     </div>
   )
 }

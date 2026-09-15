@@ -17,7 +17,6 @@ import {
   Clock,
   Coffee,
   CreditCard,
-  ExternalLink,
   FileSpreadsheet,
   FileText,
   Gift,
@@ -99,7 +98,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Clock,
   Coffee,
   CreditCard,
-  ExternalLink,
   FileSpreadsheet,
   FileText,
   Gift,
@@ -164,7 +162,6 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
           },
           { label: "Payments", href: "/settings/payments", icon: "CreditCard" },
           { label: "Wallet Settings", href: "/settings/wallet", icon: "Wallet" },
-          { label: "External Links", href: "/settings/external-links", icon: "ExternalLink" },
           {
             label: "Order Notifications",
             href: "/settings/order-notifications",
@@ -271,7 +268,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       // Restore by uncommenting once the two are split more thoroughly.
       // { label: "Banners", href: "/banners", icon: "Image" },
       { label: "Profile Banner", href: "/profile-banners", icon: "Image" },
-      { label: "Nav Button", href: "/nav-button", icon: "LayoutGrid" },
+      { label: "Nav & Menu Buttons", href: "/nav-button", icon: "LayoutGrid" },
       { label: "Tutorials", href: "/tutorials", icon: "Youtube" },
       { label: "Activity Log", href: "/activity-log", icon: "Activity" },
       { label: "Customer Activity", href: "/customer-activity", icon: "History" },

@@ -36,6 +36,10 @@ interface NavButtonDialogProps {
   open: boolean
   onClose: () => void
   navButton?: NavButton | null
+  /** Pre-selects Placement for a new button (e.g. opening "Add" from the
+   * Profile Menu tab shouldn't default to Bottom Nav Slot). Ignored when
+   * editing an existing button — its own placement always wins. */
+  defaultPlacement?: NavButton["placement"]
 }
 
 /** Curated internal screens — deliberately a fixed list, not a free path
@@ -83,9 +87,10 @@ const INITIAL: CreateNavButtonPayload & { isActive: boolean } = {
   isActive: true,
   startDate: undefined,
   endDate: undefined,
+  placement: "BOTTOM_NAV" as NavButton["placement"],
 }
 
-export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogProps) {
+export function NavButtonDialog({ open, onClose, navButton, defaultPlacement }: NavButtonDialogProps) {
   const [form, setForm] = useState(INITIAL)
   const createMutation = useCreateNavButton()
   const updateMutation = useUpdateNavButton()
@@ -109,11 +114,12 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
         isActive: navButton.is_active,
         startDate: navButton.start_date ? navButton.start_date.slice(0, 16) : undefined,
         endDate: navButton.end_date ? navButton.end_date.slice(0, 16) : undefined,
+        placement: navButton.placement,
       })
     } else {
-      setForm(INITIAL)
+      setForm({ ...INITIAL, placement: defaultPlacement ?? "BOTTOM_NAV" })
     }
-  }, [navButton, open])
+  }, [navButton, open, defaultPlacement])
 
   const setDestinationType = (type: NavButtonDestinationType) => {
     // Each type's destinationValue means something different (a route
@@ -141,6 +147,7 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
       isActive: form.isActive,
       startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
       endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
+      placement: form.placement,
     }
 
     if (isEdit && navButton) {
@@ -177,7 +184,9 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
               <p className="text-xs text-muted-foreground">
                 {form.iconType === "CUSTOM"
                   ? "Rendered as-is, no colored badge — same as the app's own 4 tab icons"
-                  : "This is the 5th bottom-nav slot"}
+                  : form.placement === "PROFILE_MENU"
+                    ? "Shows as a row in the Profile screen's menu"
+                    : "This is the 5th bottom-nav slot"}
               </p>
             </div>
           </div>
@@ -192,6 +201,22 @@ export function NavButtonDialog({ open, onClose, navButton }: NavButtonDialogPro
               required
               maxLength={30}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Where does this show?</Label>
+            <Select
+              value={form.placement}
+              onValueChange={(v) => setForm({ ...form, placement: v as NavButton["placement"] })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BOTTOM_NAV">5th bottom-nav slot (only one shows at a time)</SelectItem>
+                <SelectItem value="PROFILE_MENU">Profile screen menu list (any number can show)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Icon source */}

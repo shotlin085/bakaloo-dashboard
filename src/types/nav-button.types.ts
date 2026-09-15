@@ -15,6 +15,10 @@ export type NavButtonIconKey = (typeof NAV_BUTTON_ICON_KEYS)[number]
 export type NavButtonDestinationType = "APP_ROUTE" | "CATEGORY" | "PRODUCT" | "WEBVIEW"
 export type NavButtonAudience = "B2C" | "B2B" | "ALL"
 export type NavButtonIconType = "PRESET" | "CUSTOM"
+/** BOTTOM_NAV: the single 5th bottom-nav slot — at most one row resolves
+ * per viewer. PROFILE_MENU: an unbounded list of buttons on the Profile
+ * screen — every matching active row renders. */
+export type NavButtonPlacement = "BOTTOM_NAV" | "PROFILE_MENU"
 
 export interface NavButton {
   id: string
@@ -36,6 +40,7 @@ export interface NavButton {
   start_date: string | null
   end_date: string | null
   sort_order: number
+  placement: NavButtonPlacement
   created_at: string
   updated_at: string
 }
@@ -55,6 +60,7 @@ export interface CreateNavButtonPayload {
   isActive?: boolean
   startDate?: string | null
   endDate?: string | null
+  placement?: NavButtonPlacement
 }
 
 export type UpdateNavButtonPayload = Partial<CreateNavButtonPayload>
