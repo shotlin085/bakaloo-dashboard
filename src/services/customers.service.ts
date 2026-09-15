@@ -8,6 +8,7 @@ export async function getCustomers(filters: CustomerFilters = {}) {
   if (filters.limit) params.limit = filters.limit
   if (filters.search) params.search = filters.search
   if (filters.status) params.status = filters.status
+  if (filters.segment) params.segment = filters.segment
   if (filters.sort) params.sortBy = filters.sort
   if (filters.order) params.sortOrder = filters.order === "asc" ? "ASC" : "DESC"
   // When the dashboard is in SINGLE_SHOP mode, the hook layer forwards the

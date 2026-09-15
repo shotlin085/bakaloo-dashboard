@@ -85,6 +85,7 @@ export interface CustomerFilters {
   limit?: number
   search?: string
   status?: "active" | "blocked" | ""
+  segment?: "vip" | "churned" | ""
   minOrders?: number
   maxOrders?: number
   minSpent?: number

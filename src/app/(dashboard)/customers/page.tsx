@@ -217,10 +217,11 @@ export default function CustomersPage() {
       limit,
       search: debouncedSearch || undefined,
       status: status || undefined,
+      segment: segment || undefined,
       sort: sort || undefined,
       order: "desc" as const,
     }),
-    [page, limit, debouncedSearch, status, sort]
+    [page, limit, debouncedSearch, status, segment, sort]
   )
 
   const { data, isLoading } = useCustomers(filters)
@@ -282,8 +283,9 @@ export default function CustomersPage() {
   }, [])
 
   const filteredCustomers = useMemo(() => {
+    // segment/status are applied server-side (across all customers, not
+    // just the loaded page) — see the `filters` passed to useCustomers.
     let result = customers
-    if (segment) result = result.filter((c) => getSegment(c) === segment)
     if (joinedFrom) result = result.filter((c) => c.created_at >= joinedFrom)
     if (joinedTo) result = result.filter((c) => c.created_at <= joinedTo + "T23:59:59")
     if (minOrders) result = result.filter((c) => c.order_count >= Number(minOrders))
@@ -291,7 +293,7 @@ export default function CustomersPage() {
     if (minSpent) result = result.filter((c) => c.total_spent >= Number(minSpent))
     if (maxSpent) result = result.filter((c) => c.total_spent <= Number(maxSpent))
     return result
-  }, [customers, segment, getSegment, joinedFrom, joinedTo, minOrders, maxOrders, minSpent, maxSpent])
+  }, [customers, joinedFrom, joinedTo, minOrders, maxOrders, minSpent, maxSpent])
 
   return (
     <div className="space-y-6">
