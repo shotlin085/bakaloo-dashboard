@@ -17,6 +17,7 @@ import {
   Clock,
   Coffee,
   CreditCard,
+  ExternalLink,
   FileSpreadsheet,
   FileText,
   Gift,
@@ -98,6 +99,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Clock,
   Coffee,
   CreditCard,
+  ExternalLink,
   FileSpreadsheet,
   FileText,
   Gift,
@@ -162,6 +164,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
           },
           { label: "Payments", href: "/settings/payments", icon: "CreditCard" },
           { label: "Wallet Settings", href: "/settings/wallet", icon: "Wallet" },
+          { label: "External Links", href: "/settings/external-links", icon: "ExternalLink" },
           {
             label: "Order Notifications",
             href: "/settings/order-notifications",
