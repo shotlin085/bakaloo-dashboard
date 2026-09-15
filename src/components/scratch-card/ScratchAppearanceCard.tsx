@@ -32,9 +32,10 @@ interface ScratchAppearanceCardProps {
 }
 
 /**
- * The "foil" cover image scratched away to reveal the prize — a card-shaped
- * (not square, not portrait) upload, since GPay/PhonePe-style scratch cards
- * read as a landscape card roughly 8:5, not a full-screen background.
+ * The "foil" cover image scratched away to reveal the prize — a tall 2:3
+ * "trading card" upload, matching the actual card shape rendered in the
+ * app (see scratch_card_dialog.dart's _cardAspectRatio), not a square or a
+ * full-screen background.
  */
 export function ScratchAppearanceCard({ draft, onChange, canManage }: ScratchAppearanceCardProps) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -61,8 +62,8 @@ export function ScratchAppearanceCard({ draft, onChange, canManage }: ScratchApp
     <div className="space-y-2">
       <Label>Scratch Card Cover (&quot;Foil&quot;) Image</Label>
       {previewSrc ? (
-        <div className="relative group w-full aspect-[8/5] max-w-[280px] rounded-xl overflow-hidden border">
-          <Image src={previewSrc} alt="Scratch card cover" fill className="object-cover" sizes="280px" />
+        <div className="relative group w-full aspect-[2/3] max-w-[200px] rounded-xl overflow-hidden border">
+          <Image src={previewSrc} alt="Scratch card cover" fill className="object-cover" sizes="200px" />
           {canManage && (
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button
@@ -91,7 +92,7 @@ export function ScratchAppearanceCard({ draft, onChange, canManage }: ScratchApp
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={!canManage || uploadMutation.isPending}
-          className="w-full aspect-[8/5] max-w-[280px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-brand-300 hover:bg-brand-50/50 transition-colors cursor-pointer disabled:opacity-50"
+          className="w-full aspect-[2/3] max-w-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-brand-300 hover:bg-brand-50/50 transition-colors cursor-pointer disabled:opacity-50"
         >
           {uploadMutation.isPending ? (
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -105,7 +106,7 @@ export function ScratchAppearanceCard({ draft, onChange, canManage }: ScratchApp
       )}
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
       <p className="text-[11px] text-muted-foreground max-w-[320px]">
-        Recommended <strong>1200 × 750px</strong> (8:5 landscape card), JPG/PNG, under 5MB. Served
+        Recommended <strong>1000 × 1500px</strong> (2:3 portrait card), JPG/PNG, under 5MB. Served
         through Cloudinary&apos;s CDN — auto-compressed and capped at 1080px wide on delivery no
         matter what you upload. Leave empty to keep the app&apos;s built-in default foil design.
       </p>
