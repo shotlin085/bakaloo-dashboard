@@ -20,6 +20,7 @@
 
 import type { ListParams } from "@/types/common.types"
 import type { SpinHistoryFilters } from "@/types/spin-wheel.types"
+import type { ScratchHistoryFilters } from "@/types/scratch-card.types"
 
 /**
  * The set of first-segment tags that identify shop-scoped cache entries.
@@ -98,6 +99,10 @@ export const qk = {
   spinWheelSettings: () => ["spin-wheel-settings"] as const,
   spinWheelMilestones: () => ["spin-wheel-milestones", "list"] as const,
   spinWheelHistory: (params: SpinHistoryFilters) => ["spin-wheel-history", "list", params] as const,
+  scratchCardPrizes: () => ["scratch-card-prizes", "list"] as const,
+  scratchCardSettings: () => ["scratch-card-settings"] as const,
+  scratchCardMilestones: () => ["scratch-card-milestones", "list"] as const,
+  scratchCardHistory: (params: ScratchHistoryFilters) => ["scratch-card-history", "list", params] as const,
 
   // ── Purchase Limit Rules (platform-wide, NOT shop-scoped — rules cap
   //    category/product purchase quantity across the whole platform; the

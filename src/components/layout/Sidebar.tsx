@@ -239,6 +239,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { label: "First-Time Offers", href: "/first-time-offers", icon: "Gift" },
       { label: "Cart Milestones", href: "/cart-milestones", icon: "TrendingUp" },
       { label: "Spin & Win", href: "/spin-wheel", icon: "Sparkles" },
+      { label: "Scratch Card", href: "/scratch-card", icon: "CreditCard" },
       { label: "Wallet & Refunds", href: "/wallet", icon: "Wallet" },
       { label: "Notifications", href: "/notifications", icon: "Bell" },
       { label: "Reviews", href: "/reviews", icon: "Star" },
