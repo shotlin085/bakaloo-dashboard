@@ -6,6 +6,10 @@ export type ScratchPrizeType =
   | "CASHBACK"
   | "BETTER_LUCK"
 
+// No BETTER_LUCK — the first-time reward pool exists to guarantee a real
+// win on a customer's first-ever scratch, so that type never applies here.
+export type ScratchFirstTimePrizeType = Exclude<ScratchPrizeType, "BETTER_LUCK">
+
 export type ScratchIconKey =
   | "shopping_cart"
   | "percent"
@@ -47,10 +51,36 @@ export interface CreateScratchPrizePayload {
 
 export type UpdateScratchPrizePayload = Partial<CreateScratchPrizePayload>
 
+export interface ScratchFirstTimePrize {
+  id: string
+  type: ScratchFirstTimePrizeType
+  iconKey: ScratchIconKey
+  label: string
+  value: number | null
+  winProbability: number
+  displayOrder: number
+  isActive: boolean
+  linkedCouponId: string | null
+  createdAt: string
+}
+
+export interface CreateScratchFirstTimePrizePayload {
+  type: ScratchFirstTimePrizeType
+  iconKey?: ScratchIconKey
+  label: string
+  value?: number | null
+  winProbability?: number
+  isActive?: boolean
+  linkedCouponId?: string | null
+}
+
+export type UpdateScratchFirstTimePrizePayload = Partial<CreateScratchFirstTimePrizePayload>
+
 export interface ScratchCardSettings {
   id: string
   dailyFreeScratches: number
   triggerMode: ScratchTriggerMode
+  firstTimeRewardEnabled: boolean
   coverImageUrl: string | null
   coverImagePublicId: string | null
   updatedAt: string
@@ -59,6 +89,7 @@ export interface ScratchCardSettings {
 export interface UpdateScratchCardSettingsPayload {
   dailyFreeScratches?: number
   triggerMode?: ScratchTriggerMode
+  firstTimeRewardEnabled?: boolean
   coverImageUrl?: string | null
   coverImagePublicId?: string | null
 }
@@ -104,6 +135,7 @@ export interface ScratchHistoryEntry {
   isWin: boolean
   rewardStatus: ScratchRewardStatus
   rewardRef: string | null
+  isFirstTimeReward: boolean
   scratchedAt: string
 }
 

@@ -9,6 +9,11 @@ import {
   updateSpinPrize,
   deleteSpinPrize,
   reorderSpinPrizes,
+  getSpinFirstTimePrizes,
+  createSpinFirstTimePrize,
+  updateSpinFirstTimePrize,
+  deleteSpinFirstTimePrize,
+  reorderSpinFirstTimePrizes,
   getSpinWheelSettings,
   updateSpinWheelSettings,
   getSpinMilestoneRules,
@@ -22,6 +27,8 @@ import { qk } from "@/lib/query-keys"
 import type {
   CreateSpinPrizePayload,
   UpdateSpinPrizePayload,
+  CreateSpinFirstTimePrizePayload,
+  UpdateSpinFirstTimePrizePayload,
   UpdateSpinWheelSettingsPayload,
   CreateSpinMilestoneRulePayload,
   UpdateSpinMilestoneRulePayload,
@@ -96,6 +103,64 @@ export function useReorderSpinPrizes() {
     mutationFn: (orderedIds: string[]) => reorderSpinPrizes(orderedIds),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.spinWheelPrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+// ─── First-time reward prizes ───────────────────────────────────────────
+
+export function useSpinFirstTimePrizes() {
+  return useQuery({
+    queryKey: qk.spinWheelFirstTimePrizes(),
+    queryFn: getSpinFirstTimePrizes,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateSpinFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateSpinFirstTimePrizePayload) => createSpinFirstTimePrize(payload),
+    onSuccess: () => {
+      toast.success("First-time prize created")
+      qc.invalidateQueries({ queryKey: qk.spinWheelFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useUpdateSpinFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateSpinFirstTimePrizePayload }) =>
+      updateSpinFirstTimePrize(id, payload),
+    onSuccess: () => {
+      toast.success("First-time prize updated")
+      qc.invalidateQueries({ queryKey: qk.spinWheelFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useDeleteSpinFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteSpinFirstTimePrize(id),
+    onSuccess: () => {
+      toast.success("First-time prize deleted")
+      qc.invalidateQueries({ queryKey: qk.spinWheelFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useReorderSpinFirstTimePrizes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => reorderSpinFirstTimePrizes(orderedIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.spinWheelFirstTimePrizes() })
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   })

@@ -6,6 +6,10 @@ export type SpinPrizeType =
   | "CASHBACK"
   | "BETTER_LUCK"
 
+// No BETTER_LUCK — the first-time reward pool exists to guarantee a real
+// win on a customer's first-ever spin, so that type never applies here.
+export type SpinFirstTimePrizeType = Exclude<SpinPrizeType, "BETTER_LUCK">
+
 export type SpinIconKey =
   | "shopping_cart"
   | "percent"
@@ -47,10 +51,36 @@ export interface CreateSpinPrizePayload {
 
 export interface UpdateSpinPrizePayload extends Partial<CreateSpinPrizePayload> {}
 
+export interface SpinFirstTimePrize {
+  id: string
+  type: SpinFirstTimePrizeType
+  iconKey: SpinIconKey
+  label: string
+  value: number | null
+  winProbability: number
+  displayOrder: number
+  isActive: boolean
+  linkedCouponId: string | null
+  createdAt: string
+}
+
+export interface CreateSpinFirstTimePrizePayload {
+  type: SpinFirstTimePrizeType
+  iconKey?: SpinIconKey
+  label: string
+  value?: number | null
+  winProbability?: number
+  isActive?: boolean
+  linkedCouponId?: string | null
+}
+
+export type UpdateSpinFirstTimePrizePayload = Partial<CreateSpinFirstTimePrizePayload>
+
 export interface SpinWheelSettings {
   id: string
   dailyFreeSpins: number
   triggerMode: SpinTriggerMode
+  firstTimeRewardEnabled: boolean
   backgroundImageUrl: string | null
   backgroundImagePublicId: string | null
   bannerTitle: string
@@ -62,6 +92,7 @@ export interface SpinWheelSettings {
 export interface UpdateSpinWheelSettingsPayload {
   dailyFreeSpins?: number
   triggerMode?: SpinTriggerMode
+  firstTimeRewardEnabled?: boolean
   backgroundImageUrl?: string | null
   backgroundImagePublicId?: string | null
   bannerTitle?: string
@@ -110,6 +141,7 @@ export interface SpinHistoryEntry {
   isWin: boolean
   rewardStatus: SpinRewardStatus
   rewardRef: string | null
+  isFirstTimeReward: boolean
   spunAt: string
 }
 

@@ -9,6 +9,11 @@ import {
   updateScratchPrize,
   deleteScratchPrize,
   reorderScratchPrizes,
+  getScratchFirstTimePrizes,
+  createScratchFirstTimePrize,
+  updateScratchFirstTimePrize,
+  deleteScratchFirstTimePrize,
+  reorderScratchFirstTimePrizes,
   getScratchCardSettings,
   updateScratchCardSettings,
   getScratchMilestoneRules,
@@ -22,6 +27,8 @@ import { qk } from "@/lib/query-keys"
 import type {
   CreateScratchPrizePayload,
   UpdateScratchPrizePayload,
+  CreateScratchFirstTimePrizePayload,
+  UpdateScratchFirstTimePrizePayload,
   UpdateScratchCardSettingsPayload,
   CreateScratchMilestoneRulePayload,
   UpdateScratchMilestoneRulePayload,
@@ -96,6 +103,64 @@ export function useReorderScratchPrizes() {
     mutationFn: (orderedIds: string[]) => reorderScratchPrizes(orderedIds),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.scratchCardPrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+// ─── First-time reward prizes ───────────────────────────────────────────
+
+export function useScratchFirstTimePrizes() {
+  return useQuery({
+    queryKey: qk.scratchCardFirstTimePrizes(),
+    queryFn: getScratchFirstTimePrizes,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateScratchFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateScratchFirstTimePrizePayload) => createScratchFirstTimePrize(payload),
+    onSuccess: () => {
+      toast.success("First-time prize created")
+      qc.invalidateQueries({ queryKey: qk.scratchCardFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useUpdateScratchFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateScratchFirstTimePrizePayload }) =>
+      updateScratchFirstTimePrize(id, payload),
+    onSuccess: () => {
+      toast.success("First-time prize updated")
+      qc.invalidateQueries({ queryKey: qk.scratchCardFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useDeleteScratchFirstTimePrize() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteScratchFirstTimePrize(id),
+    onSuccess: () => {
+      toast.success("First-time prize deleted")
+      qc.invalidateQueries({ queryKey: qk.scratchCardFirstTimePrizes() })
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useReorderScratchFirstTimePrizes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => reorderScratchFirstTimePrizes(orderedIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.scratchCardFirstTimePrizes() })
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   })

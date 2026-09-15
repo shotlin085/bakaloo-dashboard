@@ -4,6 +4,9 @@ import type {
   ScratchPrize,
   CreateScratchPrizePayload,
   UpdateScratchPrizePayload,
+  ScratchFirstTimePrize,
+  CreateScratchFirstTimePrizePayload,
+  UpdateScratchFirstTimePrizePayload,
   ScratchCardSettings,
   UpdateScratchCardSettingsPayload,
   ScratchMilestoneRule,
@@ -38,6 +41,42 @@ export async function deleteScratchPrize(id: string): Promise<void> {
 
 export async function reorderScratchPrizes(orderedIds: string[]): Promise<void> {
   await api.put("/scratch-card/admin/prizes/reorder", { orderedIds })
+}
+
+// ─── First-time reward prizes ───────────────────────────────────────────
+
+export async function getScratchFirstTimePrizes(): Promise<ScratchFirstTimePrize[]> {
+  const { data } = await api.get<ApiResponse<ScratchFirstTimePrize[]>>("/scratch-card/admin/first-time-prizes")
+  return data.data
+}
+
+export async function createScratchFirstTimePrize(
+  payload: CreateScratchFirstTimePrizePayload
+): Promise<ScratchFirstTimePrize> {
+  const { data } = await api.post<ApiResponse<ScratchFirstTimePrize>>(
+    "/scratch-card/admin/first-time-prizes",
+    payload
+  )
+  return data.data
+}
+
+export async function updateScratchFirstTimePrize(
+  id: string,
+  payload: UpdateScratchFirstTimePrizePayload
+): Promise<ScratchFirstTimePrize> {
+  const { data } = await api.patch<ApiResponse<ScratchFirstTimePrize>>(
+    `/scratch-card/admin/first-time-prizes/${id}`,
+    payload
+  )
+  return data.data
+}
+
+export async function deleteScratchFirstTimePrize(id: string): Promise<void> {
+  await api.delete(`/scratch-card/admin/first-time-prizes/${id}`)
+}
+
+export async function reorderScratchFirstTimePrizes(orderedIds: string[]): Promise<void> {
+  await api.put("/scratch-card/admin/first-time-prizes/reorder", { orderedIds })
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────

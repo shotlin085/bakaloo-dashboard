@@ -4,6 +4,9 @@ import type {
   SpinPrize,
   CreateSpinPrizePayload,
   UpdateSpinPrizePayload,
+  SpinFirstTimePrize,
+  CreateSpinFirstTimePrizePayload,
+  UpdateSpinFirstTimePrizePayload,
   SpinWheelSettings,
   UpdateSpinWheelSettingsPayload,
   SpinMilestoneRule,
@@ -38,6 +41,39 @@ export async function deleteSpinPrize(id: string): Promise<void> {
 
 export async function reorderSpinPrizes(orderedIds: string[]): Promise<void> {
   await api.put("/spin-wheel/admin/prizes/reorder", { orderedIds })
+}
+
+// ─── First-time reward prizes ───────────────────────────────────────────
+
+export async function getSpinFirstTimePrizes(): Promise<SpinFirstTimePrize[]> {
+  const { data } = await api.get<ApiResponse<SpinFirstTimePrize[]>>("/spin-wheel/admin/first-time-prizes")
+  return data.data
+}
+
+export async function createSpinFirstTimePrize(
+  payload: CreateSpinFirstTimePrizePayload
+): Promise<SpinFirstTimePrize> {
+  const { data } = await api.post<ApiResponse<SpinFirstTimePrize>>("/spin-wheel/admin/first-time-prizes", payload)
+  return data.data
+}
+
+export async function updateSpinFirstTimePrize(
+  id: string,
+  payload: UpdateSpinFirstTimePrizePayload
+): Promise<SpinFirstTimePrize> {
+  const { data } = await api.patch<ApiResponse<SpinFirstTimePrize>>(
+    `/spin-wheel/admin/first-time-prizes/${id}`,
+    payload
+  )
+  return data.data
+}
+
+export async function deleteSpinFirstTimePrize(id: string): Promise<void> {
+  await api.delete(`/spin-wheel/admin/first-time-prizes/${id}`)
+}
+
+export async function reorderSpinFirstTimePrizes(orderedIds: string[]): Promise<void> {
+  await api.put("/spin-wheel/admin/first-time-prizes/reorder", { orderedIds })
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────

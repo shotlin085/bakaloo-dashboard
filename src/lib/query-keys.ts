@@ -96,10 +96,12 @@ export const qk = {
   //    and spin credits are the same for every customer regardless of
   //    which shop is active in the dashboard) ──────────────────────────────
   spinWheelPrizes: () => ["spin-wheel-prizes", "list"] as const,
+  spinWheelFirstTimePrizes: () => ["spin-wheel-first-time-prizes", "list"] as const,
   spinWheelSettings: () => ["spin-wheel-settings"] as const,
   spinWheelMilestones: () => ["spin-wheel-milestones", "list"] as const,
   spinWheelHistory: (params: SpinHistoryFilters) => ["spin-wheel-history", "list", params] as const,
   scratchCardPrizes: () => ["scratch-card-prizes", "list"] as const,
+  scratchCardFirstTimePrizes: () => ["scratch-card-first-time-prizes", "list"] as const,
   scratchCardSettings: () => ["scratch-card-settings"] as const,
   scratchCardMilestones: () => ["scratch-card-milestones", "list"] as const,
   scratchCardHistory: (params: ScratchHistoryFilters) => ["scratch-card-history", "list", params] as const,
