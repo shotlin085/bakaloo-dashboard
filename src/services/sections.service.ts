@@ -102,6 +102,19 @@ export async function copySectionsToB2B(tabId: string): Promise<SectionManifest[
   return data.data
 }
 
+/**
+ * "Copy B2B to B2C" — the reverse direction, for when content was
+ * authored while the builder's audience toggle was on B2B by mistake and
+ * needs to reach retail customers. Refuses (400, code B2C_SECTIONS_EXIST)
+ * if the tab already has B2C sections.
+ */
+export async function copySectionsToB2C(tabId: string): Promise<SectionManifest[]> {
+  const { data } = await api.post<ApiResponse<SectionManifest[]>>(
+    `/admin/sections/${tabId}/copy-to-b2c`
+  )
+  return data.data
+}
+
 export async function getSectionVersions(
   tabId: string,
   audience: ThemeAudience = "B2C"

@@ -40,7 +40,17 @@ interface ProfileBannerDialogProps {
   banner?: Banner | null
 }
 
-const SUGGESTED_SIZE = "1080 × 360 (3:1 wide strip)"
+// This is the Profile screen HEADER's own background image — behind the
+// back button, avatar, name, phone, and Edit profile button — not a
+// separate strip above it. Needs enough height to cover that whole block
+// without the app cropping/zooming it via BoxFit.cover. Measured directly
+// off a real device render of ProfileHeader (lib/features/profile/
+// presentation/widgets/profile_header.dart) at 1080px screen width: the
+// header is ~978px tall there, so 1080 × 980 (~1.1:1) is the aspect ratio
+// that shows the whole image with the least cropping. Widens/narrows
+// slightly by device (status bar height, font scaling), so keep any logo
+// or text inside the middle ~85% of the image — edges may get trimmed.
+const SUGGESTED_SIZE = "1080 × 980 (~1.1:1, fills the header behind name/avatar)"
 
 const INITIAL: CreateBannerPayload & { isActive: boolean } = {
   title: "",
@@ -291,7 +301,7 @@ export function ProfileBannerDialog({ open, onClose, banner }: ProfileBannerDial
                 id="imageHeight"
                 type="number"
                 min={1}
-                placeholder="360"
+                placeholder="980"
                 value={form.imageHeight ?? ""}
                 onChange={(e) =>
                   setForm({

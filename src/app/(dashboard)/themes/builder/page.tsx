@@ -74,6 +74,7 @@ import { useUpdateTheme } from "@/hooks/useThemes"
 import {
   useAddSection,
   useCopySectionsToB2B,
+  useCopySectionsToB2C,
   useDeleteSection,
   useDuplicateSection,
   useReorderSections,
@@ -300,6 +301,7 @@ function ThemeBuilderPageContent() {
     searchParams.get("audience") === "B2B" ? "B2B" : "B2C"
   )
   const [showCopyToB2BDialog, setShowCopyToB2BDialog] = useState(false)
+  const [showCopyToB2CDialog, setShowCopyToB2CDialog] = useState(false)
 
   const { activeStoreKey, setActiveStoreKey, storeConfig } = useStoreContext()
   const { data: themeTabs = [], isLoading: isLoadingTabs } = useThemeTabs({
@@ -365,6 +367,7 @@ function ThemeBuilderPageContent() {
   const duplicateSectionMutation = useDuplicateSection()
   const scheduleSectionLayoutMutation = useScheduleSectionLayout()
   const copySectionsToB2BMutation = useCopySectionsToB2B()
+  const copySectionsToB2CMutation = useCopySectionsToB2C()
   const createThemeTabMutation = useCreateThemeTab()
   const updateThemeTabMutation = useUpdateThemeTab()
   const archiveThemeTabMutation = useArchiveThemeTab()
@@ -1574,6 +1577,18 @@ function ThemeBuilderPageContent() {
                     Copy B2C to B2B
                   </Button>
                 )}
+                {audience === "B2C" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-full text-xs"
+                    onClick={() => setShowCopyToB2CDialog(true)}
+                  >
+                    <Building2 className="mr-1.5 h-3.5 w-3.5" />
+                    Copy B2B to B2C
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
@@ -1725,6 +1740,59 @@ function ThemeBuilderPageContent() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={showCopyToB2CDialog}
+        onOpenChange={(open) => !copySectionsToB2CMutation.isPending && setShowCopyToB2CDialog(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy B2B sections to B2C?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  This copies the current B2B section layout for{" "}
+                  <strong className="text-foreground">
+                    {activeTab?.label ?? "this tab"}
+                  </strong>{" "}
+                  into its B2C layout. It only works if this tab has no B2C
+                  sections yet — edit them afterward from the builder like any
+                  other layout.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={copySectionsToB2CMutation.isPending}
+              onClick={() => setShowCopyToB2CDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!activeTabId || copySectionsToB2CMutation.isPending}
+              onClick={() => {
+                if (!activeTabId) return
+                copySectionsToB2CMutation.mutate(activeTabId, {
+                  onSuccess: (copiedSections) => {
+                    setShowCopyToB2CDialog(false)
+                    if (audience === "B2C") {
+                      resetLocalSections(normalizeBuilderSections(copiedSections))
+                      setIsDirty(false)
+                    }
+                  },
+                })
+              }}
+            >
+              {copySectionsToB2CMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Copy to B2C
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="z-40 px-3 pb-3 xl:pointer-events-none xl:absolute xl:inset-x-0 xl:bottom-0 xl:px-4 xl:pb-2">
         <div className="xl:pointer-events-auto">
           <TimelineBar
@@ -1762,6 +1830,7 @@ function ThemeBuilderPageContent() {
               duplicateSectionMutation.isPending ||
               scheduleSectionLayoutMutation.isPending ||
               copySectionsToB2BMutation.isPending ||
+              copySectionsToB2CMutation.isPending ||
               updateThemeMutation.isPending
             }
           />

@@ -4,6 +4,7 @@ import {
   addSection,
   cancelSectionSchedule,
   copySectionsToB2B,
+  copySectionsToB2C,
   deleteSection,
   duplicateSection,
   getSectionVersions,
@@ -214,5 +215,23 @@ export function useCopySectionsToB2B() {
     },
     onError: (error: Error) =>
       toast.error(error.message || "Failed to copy sections to B2B"),
+  })
+}
+
+/**
+ * "Copy B2B to B2C" — the reverse direction, for content that was
+ * accidentally saved under B2B (builder toggle left on B2B while
+ * authoring) and needs to reach retail customers instead.
+ */
+export function useCopySectionsToB2C() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tabId: string) => copySectionsToB2C(tabId),
+    onSuccess: (_, tabId) => {
+      toast.success("Sections copied to B2C")
+      qc.invalidateQueries({ queryKey: ["sections", tabId] })
+    },
+    onError: (error: Error) =>
+      toast.error(error.message || "Failed to copy sections to B2C"),
   })
 }

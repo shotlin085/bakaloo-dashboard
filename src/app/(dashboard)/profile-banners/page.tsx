@@ -55,13 +55,16 @@ import { useShopContext, useIsSuperAdmin } from "@/hooks/useShopContext"
 import { EmptyShopState } from "@/components/shared/empty-shop-state"
 
 /**
- * Dedicated management page for PROFILE-placement banners — the app's
- * Profile screen, above the avatar/name header. Deliberately separate from
- * /banners (the Home screen's carousel/popup/announcement banners): mixing
- * both placements into one list with a Banner Type + Placement selector was
- * confusing to manage banners for one specific screen. Same underlying
- * `banners` table and API as /banners — this page only ever shows and
- * creates rows with placement = 'PROFILE'.
+ * Dedicated management page for PROFILE-placement banners — used as the
+ * Profile screen header's own BACKGROUND IMAGE (behind the back button,
+ * avatar, name, phone, and Edit profile button), replacing the default
+ * purple gradient there. Not a separate strip stacked above the header.
+ * Deliberately separate from /banners (the Home screen's carousel/popup/
+ * announcement banners): mixing both placements into one list with a
+ * Banner Type + Placement selector was confusing to manage banners for
+ * one specific screen. Same underlying `banners` table and API as
+ * /banners — this page only ever shows and creates rows with
+ * placement = 'PROFILE'.
  */
 
 type FilterTab = "all" | "active" | "inactive" | "scheduled"
@@ -313,7 +316,7 @@ function ProfileBannersContent() {
   if (mode !== "STORE_MODE") {
     return (
       <div className="space-y-6">
-        <PageHeader title="Profile Banner" subtitle="Manage the banner shown at the top of the Profile screen" />
+        <PageHeader title="Profile Banner" subtitle="Manage the Profile screen header's background image (behind the avatar and name)" />
         <EmptyShopState isSuperAdmin={isSuperAdmin} />
       </div>
     )
@@ -323,7 +326,7 @@ function ProfileBannersContent() {
     <div className="space-y-6">
       <PageHeader
         title="Profile Banner"
-        subtitle="Manage the banner shown at the top of the Profile screen"
+        subtitle="Manage the Profile screen header's background image (behind the avatar and name)"
       >
         {canManage && (
           <Button onClick={openCreate} size="sm">
@@ -362,7 +365,7 @@ function ProfileBannersContent() {
           description={
             tab !== "all"
               ? "No banners match this filter"
-              : "Create the banner shown at the top of the Profile screen"
+              : "Add the image shown behind the avatar and name on the Profile screen"
           }
         />
       ) : (
