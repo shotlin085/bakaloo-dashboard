@@ -95,7 +95,10 @@ export function CartMilestoneDialog({ open, onClose, milestone }: CartMilestoneD
   const createMutation = useCreateCartMilestone()
   const updateMutation = useUpdateCartMilestone()
   const { data: segments } = useCustomerSegments()
-  const { data: couponsData } = useCoupons({ limit: 50 })
+  // Cart milestones are platform-wide, not a shop feature — fetch
+  // regardless of the admin's current shop selection (see useCoupons.ts's
+  // doc comment).
+  const { data: couponsData } = useCoupons({ limit: 50 }, { shopScoped: false })
 
   useEffect(() => {
     if (milestone) {

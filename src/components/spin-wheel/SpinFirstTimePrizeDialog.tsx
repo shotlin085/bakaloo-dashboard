@@ -86,7 +86,9 @@ export function SpinFirstTimePrizeDialog({ open, onClose, prize }: SpinFirstTime
   const isEdit = !!prize
   const createMutation = useCreateSpinFirstTimePrize()
   const updateMutation = useUpdateSpinFirstTimePrize()
-  const { data: couponsData } = useCoupons({ limit: 100 })
+  // Spin & Win is platform-wide, not a shop feature — fetch regardless of
+  // the admin's current shop selection (see useCoupons.ts's doc comment).
+  const { data: couponsData } = useCoupons({ limit: 100 }, { shopScoped: false })
 
   useEffect(() => {
     if (prize) {

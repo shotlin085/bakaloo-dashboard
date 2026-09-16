@@ -11,8 +11,21 @@
  * keys its query by `shopKey` so the cache lines never bleed across shops.
  *
  * The list query is gated by `enabled: shopKey !== "NONE"` to mirror the
- * convention from `useOrders` / `useShopProductsList`.
+ * convention from `useOrders` / `useShopProductsList`. `mode` defaults to
+ * `"UNSELECTED"` (see shop-context.store.ts) until an admin explicitly
+ * enters a shop or HQ mode, so that gate is `false` by default.
  *
+ * That default-off gate is right for the Coupons page itself, but several
+ * other admin surfaces (Spin & Win / Scratch Card prizes, cart milestones,
+ * first-time offers, abandoned-cart coupon sends) reuse this same hook just
+ * to populate a "pick an existing coupon" dropdown for a feature that has
+ * no shop concept at all — GET /coupons isn't even shop-filtered server-side
+ * (see coupons.controller.js#listAll). Left at the default, those pickers
+ * silently render empty until the admin happens to have a shop selected,
+ * which looks exactly like "the coupon isn't there" even though it is.
+ * Pass `{ shopScoped: false }` from any such caller to fetch unconditionally.
+ *
+
  * The per-coupon analytics query is keyed on `id` only — it is not
  * shop-scoped on the backend, and the coupon id itself uniquely identifies
  * the analytics row.
@@ -51,15 +64,19 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong"
 }
 
-export function useCoupons(filters: CouponFilters = {}) {
+export function useCoupons(filters: CouponFilters = {}, options: { shopScoped?: boolean } = {}) {
+  const { shopScoped = true } = options
   const { mode, activeShopId } = useShopContext()
   const shopKey =
     mode === "HQ_MODE" ? "ALL" : activeShopId ?? NONE_SHOP_KEY
 
   return useQuery({
-    queryKey: qk.coupons(shopKey, filters),
+    // Unscoped callers share one "ALL" cache line — same key HQ_MODE
+    // already uses, which is correct here since the underlying data isn't
+    // actually shop-filtered either way.
+    queryKey: qk.coupons(shopScoped ? shopKey : "ALL", filters),
     queryFn: () => getCoupons(filters),
-    enabled: shopKey !== NONE_SHOP_KEY,
+    enabled: shopScoped ? shopKey !== NONE_SHOP_KEY : true,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
   })

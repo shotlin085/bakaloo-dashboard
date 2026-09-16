@@ -63,7 +63,10 @@ export function SendCouponDialog({ open, onOpenChange, cartIds }: SendCouponDial
   const [form, setForm] = useState(CREATE_INITIAL)
   const [couponId, setCouponId] = useState("")
   const [sending, setSending] = useState(false)
-  const { data: couponsData } = useCoupons({ limit: 50 })
+  // Sending a coupon to a specific customer isn't a shop feature — fetch
+  // regardless of the admin's current shop selection (see useCoupons.ts's
+  // doc comment).
+  const { data: couponsData } = useCoupons({ limit: 50 }, { shopScoped: false })
   const qc = useQueryClient()
 
   const activeCoupons = (couponsData?.data ?? []).filter((c) => c.isActive)

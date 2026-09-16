@@ -86,7 +86,9 @@ export function ScratchPrizeDialog({ open, onClose, prize }: ScratchPrizeDialogP
   const isEdit = !!prize
   const createMutation = useCreateScratchPrize()
   const updateMutation = useUpdateScratchPrize()
-  const { data: couponsData } = useCoupons({ limit: 100 })
+  // Scratch Card is platform-wide, not a shop feature — fetch regardless
+  // of the admin's current shop selection (see useCoupons.ts's doc comment).
+  const { data: couponsData } = useCoupons({ limit: 100 }, { shopScoped: false })
 
   useEffect(() => {
     if (prize) {
