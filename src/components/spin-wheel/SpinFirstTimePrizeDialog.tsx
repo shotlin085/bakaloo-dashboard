@@ -105,9 +105,11 @@ export function SpinFirstTimePrizeDialog({ open, onClose, prize }: SpinFirstTime
   }, [prize, open])
 
   const needsCoupon = COUPON_REQUIRED_TYPES.has(form.type)
-  const needsValue = form.type === "PERCENTAGE_OFF" || form.type === "FLAT_OFF" || form.type === "CASHBACK"
-  const valueLabel =
-    form.type === "PERCENTAGE_OFF" ? "Percentage (%)" : form.type === "CASHBACK" ? "Cashback amount (₹)" : "Amount (₹)"
+  // Only CASHBACK needs a manually-entered value — it's a direct wallet
+  // credit with no coupon behind it. Every coupon-backed type grants its
+  // real discount entirely from the linked coupon picked below, so
+  // re-entering that number here would just be a second, driftable copy.
+  const needsValue = form.type === "CASHBACK"
 
   const allCoupons = couponsData?.data ?? []
   const eligibleCoupons = allCoupons.filter((c) => c.targetType === "INDIVIDUAL" && c.isActive)
@@ -182,12 +184,11 @@ export function SpinFirstTimePrizeDialog({ open, onClose, prize }: SpinFirstTime
           <div className="grid grid-cols-2 gap-3">
             {needsValue && (
               <div className="space-y-1.5">
-                <Label htmlFor="sftp-value">{valueLabel} *</Label>
+                <Label htmlFor="sftp-value">Cashback amount (₹) *</Label>
                 <Input
                   id="sftp-value"
                   type="number"
                   min={0}
-                  max={form.type === "PERCENTAGE_OFF" ? 100 : undefined}
                   value={form.value ?? ""}
                   onChange={(e) =>
                     setForm({ ...form, value: e.target.value ? parseFloat(e.target.value) : undefined })
